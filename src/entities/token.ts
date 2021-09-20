@@ -66,20 +66,52 @@ export function currencyEquals(currencyA: Currency, currencyB: Currency): boolea
 }
 
 export const WETH = {
-  [ChainId.MAINNET]: new Token(
-    ChainId.MAINNET,
+  [ChainId.BSC_MAINNET]: new Token(
+    ChainId.BSC_MAINNET,
     '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
     18,
     'WBNB',
     'Wrapped BNB',
     'https://www.binance.org'
   ),
-  [ChainId.TESTNET]: new Token(
-    ChainId.TESTNET,
+  [ChainId.BSC_TESTNET]: new Token(
+    ChainId.BSC_TESTNET,
     '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e',
     18,
     'WBNB',
     'Wrapped BNB',
+    'https://www.binance.org'
+  ),
+  [ChainId.ARBITRUM_MAINNET]: new Token(
+    ChainId.ARBITRUM_MAINNET,
+    '0xc778417E063141139Fce010982780140Aa0cD5Ab',
+    18,
+    'WETH',
+    'Wrapped ETH',
+    'https://www.binance.org'
+  ),
+  [ChainId.ARBITRUM_TETSNET_RINKEBY]: new Token(
+    ChainId.ARBITRUM_TETSNET_RINKEBY,
+    '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e',
+    18,
+    'WBNB',
+    'Wrapped BNB',
+    'https://www.binance.org'
+  ),
+  [ChainId.AVAX_MAINNET]: new Token(
+    ChainId.AVAX_MAINNET,
+    '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+    18,
+    'WAVAX',
+    'Wrapped AVAX',
+    'https://www.binance.org'
+  ),
+  [ChainId.AVAX_TESTNET]: new Token(
+    ChainId.AVAX_TESTNET,
+    '0xd00ae08403B9bbb9124bB305C09058E32C39A48c',
+    18,
+    'WAVAX',
+    'Wrapped AVAX',
     'https://www.binance.org'
   )
 }
