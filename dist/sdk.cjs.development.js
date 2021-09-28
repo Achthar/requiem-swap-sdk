@@ -26,7 +26,7 @@ var _SOLIDITY_TYPE_MAXIMA;
   ChainId[ChainId["AVAX_TESTNET"] = 43113] = "AVAX_TESTNET";
   ChainId[ChainId["ARBITRUM_MAINNET"] = 42161] = "ARBITRUM_MAINNET";
   ChainId[ChainId["ARBITRUM_TETSNET_RINKEBY"] = 421611] = "ARBITRUM_TETSNET_RINKEBY";
-  ChainId[ChainId["MATIC_MAINNET"] = 97] = "MATIC_MAINNET";
+  ChainId[ChainId["MATIC_MAINNET"] = 137] = "MATIC_MAINNET";
   ChainId[ChainId["MATIC_TESTNET"] = 80001] = "MATIC_TESTNET";
 })(exports.ChainId || (exports.ChainId = {}));
 
