@@ -6,7 +6,9 @@ export declare enum ChainId {
     AVAX_MAINNET = 43114,
     AVAX_TESTNET = 43113,
     ARBITRUM_MAINNET = 42161,
-    ARBITRUM_TETSNET_RINKEBY = 421611
+    ARBITRUM_TETSNET_RINKEBY = 421611,
+    MATIC_MAINNET = 97,
+    MATIC_TESTNET = 80001
 }
 export declare enum TradeType {
     EXACT_INPUT = 0,
