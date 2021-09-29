@@ -113,5 +113,22 @@ export const WETH = {
     'WAVAX',
     'Wrapped AVAX',
     'https://www.binance.org'
-  )
+  ),
+  [ChainId.MATIC_MAINNET]: new Token(
+    ChainId.MATIC_MAINNET,
+    '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270',
+    18,
+    'WMATIC',
+    'Wrapped MATIC',
+    'https://www.binance.org'
+  ),
+  [ChainId.MATIC_TESTNET]: new Token(
+    ChainId.MATIC_TESTNET,
+    '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889',
+    18,
+    'WMATIC',
+    'Wrapped MATIC',
+    'https://www.binance.org'
+  ),
+
 }
