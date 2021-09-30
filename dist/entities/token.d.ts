@@ -35,7 +35,7 @@ export declare const WETH: {
     137: Token;
     80001: Token;
 };
-export declare const WRAPPED_NETWORK_CCY: {
+export declare const WRAPPED_NETWORK_TOKENS: {
     56: Token;
     97: Token;
     42161: Token;
