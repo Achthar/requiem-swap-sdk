@@ -352,6 +352,7 @@ function sortedInsert(items, add, maxSize, comparator) {
   }
 }
 
+var _Currency$NETWORK_CCY;
 /**
  * A currency is any fungible financial instrument on Ethereum, including Ether and all ERC20 tokens.
  *
@@ -376,9 +377,11 @@ function Currency(decimals, symbol, name) {
  */
 
 Currency.ETHER = /*#__PURE__*/new Currency(18, 'BNB', 'BNB');
+Currency.NETWORK_CCY = (_Currency$NETWORK_CCY = {}, _Currency$NETWORK_CCY[exports.ChainId.BSC_MAINNET] = /*#__PURE__*/new Currency(18, 'BNB', 'BNB'), _Currency$NETWORK_CCY[exports.ChainId.BSC_TESTNET] = /*#__PURE__*/new Currency(18, 'BNB', 'BNB'), _Currency$NETWORK_CCY[exports.ChainId.ARBITRUM_MAINNET] = /*#__PURE__*/new Currency(18, 'ETH', 'ETH'), _Currency$NETWORK_CCY[exports.ChainId.ARBITRUM_TETSNET_RINKEBY] = /*#__PURE__*/new Currency(18, 'ETH', 'ETH'), _Currency$NETWORK_CCY[exports.ChainId.AVAX_MAINNET] = /*#__PURE__*/new Currency(18, 'AVAX', 'AVAX'), _Currency$NETWORK_CCY[exports.ChainId.AVAX_TESTNET] = /*#__PURE__*/new Currency(18, 'AVAX', 'AVAX'), _Currency$NETWORK_CCY[exports.ChainId.MATIC_MAINNET] = /*#__PURE__*/new Currency(18, 'MATIC', 'MATIC'), _Currency$NETWORK_CCY[exports.ChainId.MATIC_TESTNET] = /*#__PURE__*/new Currency(18, 'MATIC', 'MATIC'), _Currency$NETWORK_CCY);
+var NETWORK_CCY = Currency.NETWORK_CCY;
 var ETHER = Currency.ETHER;
 
-var _WETH;
+var _WETH, _WRAPPED_NETWORK_CCY;
 /**
  * Represents an ERC20 token with a unique address and some metadata.
  */
@@ -442,7 +445,11 @@ function currencyEquals(currencyA, currencyB) {
     return currencyA === currencyB;
   }
 }
-var WETH = (_WETH = {}, _WETH[exports.ChainId.BSC_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.BSC_MAINNET, '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WETH[exports.ChainId.BSC_TESTNET] = /*#__PURE__*/new Token(exports.ChainId.BSC_TESTNET, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WETH[exports.ChainId.ARBITRUM_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.ARBITRUM_MAINNET, '0xc778417E063141139Fce010982780140Aa0cD5Ab', 18, 'WETH', 'Wrapped ETH', 'https://www.binance.org'), _WETH[exports.ChainId.ARBITRUM_TETSNET_RINKEBY] = /*#__PURE__*/new Token(exports.ChainId.ARBITRUM_TETSNET_RINKEBY, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WETH[exports.ChainId.AVAX_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.AVAX_MAINNET, '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WETH[exports.ChainId.AVAX_TESTNET] = /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xd00ae08403B9bbb9124bB305C09058E32C39A48c', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WETH[exports.ChainId.MATIC_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.MATIC_MAINNET, '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WETH[exports.ChainId.MATIC_TESTNET] = /*#__PURE__*/new Token(exports.ChainId.MATIC_TESTNET, '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WETH);
+var WETH = (_WETH = {}, _WETH[exports.ChainId.BSC_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.BSC_MAINNET, '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WETH[exports.ChainId.BSC_TESTNET] = /*#__PURE__*/new Token(exports.ChainId.BSC_TESTNET, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WETH[exports.ChainId.ARBITRUM_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.ARBITRUM_MAINNET, '0xc778417E063141139Fce010982780140Aa0cD5Ab', 18, 'WETH', 'Wrapped ETH', 'https://www.binance.org'), _WETH[exports.ChainId.ARBITRUM_TETSNET_RINKEBY] = /*#__PURE__*/new Token(exports.ChainId.ARBITRUM_TETSNET_RINKEBY, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WETH[exports.ChainId.AVAX_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.AVAX_MAINNET, '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WETH[exports.ChainId.AVAX_TESTNET] = /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xd00ae08403B9bbb9124bB305C09058E32C39A48c', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WETH[exports.ChainId.MATIC_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.MATIC_MAINNET, '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WETH[exports.ChainId.MATIC_TESTNET] = /*#__PURE__*/new Token(exports.ChainId.MATIC_TESTNET, '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WETH); // this has not to be mixed up with the ERC20 token WETH on BSC or MATIC
+// these are the respective wrapped network tokens, e.g. WBNB for Binance
+// or WMATIC for Polygon
+
+var WRAPPED_NETWORK_CCY = (_WRAPPED_NETWORK_CCY = {}, _WRAPPED_NETWORK_CCY[exports.ChainId.BSC_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.BSC_MAINNET, '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WRAPPED_NETWORK_CCY[exports.ChainId.BSC_TESTNET] = /*#__PURE__*/new Token(exports.ChainId.BSC_TESTNET, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WRAPPED_NETWORK_CCY[exports.ChainId.ARBITRUM_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.ARBITRUM_MAINNET, '0xc778417E063141139Fce010982780140Aa0cD5Ab', 18, 'WETH', 'Wrapped ETH', 'https://www.binance.org'), _WRAPPED_NETWORK_CCY[exports.ChainId.ARBITRUM_TETSNET_RINKEBY] = /*#__PURE__*/new Token(exports.ChainId.ARBITRUM_TETSNET_RINKEBY, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WRAPPED_NETWORK_CCY[exports.ChainId.AVAX_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.AVAX_MAINNET, '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WRAPPED_NETWORK_CCY[exports.ChainId.AVAX_TESTNET] = /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xd00ae08403B9bbb9124bB305C09058E32C39A48c', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WRAPPED_NETWORK_CCY[exports.ChainId.MATIC_MAINNET] = /*#__PURE__*/new Token(exports.ChainId.MATIC_MAINNET, '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WRAPPED_NETWORK_CCY[exports.ChainId.MATIC_TESTNET] = /*#__PURE__*/new Token(exports.ChainId.MATIC_TESTNET, '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WRAPPED_NETWORK_CCY);
 
 var _toSignificantRoundin, _toFixedRounding;
 var Decimal = /*#__PURE__*/toFormat(_Decimal);
@@ -1584,6 +1591,7 @@ exports.INIT_CODE_HASH = INIT_CODE_HASH;
 exports.InsufficientInputAmountError = InsufficientInputAmountError;
 exports.InsufficientReservesError = InsufficientReservesError;
 exports.MINIMUM_LIQUIDITY = MINIMUM_LIQUIDITY;
+exports.NETWORK_CCY = NETWORK_CCY;
 exports.Pair = Pair;
 exports.Percent = Percent;
 exports.Price = Price;
@@ -1593,6 +1601,7 @@ exports.Token = Token;
 exports.TokenAmount = TokenAmount;
 exports.Trade = Trade;
 exports.WETH = WETH;
+exports.WRAPPED_NETWORK_CCY = WRAPPED_NETWORK_CCY;
 exports.currencyEquals = currencyEquals;
 exports.inputOutputComparator = inputOutputComparator;
 exports.tradeComparator = tradeComparator;

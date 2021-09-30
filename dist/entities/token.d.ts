@@ -35,3 +35,13 @@ export declare const WETH: {
     137: Token;
     80001: Token;
 };
+export declare const WRAPPED_NETWORK_CCY: {
+    56: Token;
+    97: Token;
+    42161: Token;
+    421611: Token;
+    43114: Token;
+    43113: Token;
+    137: Token;
+    80001: Token;
+};

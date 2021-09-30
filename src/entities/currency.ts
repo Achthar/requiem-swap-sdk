@@ -1,4 +1,5 @@
 import JSBI from 'jsbi'
+import { ChainId } from '..'
 
 import { SolidityType } from '../constants'
 import { validateSolidityTypeInstance } from '../utils'
@@ -18,6 +19,16 @@ export class Currency {
    */
   public static readonly ETHER: Currency = new Currency(18, 'BNB', 'BNB')
 
+  public static readonly NETWORK_CCY: {[chainId in ChainId]:Currency} ={
+    [ChainId.BSC_MAINNET]: new Currency(18, 'BNB', 'BNB'),
+    [ChainId.BSC_TESTNET]: new Currency(18, 'BNB', 'BNB'),
+    [ChainId.ARBITRUM_MAINNET]: new Currency(18, 'ETH', 'ETH'),
+    [ChainId.ARBITRUM_TETSNET_RINKEBY]: new Currency(18, 'ETH', 'ETH'),
+    [ChainId.AVAX_MAINNET]: new Currency(18, 'AVAX', 'AVAX'),
+    [ChainId.AVAX_TESTNET]: new Currency(18, 'AVAX', 'AVAX'),
+    [ChainId.MATIC_MAINNET]: new Currency(18, 'MATIC', 'MATIC'),
+    [ChainId.MATIC_TESTNET]: new Currency(18, 'MATIC', 'MATIC')
+  }
   /**
    * Constructs an instance of the base class `Currency`. The only instance of the base class `Currency` is `Currency.ETHER`.
    * @param decimals decimals of the currency
@@ -33,5 +44,6 @@ export class Currency {
   }
 }
 
+const NETWORK_CCY = Currency.NETWORK_CCY
 const ETHER = Currency.ETHER
-export { ETHER }
+export { ETHER, NETWORK_CCY }
