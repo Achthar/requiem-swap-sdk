@@ -157,7 +157,7 @@ describe('entities', () => {
                   new TokenAmount(
                     WETH,
                     decimalize(10, WETH.decimals) +
-                      (tokens[1].decimals === 9 ? BigInt('30090280812437312') : BigInt('30090270812437322'))
+                    (tokens[1].decimals === 9 ? BigInt('30090280812437312') : BigInt('30090270812437322'))
                   )
                 )
               ],

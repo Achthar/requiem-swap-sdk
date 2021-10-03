@@ -5,7 +5,7 @@ describe('miscellaneous', () => {
   it('getLiquidityMinted:0', async () => {
     const tokenA = new Token(ChainId.BSC_TESTNET, '0x0000000000000000000000000000000000000001', 18)
     const tokenB = new Token(ChainId.BSC_TESTNET, '0x0000000000000000000000000000000000000002', 18)
-    const pair = new Pair(new TokenAmount(tokenA, '0'), new TokenAmount(tokenB, '0'))
+    const pair = new Pair( new TokenAmount(tokenA, '0'), new TokenAmount(tokenB, '0'))
 
     expect(() => {
       pair.getLiquidityMinted(
@@ -35,7 +35,7 @@ describe('miscellaneous', () => {
   it('getLiquidityMinted:!0', async () => {
     const tokenA = new Token(ChainId.BSC_TESTNET, '0x0000000000000000000000000000000000000001', 18)
     const tokenB = new Token(ChainId.BSC_TESTNET, '0x0000000000000000000000000000000000000002', 18)
-    const pair = new Pair(new TokenAmount(tokenA, '10000'), new TokenAmount(tokenB, '10000'))
+    const pair = new Pair( new TokenAmount(tokenA, '10000'), new TokenAmount(tokenB, '10000'))
 
     expect(
       pair
@@ -51,7 +51,7 @@ describe('miscellaneous', () => {
   it('getLiquidityValue:!feeOn', async () => {
     const tokenA = new Token(ChainId.BSC_TESTNET, '0x0000000000000000000000000000000000000001', 18)
     const tokenB = new Token(ChainId.BSC_TESTNET, '0x0000000000000000000000000000000000000002', 18)
-    const pair = new Pair(new TokenAmount(tokenA, '1000'), new TokenAmount(tokenB, '1000'))
+    const pair = new Pair( new TokenAmount(tokenA, '1000'), new TokenAmount(tokenB, '1000'))
 
     {
       const liquidityValue = pair.getLiquidityValue(
@@ -92,7 +92,7 @@ describe('miscellaneous', () => {
   it('getLiquidityValue:feeOn', async () => {
     const tokenA = new Token(ChainId.BSC_TESTNET, '0x0000000000000000000000000000000000000001', 18)
     const tokenB = new Token(ChainId.BSC_TESTNET, '0x0000000000000000000000000000000000000002', 18)
-    const pair = new Pair(new TokenAmount(tokenA, '1000'), new TokenAmount(tokenB, '1000'))
+    const pair = new Pair( new TokenAmount(tokenA, '1000'), new TokenAmount(tokenB, '1000'))
 
     const liquidityValue = pair.getLiquidityValue(
       tokenA,
