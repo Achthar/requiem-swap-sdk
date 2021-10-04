@@ -1,11 +1,11 @@
 import { currencyEquals } from '../token'
-import { Currency, ETHER } from '../currency'
+import { Currency, ETHER, NETWORK_CCY } from '../currency'
 import invariant from 'tiny-invariant'
 import JSBI from 'jsbi'
 import _Big from 'big.js'
 import toFormat from 'toformat'
 
-import { BigintIsh, Rounding, TEN, SolidityType } from '../../constants'
+import { BigintIsh, Rounding, TEN, SolidityType, ChainId } from '../../constants'
 import { parseBigintIsh, validateSolidityTypeInstance } from '../../utils'
 import { Fraction } from './fraction'
 
@@ -20,6 +20,15 @@ export class CurrencyAmount extends Fraction {
    */
   public static ether(amount: BigintIsh): CurrencyAmount {
     return new CurrencyAmount(ETHER, amount)
+  }
+
+  /**
+   * Helper that calls the constructor with the more flexible network currency
+   * dependent on the selected chainId
+   * @param amount ether amount in wei
+   */
+   public static networkCCYAmount(chainId:ChainId, amount: BigintIsh): CurrencyAmount {
+    return new CurrencyAmount(NETWORK_CCY[chainId], amount)
   }
 
   // amount _must_ be raw, i.e. in the native representation

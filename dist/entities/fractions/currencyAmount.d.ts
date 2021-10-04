@@ -1,6 +1,6 @@
 import { Currency } from '../currency';
 import JSBI from 'jsbi';
-import { BigintIsh, Rounding } from '../../constants';
+import { BigintIsh, Rounding, ChainId } from '../../constants';
 import { Fraction } from './fraction';
 export declare class CurrencyAmount extends Fraction {
     readonly currency: Currency;
@@ -9,6 +9,12 @@ export declare class CurrencyAmount extends Fraction {
      * @param amount ether amount in wei
      */
     static ether(amount: BigintIsh): CurrencyAmount;
+    /**
+     * Helper that calls the constructor with the more flexible network currency
+     * dependent on the selected chainId
+     * @param amount ether amount in wei
+     */
+    static networkCCYAmount(chainId: ChainId, amount: BigintIsh): CurrencyAmount;
     protected constructor(currency: Currency, amount: BigintIsh);
     get raw(): JSBI;
     add(other: CurrencyAmount): CurrencyAmount;
