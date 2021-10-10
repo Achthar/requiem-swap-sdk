@@ -45,7 +45,7 @@ var FACTORY_ADDRESS = {
   56: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
   97: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
   80001: '0xf10Bd0dA1f0e69c3334D7F8116C9082746EBC1B4',
-  43113: '0xc07098cdcf93b2dc5c20e749cdd1ba69cb9acebe'
+  43113: '0xC07098cdCf93b2dc5c20E749cDd1ba69cB9AcEBe'
 }; // export const INIT_CODE_HASH = '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5'
 
 var INIT_CODE_HASH = {
@@ -803,6 +803,8 @@ var Pair = /*#__PURE__*/function () {
     !(tokenA.chainId === tokenB.chainId) ? process.env.NODE_ENV !== "production" ? invariant(false, 'CHAIN_ID') : invariant(false) : void 0;
     var chainId = tokenA.chainId;
     var tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA]; // does safety checks
+
+    console.log("SDKTOKENS", tokens);
 
     if (((_PAIR_ADDRESS_CACHE = PAIR_ADDRESS_CACHE) === null || _PAIR_ADDRESS_CACHE === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t = _PAIR_ADDRESS_CACHE[tokens[0].address]) === null || _PAIR_ADDRESS_CACHE$t === void 0 ? void 0 : _PAIR_ADDRESS_CACHE$t[tokens[1].address]) === undefined) {
       var _PAIR_ADDRESS_CACHE2, _extends2, _extends3;
