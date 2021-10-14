@@ -1,6 +1,6 @@
 import invariant from 'tiny-invariant'
 import { BigNumber } from 'ethers'
-import { _getAPrecise, calculateSwap } from './stableCalc'
+import { _getAPrecise, calculateSwap, _calculateRemoveLiquidity, _calculateRemoveLiquidityOneToken } from './stableCalc'
 import { Contract } from '@ethersproject/contracts'
 import { ethers } from 'ethers'
 import { SwapStorage } from './swapStorage'
@@ -30,6 +30,9 @@ export class StablePool {
   // public readonly rates: BigNumber[]
   public readonly blockTimestamp: BigNumber
 
+  public readonly lpTotalSupply: BigNumber
+  public readonly currentWithdrawFee: BigNumber
+
   public static getAddress(chainId: number): string {
     return STABLE_POOL_ADDRESS[chainId]
   }
@@ -39,8 +42,12 @@ export class StablePool {
     tokenBalances: BigNumber[],
     _A: BigNumber,
     swapStorage: SwapStorage,
-    blockTimestamp: number
+    blockTimestamp: number,
+    lpTotalSupply: BigNumber,
+    currentWithdrawFee: BigNumber
   ) {
+    this.currentWithdrawFee = currentWithdrawFee
+    this.lpTotalSupply = lpTotalSupply
     this.swapStorage = swapStorage
     this.blockTimestamp = BigNumber.from(blockTimestamp)
     this.tokens = tokens
@@ -53,7 +60,7 @@ export class StablePool {
       'RequiemStable-LP',
       'Requiem StableSwap LPs'
     )
-    
+
     for (let i = 0; i < Object.values(this.tokens).length; i++) {
       invariant(tokens[i].address != ethers.constants.AddressZero, "invalidTokenAddress");
       invariant(tokens[i].decimals <= 18, "invalidDecimals");
@@ -80,14 +87,13 @@ export class StablePool {
   }
 
   public getBalances(): BigNumber[] {
-
     return Object.keys(this.tokens).map((_, index) => (this.tokenBalances[index]))
   }
 
   // calculates the output amount usingn the input for the swableSwap
   // requires the view on a contract as manual calculation on the frontend would
   // be inefficient
-  public async calculateSwapViaIndex(
+  public async calculateSwapViaPing(
     inIndex: number,
     outIndex: number,
     inAmount: BigintIsh,
@@ -99,7 +105,9 @@ export class StablePool {
   }
 
 
-  public calculateSwapFromData(
+  // calculates the swap output amount without
+  // pinging the blockchain for data
+  public calculateSwap(
     inIndex: number,
     outIndex: number,
     inAmount: BigNumber): BigNumber {
@@ -109,7 +117,6 @@ export class StablePool {
       outIndex,
       inAmount,
       this.getBalances(),
-      this.swapStorage.tokenMultipliers,
       this.blockTimestamp,
       this.swapStorage)
 
@@ -134,6 +141,20 @@ export class StablePool {
         return this.tokenBalances[i]
     }
     return BigNumber.from(0)
+  }
+
+  public calculateRemoveLiquidity(amountLp: BigNumber): BigNumber[] {
+    return _calculateRemoveLiquidity(amountLp, this.swapStorage, this.lpTotalSupply, this.currentWithdrawFee, this.getBalances())
+  }
+
+  public calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): { [returnVal: string]: BigNumber } {
+    return _calculateRemoveLiquidityOneToken(this.swapStorage,
+      amount,
+      index,
+      this.blockTimestamp,
+      this.getBalances(),
+      this.lpTotalSupply,
+      this.currentWithdrawFee)
   }
   /*
     public getOutputAmount(inputAmount: TokenAmount): [TokenAmount, StablePool] {

@@ -17,7 +17,7 @@ export function _xp(balances: BigNumber[], rates: BigNumber[]): BigNumber[] {
 
 
 export function _getAPrecise(blockTimestamp: BigNumber,
-    swapStorage:SwapStorage
+    swapStorage: SwapStorage
 ): BigNumber {
     if (blockTimestamp.gte(swapStorage.futureATime)) {
         return swapStorage.futureA;
@@ -88,8 +88,8 @@ export function _getY(
     outIndex: number,
     inBalance: BigNumber,
     // self, shoudl be replaced with swapStorage object
-    blockTimestamp: BigNumber, 
-    swapStorage:SwapStorage,
+    blockTimestamp: BigNumber,
+    swapStorage: SwapStorage,
     normalizedBalances: BigNumber[]
 
 ): BigNumber {
@@ -132,12 +132,11 @@ export function _getY(
 
 export function calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber, // standard fields
     balances: BigNumber[],
-    tokenMultipliers: BigNumber[],
     blockTimestamp: BigNumber,
-    swapStorage:SwapStorage
+    swapStorage: SwapStorage
 ): BigNumber {
-    let normalizedBalances = _xp(balances, tokenMultipliers)
-    let newInBalance = normalizedBalances[inIndex].add(inAmount.mul(tokenMultipliers[inIndex]))
+    let normalizedBalances = _xp(balances, swapStorage.tokenMultipliers)
+    let newInBalance = normalizedBalances[inIndex].add(inAmount.mul(swapStorage.tokenMultipliers[inIndex]))
     let outBalance = _getY(
         inIndex,
         outIndex,
@@ -146,26 +145,151 @@ export function calculateSwap(inIndex: number, outIndex: number, inAmount: BigNu
         normalizedBalances
     )
 
-    let outAmount = ((normalizedBalances[outIndex].sub(outBalance)).sub(1)).div(tokenMultipliers[outIndex])
+    let outAmount = ((normalizedBalances[outIndex].sub(outBalance)).sub(1)).div(swapStorage.tokenMultipliers[outIndex])
     let _fee = swapStorage.fee.mul(outAmount).div(FEE_DENOMINATOR)
     return outAmount.sub(_fee)
 }
 
 
-// function calculateRemoveLiquidity(
-//      account:string,
-//      amount:BigNumber
-// ) :BigNumber[] {
-//     let totalSupply = self.lpToken.totalSupply();
-//     require(amount <= totalSupply, "Cannot exceed total supply");
 
-//     uint256 feeAdjustedAmount = (amount * (FEE_DENOMINATOR - _calculateCurrentWithdrawFee(self, account))) /
-//         FEE_DENOMINATOR;
+// function to calculate the amounts of stables from the amounts of LP
+export function _calculateRemoveLiquidity(
+    amount: BigNumber,
+    swapStorage: SwapStorage,
+    totalSupply: BigNumber,
+    currentWithdrawFee: BigNumber,
+    balances: BigNumber[]
+): BigNumber[] {
 
-//     uint256[] memory amounts = new uint256[](self.pooledTokens.length);
+    invariant(amount <= totalSupply, "Cannot exceed total supply");
 
-//     for (uint256 i = 0; i < self.pooledTokens.length; i++) {
-//         amounts[i] = (self.balances[i] * (feeAdjustedAmount)) / (totalSupply);
-//     }
-//     return amounts;
-// }
+    let feeAdjustedAmount = amount.mul(FEE_DENOMINATOR.sub(currentWithdrawFee)).div(
+        FEE_DENOMINATOR)
+
+    let amounts = []
+
+    for (let i = 0; i < swapStorage.tokenMultipliers.length; i++) {
+        amounts.push((balances[i].mul(feeAdjustedAmount)).div(totalSupply))
+    }
+    return amounts;
+}
+
+
+function _getYD(
+    A: BigNumber,
+    index: number,
+    xp: BigNumber[],
+    D: BigNumber
+): BigNumber {
+    let nCoins = xp.length;
+    invariant(index < nCoins, "INDEX");
+    let Ann = A.mul(nCoins)
+    let c = D;
+    let s = BigNumber.from(0)
+    let _x = BigNumber.from(0)
+    let yPrev = BigNumber.from(0)
+
+    for (let i = 0; i < nCoins; i++) {
+        if (i == index) {
+            continue;
+        }
+        _x = xp[i];
+        s = s.add(_x)
+        c = (c.mul(D)).div(_x.mul(nCoins))
+    }
+
+    c = (c.mul(D).mul(A_PRECISION)).div(Ann.mul(nCoins))
+    let b = s.add(D.mul(A_PRECISION)).div(Ann)
+    let y = D;
+
+    for (let i = 0; i < MAX_ITERATION; i++) {
+        yPrev = y;
+        y = (y.mul(y).add(c)).div(y.mul(2).add(b).sub(D))
+        if (_distance(yPrev, y).lt(1)) {
+            return y;
+        }
+    }
+    invariant("invariantCalculationFailed")
+    return BigNumber.from(0)
+}
+
+function _feePerToken(swapStorage: SwapStorage): BigNumber {
+    let nCoins = swapStorage.tokenMultipliers.length;
+    return (swapStorage.fee.mul(nCoins)).div(4 * (nCoins - 1));
+}
+
+
+export function _calculateRemoveLiquidityOneToken(
+    swapStorage: SwapStorage,
+    tokenAmount: BigNumber,
+    index: number,
+    blockTimestamp: BigNumber,
+    balances: BigNumber[],
+    totalSupply: BigNumber,
+    currentWithdrawFee: BigNumber
+): { [returnVal: string]: BigNumber }// {dy:BigNumber, fee:BigNumber} 
+{
+    invariant(index < swapStorage.tokenMultipliers.length, "indexOutOfRange")
+
+    let amp = _getAPrecise(blockTimestamp, swapStorage)
+    let xp = _xp(balances, swapStorage.tokenMultipliers)
+    let D0 = _getD(xp, amp);
+    let D1 = D0.sub((tokenAmount.mul(D0)).div(totalSupply))
+    let newY = _getYD(amp, index, xp, D1);
+    let reducedXP = xp;
+    let _fee = _feePerToken(swapStorage);
+
+    for (let i = 0; i < swapStorage.tokenMultipliers.length; i++) {
+        let expectedDx = BigNumber.from(0)
+        if (i == index) {
+            expectedDx = (xp[i].mul(D1)).div(D0).sub(newY)
+        } else {
+            expectedDx = xp[i].mul(xp[i].mul(D1)).div(D0)
+        }
+        reducedXP[i] = reducedXP[i].sub(_fee.mul(expectedDx).div(FEE_DENOMINATOR))
+    }
+
+    let dy = reducedXP[index].sub(_getYD(amp, index, reducedXP, D1))
+    dy = (dy.sub(1)).div(swapStorage.tokenMultipliers[index])
+    let fee = (xp[index].sub(newY)).div(swapStorage.tokenMultipliers[index]).sub(dy)
+    dy = dy.mul(FEE_DENOMINATOR.sub(currentWithdrawFee)).div(FEE_DENOMINATOR)
+    return { "dy": dy, "fee": fee }
+}
+
+
+/**
+ * Estimate amount of LP token minted or burned at deposit or withdrawal
+ * without taking fees into account
+ */
+export function _calculateTokenAmount(
+    swapStorage: SwapStorage,
+    amounts: BigNumber[],
+    deposit: boolean,
+    balances: BigNumber[],
+    blockTimestamp: BigNumber,
+    totalSupply: BigNumber
+): BigNumber {
+    let nCoins = swapStorage.tokenMultipliers.length;
+    invariant(amounts.length == nCoins, "invalidAmountsLength");
+    let amp = _getAPrecise(blockTimestamp, swapStorage);
+    let D0 = _getD(_xp(balances, swapStorage.tokenMultipliers), amp);
+
+    let newBalances = balances;
+    for (let i = 0; i < nCoins; i++) {
+        if (deposit) {
+            newBalances[i] = newBalances[i].add(amounts[i])
+        } else {
+            newBalances[i] = newBalances[i].add(amounts[i])
+        }
+    }
+
+    let D1 = _getD(_xp(newBalances, swapStorage.tokenMultipliers), amp);
+
+
+    if (totalSupply.eq(0)) {
+        return D1; // first depositor take it all
+    }
+
+    let diff = deposit ? D1.sub(D0) : D0.sub(D1)
+    return (diff.mul(totalSupply)).div(D0)
+}

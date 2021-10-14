@@ -8,8 +8,17 @@ export class SwapStorage {
     public readonly futureA: BigNumber
     public readonly initialATime: BigNumber
     public readonly futureATime: BigNumber
+    public readonly lpAddress: string
 
-    constructor(tokenMultipliers: BigNumber[], fee: BigNumber, adminFee: BigNumber, initialA: BigNumber, futureA: BigNumber, initialATime: BigNumber, futureATime: BigNumber) {
+    constructor(tokenMultipliers: BigNumber[],
+        fee: BigNumber,
+        adminFee: BigNumber,
+        initialA: BigNumber,
+        futureA: BigNumber,
+        initialATime: BigNumber,
+        futureATime: BigNumber,
+        lpAddress: string) {
+        this.lpAddress = lpAddress
         this.tokenMultipliers = tokenMultipliers
         this.fee = fee
         this.adminFee = adminFee
