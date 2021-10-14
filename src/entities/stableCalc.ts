@@ -199,12 +199,12 @@ function _getYD(
     }
 
     c = (c.mul(D).mul(A_PRECISION)).div(Ann.mul(nCoins))
-    let b = s.add(D.mul(A_PRECISION)).div(Ann)
+    let b = s.add(D.mul(A_PRECISION).div(Ann))
     let y = D;
 
     for (let i = 0; i < MAX_ITERATION; i++) {
         yPrev = y;
-        y = (y.mul(y).add(c)).div(y.mul(2).add(b).sub(D))
+        y = ((y.mul(y)).add(c)).div(((y.mul(2)).add(b)).sub(D))
         if (_distance(yPrev, y).lt(1)) {
             return y;
         }
@@ -242,16 +242,16 @@ export function _calculateRemoveLiquidityOneToken(
     for (let i = 0; i < swapStorage.tokenMultipliers.length; i++) {
         let expectedDx = BigNumber.from(0)
         if (i == index) {
-            expectedDx = (xp[i].mul(D1)).div(D0).sub(newY)
+            expectedDx = ((xp[i].mul(D1)).div(D0)).sub(newY)
         } else {
-            expectedDx = xp[i].mul(xp[i].mul(D1)).div(D0)
+            expectedDx = xp[i].sub(xp[i].mul(D1).div(D0))
         }
         reducedXP[i] = reducedXP[i].sub(_fee.mul(expectedDx).div(FEE_DENOMINATOR))
     }
 
     let dy = reducedXP[index].sub(_getYD(amp, index, reducedXP, D1))
     dy = (dy.sub(1)).div(swapStorage.tokenMultipliers[index])
-    let fee = (xp[index].sub(newY)).div(swapStorage.tokenMultipliers[index]).sub(dy)
+    let fee = ((xp[index].sub(newY)).div(swapStorage.tokenMultipliers[index])).sub(dy)
     dy = dy.mul(FEE_DENOMINATOR.sub(currentWithdrawFee)).div(FEE_DENOMINATOR)
     return { "dy": dy, "fee": fee }
 }

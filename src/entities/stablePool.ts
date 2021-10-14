@@ -1,6 +1,12 @@
 import invariant from 'tiny-invariant'
 import { BigNumber } from 'ethers'
-import { _getAPrecise, calculateSwap, _calculateRemoveLiquidity, _calculateRemoveLiquidityOneToken } from './stableCalc'
+import {
+  _getAPrecise,
+  calculateSwap,
+  _calculateRemoveLiquidity,
+  _calculateRemoveLiquidityOneToken,
+  _calculateTokenAmount
+} from './stableCalc'
 import { Contract } from '@ethersproject/contracts'
 import { ethers } from 'ethers'
 import { SwapStorage } from './swapStorage'
@@ -144,17 +150,36 @@ export class StablePool {
   }
 
   public calculateRemoveLiquidity(amountLp: BigNumber): BigNumber[] {
-    return _calculateRemoveLiquidity(amountLp, this.swapStorage, this.lpTotalSupply, this.currentWithdrawFee, this.getBalances())
+    return _calculateRemoveLiquidity(
+      amountLp,
+      this.swapStorage,
+      this.lpTotalSupply,
+      this.currentWithdrawFee,
+      this.getBalances()
+    )
   }
 
   public calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): { [returnVal: string]: BigNumber } {
-    return _calculateRemoveLiquidityOneToken(this.swapStorage,
+    return _calculateRemoveLiquidityOneToken(
+      this.swapStorage,
       amount,
       index,
       this.blockTimestamp,
       this.getBalances(),
       this.lpTotalSupply,
-      this.currentWithdrawFee)
+      this.currentWithdrawFee
+    )
+  }
+
+  public getLiquidityMinted(amounts: BigNumber[], deposit: boolean) {
+    return _calculateTokenAmount(
+      this.swapStorage,
+      amounts,
+      deposit,
+      this.getBalances(),
+      this.blockTimestamp,
+      this.lpTotalSupply
+    )
   }
   /*
     public getOutputAmount(inputAmount: TokenAmount): [TokenAmount, StablePool] {

@@ -19,6 +19,7 @@ import { STABLES_INDEX_MAP } from '../src/entities/stables'
 import * as dotenv from 'dotenv';
 
 describe('StablePool', () => {
+  jest.setTimeout(30000);
 
   describe('fetcher', () => {
     it('constructor test', async () => {
@@ -103,10 +104,21 @@ describe('StablePool', () => {
       const swapManual = stablePool.calculateSwap(inIndex, outIndex, inAmount)
       console.log("manual value", swapManual.toNumber())
 
-      const x = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateRemoveLiquidity('0x10E38dFfFCfdBaaf590D5A9958B01C9cfcF6A63B', '100000000')
+      const x = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateRemoveLiquidity('0x10E38dFfFCfdBaaf590D5A9958B01C9cfcF6A63B', '100000')
       console.log("calculateRemoveLiquidity original", x)
 
-      console.log("calculateRemoveLiquidity manual", stablePool.calculateRemoveLiquidity(BigNumber.from('100000000')))
+      console.log("calculateRemoveLiquidity manual", stablePool.calculateRemoveLiquidity(BigNumber.from('100000')))
+
+
+      const a = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateRemoveLiquidityOneToken('0x10E38dFfFCfdBaaf590D5A9958B01C9cfcF6A63B', '100000', 3)
+      console.log("calculateRemoveLiquidityOne original", a)
+
+      console.log("calculateRemoveLiquidityOne manual", stablePool.calculateRemoveLiquidityOneToken(BigNumber.from('100000'), 3))
+
+      const b = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateTokenAmount(['100000', '1000000', '100000', '1000000'], true)
+      console.log("getLiquidityMinted original", b)
+
+      console.log("getLiquidityMinted manual", stablePool.getLiquidityMinted([BigNumber.from('100000'), BigNumber.from('1000000'), BigNumber.from('100000'), BigNumber.from('1000000')], true))
 
       // const amp = _getAPrecise(stablePool.blockTimestamp,
       //   swapStorage)
