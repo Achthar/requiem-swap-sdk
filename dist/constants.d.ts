@@ -1,4 +1,5 @@
 import JSBI from 'jsbi';
+import { Token } from './entities';
 export declare type BigintIsh = JSBI | bigint | string;
 export declare enum ChainId {
     BSC_MAINNET = 56,
@@ -24,6 +25,17 @@ export declare const FACTORY_ADDRESS: {
 };
 export declare const INIT_CODE_HASH: {
     [chainId: number]: string;
+};
+export declare const STABLE_POOL_ADDRESS: {
+    [chainId: number]: string;
+};
+export declare const STABLECOINS: {
+    [chainId: number]: Token[];
+};
+export declare const STABLES_INDEX_MAP: {
+    [chainId: number]: {
+        [index: number]: Token;
+    };
 };
 export declare const MINIMUM_LIQUIDITY: JSBI;
 export declare const ZERO: JSBI;

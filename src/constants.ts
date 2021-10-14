@@ -1,5 +1,4 @@
 import JSBI from 'jsbi'
-
 // exports for external consumption
 export type BigintIsh = JSBI | bigint | string
 
@@ -40,6 +39,11 @@ export const INIT_CODE_HASH: { [chainId: number]: string } = {
   97: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
   80001: '0xc2b3644608b464a0df0eb711ce9c6ce7535d1bd4d0154b8389738a3e7fbb1a61',
   43113: '0x197a29e2e90d809812f533e62529432f8e2741455e49d25365a66b4be2a453dd',
+}
+
+
+export const STABLE_POOL_ADDRESS: { [chainId: number]: string } = {
+  43113: '0x9067e2C2bf8531283AB97C34EaA74599E0004842',
 }
 
 export const MINIMUM_LIQUIDITY = JSBI.BigInt(1000)
