@@ -4,7 +4,7 @@ import invariant from 'tiny-invariant'
 import JSBI from 'jsbi'
 import _Big from 'big.js'
 import toFormat from 'toformat'
-
+import { BigNumber } from '@ethersproject/bignumber'
 import { BigintIsh, Rounding, TEN, SolidityType, ChainId } from '../../constants'
 import { parseBigintIsh, validateSolidityTypeInstance } from '../../utils'
 import { Fraction } from './fraction'
@@ -27,7 +27,7 @@ export class CurrencyAmount extends Fraction {
    * dependent on the selected chainId
    * @param amount ether amount in wei
    */
-   public static networkCCYAmount(chainId:ChainId, amount: BigintIsh): CurrencyAmount {
+  public static networkCCYAmount(chainId: ChainId, amount: BigintIsh): CurrencyAmount {
     return new CurrencyAmount(NETWORK_CCY[chainId], amount)
   }
 
@@ -75,4 +75,6 @@ export class CurrencyAmount extends Fraction {
     Big.DP = this.currency.decimals
     return new Big(this.numerator.toString()).div(this.denominator.toString()).toFormat(format)
   }
+
+  public toBigNumber(): BigNumber { return BigNumber.from(this.numerator.toString()) }
 }

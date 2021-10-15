@@ -28,5 +28,9 @@ export class SwapStorage {
         this.futureATime = futureATime
     }
 
+    public static mock(): SwapStorage {
+        const dummy = BigNumber.from(0)
+        return new SwapStorage([dummy], dummy, dummy, dummy, dummy, dummy, dummy, '')
+    }
 
 }

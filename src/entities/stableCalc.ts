@@ -108,7 +108,6 @@ export function _getY(
         }
 
         let x = i == inIndex ? inBalance : normalizedBalances[i];
-        console.log(x)
         sum = sum.add(x)
         c = (c.mul(D)).div(x.mul(nCoins))
     }

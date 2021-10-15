@@ -17,6 +17,7 @@ import IERC20 from '../src/abis/IERC20.json'
 import StableSwap from '../src/abis/RequiemStableSwap.json'
 import { STABLES_INDEX_MAP } from '../src/entities/stables'
 import * as dotenv from 'dotenv';
+import { TokenAmount } from '../src//entities'
 
 describe('StablePool', () => {
   jest.setTimeout(30000);
@@ -100,9 +101,9 @@ describe('StablePool', () => {
       const swapActual = await stablePool.calculateSwapViaPing(inIndex, outIndex, '100', jsonProv)
 
       console.log("calculate swap", swapActual.toString())
-      const inAmount = BigNumber.from('100')
+      const inAmount = BigNumber.from('10000')
       const swapManual = stablePool.calculateSwap(inIndex, outIndex, inAmount)
-      console.log("manual value", swapManual.toNumber())
+      console.log("manual value", swapManual.toString())
 
       const x = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateRemoveLiquidity('0x10E38dFfFCfdBaaf590D5A9958B01C9cfcF6A63B', '100000')
       console.log("calculateRemoveLiquidity original", x)
@@ -120,6 +121,12 @@ describe('StablePool', () => {
 
       console.log("getLiquidityMinted manual", stablePool.getLiquidityMinted([BigNumber.from('100000'), BigNumber.from('1000000'), BigNumber.from('100000'), BigNumber.from('1000000')], true))
 
+
+      const inputTokenAmount = new TokenAmount(stablePool.tokenFromIndex(inIndex), inAmount.toBigInt())
+
+      const output = stablePool.getOutputAmount(inputTokenAmount, outIndex)
+      console.log("input", inputTokenAmount.toFixed())
+      console.log("output Token Amount Manual", output.toFixed())
       // const amp = _getAPrecise(stablePool.blockTimestamp,
       //   swapStorage)
       // console.log("APREC", amp)

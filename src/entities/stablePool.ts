@@ -17,7 +17,7 @@ import {
 } from '../constants'
 import StableSwap from '../abis/RequiemStableSwap.json'
 import { Token } from './token'
-
+import { TokenAmount } from '../entities'
 
 /**
   * A class that contains relevant stablePool information
@@ -74,6 +74,11 @@ export class StablePool {
     }
   }
 
+  public static mock() {
+    const dummy = BigNumber.from(0)
+    return new StablePool({ 0: new Token(-1, '', 1) }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy)
+  }
+
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check
@@ -88,8 +93,17 @@ export class StablePool {
   }
 
   // maps the index to the token in the stablePool
-  public currencyFromIndex(index: number): Token {
+  public tokenFromIndex(index: number): Token {
     return this.tokens[index]
+  }
+
+  public indexFromToken(token: Token): number {
+    for (let index = 0; index < Object.keys(this.tokens).length; index++) {
+      if (token.equals(this.tokens[index])) {
+        return index
+      }
+    }
+    throw new Error('token not in pool');
   }
 
   public getBalances(): BigNumber[] {
@@ -129,6 +143,10 @@ export class StablePool {
     return outAmount
   }
 
+  public getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount {
+    const swap = this.calculateSwap(this.indexFromToken(inputAmount.token), outIndex, inputAmount.toBigNumber())
+    return new TokenAmount(this.tokenFromIndex(outIndex), swap.toBigInt())
+  }
   /**
    * Returns the chain ID of the tokens in the pair.
    */
