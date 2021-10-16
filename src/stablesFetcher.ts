@@ -36,18 +36,18 @@ export abstract class StablesFetcher {
     console.log("address", address)
     const tokenAddresses = await new ethers.Contract(address, StableSwap, provider).getTokens()
     console.log("TokenAddresses", tokenAddresses)
-    const tokenReserves = await new ethers.Contract(address, StableSwap, provider).getTokenBalances()
+    // const tokenReserves = await new ethers.Contract(address, StableSwap, provider).getTokenBalances()
     let indexes = []
     for (let i = 0; i < tokenAddresses.length; i++) {
       indexes.push(i)
     }
-    const tokenMap = Object.assign({},
-      ...(tokenAddresses as string[]).map((_, index) => ({
-        [index]: new TokenAmount(
-          STABLES_INDEX_MAP[chainId][index],
-          tokenReserves[index])
-      })))
-    return new StablePool(tokenMap, BigNumber.from(0), BigNumber.from(0), BigNumber.from(0), 0)
+    // const tokenMap = Object.assign({},
+    //   ...(tokenAddresses as string[]).map((_, index) => ({
+    //     [index]: new TokenAmount(
+    //       STABLES_INDEX_MAP[chainId][index],
+    //       tokenReserves[index])
+    //   })))
+    return StablePool.mock()
   }
 
 }

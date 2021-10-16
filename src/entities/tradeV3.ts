@@ -27,7 +27,7 @@ function computePriceImpact(midPrice: Price, inputAmount: CurrencyAmount, output
 
 // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
 // in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
-export function inputOutputComparator(a: InputOutput, b: InputOutput): number {
+export function inputOutputComparatorV3(a: InputOutput, b: InputOutput): number {
   // must have same input and output token for comparison
   invariant(currencyEquals(a.inputAmount.currency, b.inputAmount.currency), 'INPUT_CURRENCY')
   invariant(currencyEquals(a.outputAmount.currency, b.outputAmount.currency), 'OUTPUT_CURRENCY')
@@ -52,8 +52,8 @@ export function inputOutputComparator(a: InputOutput, b: InputOutput): number {
 }
 
 // extension of the input output comparator that also considers other dimensions of the trade in ranking them
-export function tradeComparator(a: TradeV3, b: TradeV3) {
-  const ioComp = inputOutputComparator(a, b)
+export function tradeComparatorV3(a: TradeV3, b: TradeV3) {
+  const ioComp = inputOutputComparatorV3(a, b)
   if (ioComp !== 0) {
     return ioComp
   }
@@ -69,7 +69,7 @@ export function tradeComparator(a: TradeV3, b: TradeV3) {
   return a.route.path.length - b.route.path.length
 }
 
-export interface BestTradeOptions {
+export interface BestTradeOptionsV3 {
   // how many results to return
   maxNumResults?: number
   // the maximum number of hops a trade should contain
@@ -245,7 +245,7 @@ export class TradeV3 {
     pairs: Pair[],
     currencyAmountIn: CurrencyAmount,
     currencyOut: Currency,
-    { maxNumResults = 3, maxHops = 3 }: BestTradeOptions = {},
+    { maxNumResults = 3, maxHops = 3 }: BestTradeOptionsV3 = {},
     // used in recursion.
     currentPairs: Pair[] = [],
     originalAmountIn: CurrencyAmount = currencyAmountIn,
@@ -290,7 +290,7 @@ export class TradeV3 {
             TradeType.EXACT_INPUT
           ),
           maxNumResults,
-          tradeComparator
+          tradeComparatorV3
         )
       } else if (maxHops > 1 && pairs.length > 1) {
         const pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length))
@@ -333,7 +333,7 @@ export class TradeV3 {
     pairs: Pair[],
     currencyIn: Currency,
     currencyAmountOut: CurrencyAmount,
-    { maxNumResults = 3, maxHops = 3 }: BestTradeOptions = {},
+    { maxNumResults = 3, maxHops = 3 }: BestTradeOptionsV3 = {},
     // used in recursion.
     currentPairs: Pair[] = [],
     originalAmountOut: CurrencyAmount = currencyAmountOut,
@@ -378,7 +378,7 @@ export class TradeV3 {
             TradeType.EXACT_OUTPUT
           ),
           maxNumResults,
-          tradeComparator
+          tradeComparatorV3
         )
       } else if (maxHops > 1 && pairs.length > 1) {
         const pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length))
