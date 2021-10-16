@@ -9,7 +9,7 @@ import { Percent } from './fractions/percent'
 import { Price } from './fractions/price'
 import { TokenAmount, InputOutput } from './fractions/tokenAmount'
 import { Pair } from './pair'
-import { Route } from './route'
+import { RouteV3 } from './routeV3'
 import { currencyEquals, Token, WRAPPED_NETWORK_TOKENS } from './token'
 
 /**
@@ -52,7 +52,7 @@ export function inputOutputComparator(a: InputOutput, b: InputOutput): number {
 }
 
 // extension of the input output comparator that also considers other dimensions of the trade in ranking them
-export function tradeComparator(a: Trade, b: Trade) {
+export function tradeComparator(a: TradeV3, b: TradeV3) {
   const ioComp = inputOutputComparator(a, b)
   if (ioComp !== 0) {
     return ioComp
@@ -97,11 +97,11 @@ function wrappedCurrency(currency: Currency, chainId: ChainId): Token {
  * Represents a trade executed against a list of pairs.
  * Does not account for slippage, i.e. trades that front run this trade and move the price.
  */
-export class Trade {
+export class TradeV3 {
   /**
    * The route of the trade, i.e. which pairs the trade goes through.
    */
-  public readonly route: Route
+  public readonly route: RouteV3
   /**
    * The type of the trade, either exact in or exact out.
    */
@@ -132,8 +132,8 @@ export class Trade {
    * @param route route of the exact in trade
    * @param amountIn the amount being passed in
    */
-  public static exactIn(route: Route, amountIn: CurrencyAmount): Trade {
-    return new Trade(route, amountIn, TradeType.EXACT_INPUT)
+  public static exactIn(route: RouteV3, amountIn: CurrencyAmount): TradeV3 {
+    return new TradeV3(route, amountIn, TradeType.EXACT_INPUT)
   }
 
   /**
@@ -141,11 +141,11 @@ export class Trade {
    * @param route route of the exact out trade
    * @param amountOut the amount returned by the trade
    */
-  public static exactOut(route: Route, amountOut: CurrencyAmount): Trade {
-    return new Trade(route, amountOut, TradeType.EXACT_OUTPUT)
+  public static exactOut(route: RouteV3, amountOut: CurrencyAmount): TradeV3 {
+    return new TradeV3(route, amountOut, TradeType.EXACT_OUTPUT)
   }
 
-  public constructor(route: Route, amount: CurrencyAmount, tradeType: TradeType) {
+  public constructor(route: RouteV3, amount: CurrencyAmount, tradeType: TradeType) {
     const amounts: TokenAmount[] = new Array(route.path.length)
     const nextPairs: Pair[] = new Array(route.pairs.length)
     if (tradeType === TradeType.EXACT_INPUT) {
@@ -188,7 +188,7 @@ export class Trade {
       this.inputAmount.raw,
       this.outputAmount.raw
     )
-    this.nextMidPrice = Price.fromRoute(new Route(nextPairs, route.input))
+    this.nextMidPrice = Price.fromRoute(new RouteV3(nextPairs, route.input))
     this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount)
   }
 
@@ -249,8 +249,8 @@ export class Trade {
     // used in recursion.
     currentPairs: Pair[] = [],
     originalAmountIn: CurrencyAmount = currencyAmountIn,
-    bestTrades: Trade[] = []
-  ): Trade[] {
+    bestTrades: TradeV3[] = []
+  ): TradeV3[] {
     invariant(pairs.length > 0, 'PAIRS')
     invariant(maxHops > 0, 'MAX_HOPS')
     invariant(originalAmountIn === currencyAmountIn || currentPairs.length > 0, 'INVALID_RECURSION')
@@ -284,8 +284,8 @@ export class Trade {
       if (amountOut.token.equals(tokenOut)) {
         sortedInsert(
           bestTrades,
-          new Trade(
-            new Route([...currentPairs, pair], originalAmountIn.currency, currencyOut),
+          new TradeV3(
+            new RouteV3([...currentPairs, pair], originalAmountIn.currency, currencyOut),
             originalAmountIn,
             TradeType.EXACT_INPUT
           ),
@@ -296,7 +296,7 @@ export class Trade {
         const pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length))
 
         // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
-        Trade.bestTradeExactIn(
+        TradeV3.bestTradeExactIn(
           pairsExcludingThisPair,
           amountOut,
           currencyOut,
@@ -337,8 +337,8 @@ export class Trade {
     // used in recursion.
     currentPairs: Pair[] = [],
     originalAmountOut: CurrencyAmount = currencyAmountOut,
-    bestTrades: Trade[] = []
-  ): Trade[] {
+    bestTrades: TradeV3[] = []
+  ): TradeV3[] {
     invariant(pairs.length > 0, 'PAIRS')
     invariant(maxHops > 0, 'MAX_HOPS')
     invariant(originalAmountOut === currencyAmountOut || currentPairs.length > 0, 'INVALID_RECURSION')
@@ -372,8 +372,8 @@ export class Trade {
       if (amountIn.token.equals(tokenIn)) {
         sortedInsert(
           bestTrades,
-          new Trade(
-            new Route([pair, ...currentPairs], currencyIn, originalAmountOut.currency),
+          new TradeV3(
+            new RouteV3([pair, ...currentPairs], currencyIn, originalAmountOut.currency),
             originalAmountOut,
             TradeType.EXACT_OUTPUT
           ),
@@ -384,7 +384,7 @@ export class Trade {
         const pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length))
 
         // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
-        Trade.bestTradeExactOut(
+        TradeV3.bestTradeExactOut(
           pairsExcludingThisPair,
           currencyIn,
           amountIn,

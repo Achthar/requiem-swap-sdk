@@ -10,12 +10,70 @@ var warning = _interopDefault(require('tiny-warning'));
 var address = require('@ethersproject/address');
 var _Big = _interopDefault(require('big.js'));
 var toFormat = _interopDefault(require('toformat'));
+var bignumber = require('@ethersproject/bignumber');
 var _Decimal = _interopDefault(require('decimal.js-light'));
 var solidity = require('@ethersproject/solidity');
 var contracts = require('@ethersproject/contracts');
 var networks = require('@ethersproject/networks');
 var providers = require('@ethersproject/providers');
 var IPancakePair = _interopDefault(require('@pancakeswap-libs/pancake-swap-core/build/IPancakePair.json'));
+
+var _SOLIDITY_TYPE_MAXIMA;
+
+(function (ChainId) {
+  ChainId[ChainId["BSC_MAINNET"] = 56] = "BSC_MAINNET";
+  ChainId[ChainId["BSC_TESTNET"] = 97] = "BSC_TESTNET";
+  ChainId[ChainId["AVAX_MAINNET"] = 43114] = "AVAX_MAINNET";
+  ChainId[ChainId["AVAX_TESTNET"] = 43113] = "AVAX_TESTNET";
+  ChainId[ChainId["ARBITRUM_MAINNET"] = 42161] = "ARBITRUM_MAINNET";
+  ChainId[ChainId["ARBITRUM_TETSNET_RINKEBY"] = 421611] = "ARBITRUM_TETSNET_RINKEBY";
+  ChainId[ChainId["MATIC_MAINNET"] = 137] = "MATIC_MAINNET";
+  ChainId[ChainId["MATIC_TESTNET"] = 80001] = "MATIC_TESTNET";
+})(exports.ChainId || (exports.ChainId = {}));
+
+(function (TradeType) {
+  TradeType[TradeType["EXACT_INPUT"] = 0] = "EXACT_INPUT";
+  TradeType[TradeType["EXACT_OUTPUT"] = 1] = "EXACT_OUTPUT";
+})(exports.TradeType || (exports.TradeType = {}));
+
+(function (Rounding) {
+  Rounding[Rounding["ROUND_DOWN"] = 0] = "ROUND_DOWN";
+  Rounding[Rounding["ROUND_HALF_UP"] = 1] = "ROUND_HALF_UP";
+  Rounding[Rounding["ROUND_UP"] = 2] = "ROUND_UP";
+})(exports.Rounding || (exports.Rounding = {}));
+
+var FACTORY_ADDRESS = {
+  56: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
+  97: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
+  80001: '0xf10Bd0dA1f0e69c3334D7F8116C9082746EBC1B4',
+  43113: '0xC07098cdCf93b2dc5c20E749cDd1ba69cB9AcEBe'
+}; // export const INIT_CODE_HASH = '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5'
+
+var INIT_CODE_HASH = {
+  56: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
+  97: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
+  80001: '0xc2b3644608b464a0df0eb711ce9c6ce7535d1bd4d0154b8389738a3e7fbb1a61',
+  43113: '0x197a29e2e90d809812f533e62529432f8e2741455e49d25365a66b4be2a453dd'
+};
+var MINIMUM_LIQUIDITY = /*#__PURE__*/JSBI.BigInt(1000); // exports for internal consumption
+
+var ZERO = /*#__PURE__*/JSBI.BigInt(0);
+var ONE = /*#__PURE__*/JSBI.BigInt(1);
+var TWO = /*#__PURE__*/JSBI.BigInt(2);
+var THREE = /*#__PURE__*/JSBI.BigInt(3);
+var FIVE = /*#__PURE__*/JSBI.BigInt(5);
+var TEN = /*#__PURE__*/JSBI.BigInt(10);
+var _100 = /*#__PURE__*/JSBI.BigInt(100);
+var FEES_NUMERATOR = /*#__PURE__*/JSBI.BigInt(9975);
+var FEES_DENOMINATOR = /*#__PURE__*/JSBI.BigInt(10000);
+var SolidityType;
+
+(function (SolidityType) {
+  SolidityType["uint8"] = "uint8";
+  SolidityType["uint256"] = "uint256";
+})(SolidityType || (SolidityType = {}));
+
+var SOLIDITY_TYPE_MAXIMA = (_SOLIDITY_TYPE_MAXIMA = {}, _SOLIDITY_TYPE_MAXIMA[SolidityType.uint8] = /*#__PURE__*/JSBI.BigInt('0xff'), _SOLIDITY_TYPE_MAXIMA[SolidityType.uint256] = /*#__PURE__*/JSBI.BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'), _SOLIDITY_TYPE_MAXIMA);
 
 function _defineProperties(target, props) {
   for (var i = 0; i < props.length; i++) {
@@ -190,6 +248,49 @@ function _createForOfIteratorHelperLoose(o, allowArrayLike) {
   it = o[Symbol.iterator]();
   return it.next.bind(it);
 }
+
+// see https://stackoverflow.com/a/41102306
+var CAN_SET_PROTOTYPE = ('setPrototypeOf' in Object);
+/**
+ * Indicates that the pair has insufficient reserves for a desired output amount. I.e. the amount of output cannot be
+ * obtained by sending any amount of input.
+ */
+
+var InsufficientReservesError = /*#__PURE__*/function (_Error) {
+  _inheritsLoose(InsufficientReservesError, _Error);
+
+  function InsufficientReservesError() {
+    var _this;
+
+    _this = _Error.call(this) || this;
+    _this.isInsufficientReservesError = true;
+    _this.name = _this.constructor.name;
+    if (CAN_SET_PROTOTYPE) Object.setPrototypeOf(_assertThisInitialized(_this), (this instanceof InsufficientReservesError ? this.constructor : void 0).prototype);
+    return _this;
+  }
+
+  return InsufficientReservesError;
+}( /*#__PURE__*/_wrapNativeSuper(Error));
+/**
+ * Indicates that the input amount is too small to produce any amount of output. I.e. the amount of input sent is less
+ * than the price of a single unit of output after fees.
+ */
+
+var InsufficientInputAmountError = /*#__PURE__*/function (_Error2) {
+  _inheritsLoose(InsufficientInputAmountError, _Error2);
+
+  function InsufficientInputAmountError() {
+    var _this2;
+
+    _this2 = _Error2.call(this) || this;
+    _this2.isInsufficientInputAmountError = true;
+    _this2.name = _this2.constructor.name;
+    if (CAN_SET_PROTOTYPE) Object.setPrototypeOf(_assertThisInitialized(_this2), (this instanceof InsufficientInputAmountError ? this.constructor : void 0).prototype);
+    return _this2;
+  }
+
+  return InsufficientInputAmountError;
+}( /*#__PURE__*/_wrapNativeSuper(Error));
 
 function validateSolidityTypeInstance(value, solidityType) {
   !JSBI.greaterThanOrEqual(value, ZERO) ?  invariant(false, value + " is not a " + solidityType + ".")  : void 0;
@@ -566,6 +667,10 @@ var CurrencyAmount = /*#__PURE__*/function (_Fraction) {
     return new Big$1(this.numerator.toString()).div(this.denominator.toString()).toFormat(format);
   };
 
+  _proto.toBigNumber = function toBigNumber() {
+    return bignumber.BigNumber.from(this.numerator.toString());
+  };
+
   _createClass(CurrencyAmount, [{
     key: "raw",
     get: function get() {
@@ -687,49 +792,6 @@ var Price = /*#__PURE__*/function (_Fraction) {
 
   return Price;
 }(Fraction);
-
-// see https://stackoverflow.com/a/41102306
-var CAN_SET_PROTOTYPE = ('setPrototypeOf' in Object);
-/**
- * Indicates that the pair has insufficient reserves for a desired output amount. I.e. the amount of output cannot be
- * obtained by sending any amount of input.
- */
-
-var InsufficientReservesError = /*#__PURE__*/function (_Error) {
-  _inheritsLoose(InsufficientReservesError, _Error);
-
-  function InsufficientReservesError() {
-    var _this;
-
-    _this = _Error.call(this) || this;
-    _this.isInsufficientReservesError = true;
-    _this.name = _this.constructor.name;
-    if (CAN_SET_PROTOTYPE) Object.setPrototypeOf(_assertThisInitialized(_this), (this instanceof InsufficientReservesError ? this.constructor : void 0).prototype);
-    return _this;
-  }
-
-  return InsufficientReservesError;
-}( /*#__PURE__*/_wrapNativeSuper(Error));
-/**
- * Indicates that the input amount is too small to produce any amount of output. I.e. the amount of input sent is less
- * than the price of a single unit of output after fees.
- */
-
-var InsufficientInputAmountError = /*#__PURE__*/function (_Error2) {
-  _inheritsLoose(InsufficientInputAmountError, _Error2);
-
-  function InsufficientInputAmountError() {
-    var _this2;
-
-    _this2 = _Error2.call(this) || this;
-    _this2.isInsufficientInputAmountError = true;
-    _this2.name = _this2.constructor.name;
-    if (CAN_SET_PROTOTYPE) Object.setPrototypeOf(_assertThisInitialized(_this2), (this instanceof InsufficientInputAmountError ? this.constructor : void 0).prototype);
-    return _this2;
-  }
-
-  return InsufficientInputAmountError;
-}( /*#__PURE__*/_wrapNativeSuper(Error));
 
 var PAIR_ADDRESS_CACHE = {};
 var Pair = /*#__PURE__*/function () {
@@ -1342,63 +1404,6 @@ var Trade = /*#__PURE__*/function () {
 
   return Trade;
 }();
-
-var _SOLIDITY_TYPE_MAXIMA;
-
-(function (ChainId) {
-  ChainId[ChainId["BSC_MAINNET"] = 56] = "BSC_MAINNET";
-  ChainId[ChainId["BSC_TESTNET"] = 97] = "BSC_TESTNET";
-  ChainId[ChainId["AVAX_MAINNET"] = 43114] = "AVAX_MAINNET";
-  ChainId[ChainId["AVAX_TESTNET"] = 43113] = "AVAX_TESTNET";
-  ChainId[ChainId["ARBITRUM_MAINNET"] = 42161] = "ARBITRUM_MAINNET";
-  ChainId[ChainId["ARBITRUM_TETSNET_RINKEBY"] = 421611] = "ARBITRUM_TETSNET_RINKEBY";
-  ChainId[ChainId["MATIC_MAINNET"] = 137] = "MATIC_MAINNET";
-  ChainId[ChainId["MATIC_TESTNET"] = 80001] = "MATIC_TESTNET";
-})(exports.ChainId || (exports.ChainId = {}));
-
-(function (TradeType) {
-  TradeType[TradeType["EXACT_INPUT"] = 0] = "EXACT_INPUT";
-  TradeType[TradeType["EXACT_OUTPUT"] = 1] = "EXACT_OUTPUT";
-})(exports.TradeType || (exports.TradeType = {}));
-
-(function (Rounding) {
-  Rounding[Rounding["ROUND_DOWN"] = 0] = "ROUND_DOWN";
-  Rounding[Rounding["ROUND_HALF_UP"] = 1] = "ROUND_HALF_UP";
-  Rounding[Rounding["ROUND_UP"] = 2] = "ROUND_UP";
-})(exports.Rounding || (exports.Rounding = {}));
-
-var FACTORY_ADDRESS = {
-  56: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
-  97: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
-  80001: '0xf10Bd0dA1f0e69c3334D7F8116C9082746EBC1B4',
-  43113: '0xC07098cdCf93b2dc5c20E749cDd1ba69cB9AcEBe'
-}; // export const INIT_CODE_HASH = '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5'
-
-var INIT_CODE_HASH = {
-  56: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
-  97: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
-  80001: '0xc2b3644608b464a0df0eb711ce9c6ce7535d1bd4d0154b8389738a3e7fbb1a61',
-  43113: '0x197a29e2e90d809812f533e62529432f8e2741455e49d25365a66b4be2a453dd'
-};
-var MINIMUM_LIQUIDITY = /*#__PURE__*/JSBI.BigInt(1000); // exports for internal consumption
-
-var ZERO = /*#__PURE__*/JSBI.BigInt(0);
-var ONE = /*#__PURE__*/JSBI.BigInt(1);
-var TWO = /*#__PURE__*/JSBI.BigInt(2);
-var THREE = /*#__PURE__*/JSBI.BigInt(3);
-var FIVE = /*#__PURE__*/JSBI.BigInt(5);
-var TEN = /*#__PURE__*/JSBI.BigInt(10);
-var _100 = /*#__PURE__*/JSBI.BigInt(100);
-var FEES_NUMERATOR = /*#__PURE__*/JSBI.BigInt(9975);
-var FEES_DENOMINATOR = /*#__PURE__*/JSBI.BigInt(10000);
-var SolidityType;
-
-(function (SolidityType) {
-  SolidityType["uint8"] = "uint8";
-  SolidityType["uint256"] = "uint256";
-})(SolidityType || (SolidityType = {}));
-
-var SOLIDITY_TYPE_MAXIMA = (_SOLIDITY_TYPE_MAXIMA = {}, _SOLIDITY_TYPE_MAXIMA[SolidityType.uint8] = /*#__PURE__*/JSBI.BigInt('0xff'), _SOLIDITY_TYPE_MAXIMA[SolidityType.uint256] = /*#__PURE__*/JSBI.BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'), _SOLIDITY_TYPE_MAXIMA);
 
 function toHex(currencyAmount) {
   return "0x" + currencyAmount.raw.toString(16);

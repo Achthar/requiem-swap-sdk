@@ -1,3 +1,4 @@
+import { ethers } from 'ethers';
 import { StablePool } from './entities/stablePool';
 /**
  * Contains methods for constructing instances of pairs and tokens from on-chain data.
@@ -13,5 +14,5 @@ export declare abstract class StablesFetcher {
      * @param tokenB second token
      * @param provider the provider to use to fetch the data
      */
-    static fetchStablePoolData(chainId: number, provider?: import("@ethersproject/providers").BaseProvider): Promise<StablePool>;
+    static fetchStablePoolData(chainId: number, provider: ethers.providers.Provider): Promise<StablePool>;
 }

@@ -1,7 +1,10 @@
-import { Price } from './fractions/price';
-import { TokenAmount } from './fractions/tokenAmount';
+import { BigNumber } from 'ethers';
+import { ethers } from 'ethers';
+import { SwapStorage } from './swapStorage';
 import { BigintIsh, ChainId } from '../constants';
 import { Token } from './token';
+import { TokenAmount } from '../entities';
+import { Pair } from '..';
 /**
   * A class that contains relevant stablePool information
   * It is mainly designed to save the map between the indices
@@ -10,22 +13,41 @@ import { Token } from './token';
   */
 export declare class StablePool {
     readonly liquidityToken: Token;
-    private readonly tokenAmounts;
+    readonly tokens: {
+        [index: number]: Token;
+    };
+    readonly tokenBalances: BigNumber[];
+    readonly _A: BigNumber;
+    readonly swapStorage: SwapStorage;
+    readonly blockTimestamp: BigNumber;
+    readonly lpTotalSupply: BigNumber;
+    readonly currentWithdrawFee: BigNumber;
     static getAddress(chainId: number): string;
-    constructor(tokenAmounts: {
-        [index: number]: TokenAmount;
-    });
+    constructor(tokens: {
+        [index: number]: Token;
+    }, tokenBalances: BigNumber[], _A: BigNumber, swapStorage: SwapStorage, blockTimestamp: number, lpTotalSupply: BigNumber, currentWithdrawFee: BigNumber);
+    static mock(): StablePool;
     /**
      * Returns true if the token is either token0 or token1
      * @param token to check
      */
     involvesToken(token: Token): boolean;
-    currencyFromIndex(index: number): Token;
-    calculateSwapViaIndex(inIndex: number, outIndex: number, inAmount: BigintIsh, chainId: number, provider?: import("@ethersproject/providers").BaseProvider): Promise<Price>;
+    tokenFromIndex(index: number): Token;
+    indexFromToken(token: Token): number;
+    getBalances(): BigNumber[];
+    generatePairs(pairs: Pair[]): Pair[];
+    calculateSwapViaPing(inIndex: number, outIndex: number, inAmount: BigintIsh, provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh>;
+    calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber): BigNumber;
+    getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount;
     /**
      * Returns the chain ID of the tokens in the pair.
      */
     get chainId(): ChainId;
     token(index: number): Token;
-    reserveOf(token: Token): TokenAmount;
+    reserveOf(token: Token): BigNumber;
+    calculateRemoveLiquidity(amountLp: BigNumber): BigNumber[];
+    calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): {
+        [returnVal: string]: BigNumber;
+    };
+    getLiquidityMinted(amounts: BigNumber[], deposit: boolean): BigNumber;
 }

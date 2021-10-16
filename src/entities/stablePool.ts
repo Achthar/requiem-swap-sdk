@@ -18,7 +18,7 @@ import {
 import StableSwap from '../abis/RequiemStableSwap.json'
 import { Token } from './token'
 import { TokenAmount } from '../entities'
-
+import { Pair } from '..'
 /**
   * A class that contains relevant stablePool information
   * It is mainly designed to save the map between the indices
@@ -108,6 +108,29 @@ export class StablePool {
 
   public getBalances(): BigNumber[] {
     return Object.keys(this.tokens).map((_, index) => (this.tokenBalances[index]))
+  }
+
+
+  public generatePairs(pairs: Pair[]) {
+    let relevantStables: Token[] = []
+    let generatedPairs:Pair[]=[]
+    pairs.forEach(pair => {
+      if (Object.values(this.tokens).includes(pair.token0)) {
+        relevantStables.push(pair.token0)
+      }
+      if (Object.values(this.tokens).includes(pair.token1)) {
+        relevantStables.push(pair.token1)
+      }
+    })
+    if (relevantStables.length === 0) {
+      return []
+    }
+    for (let i = 0; i < relevantStables.length; i++) {
+      for (let j = i + 1; j < relevantStables.length; j++) {
+        //generatedPairs.push(new Pair(relevantStables[i], relevantStables[j]))
+      }
+    }
+    return generatedPairs
   }
 
   // calculates the output amount usingn the input for the swableSwap

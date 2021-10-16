@@ -8,9 +8,9 @@
   "files": [
     "dist"
   ],
-  "repository": "https://github.com/pancakeswap/pancake-swap-sdk.git",
+  "repository": "https://github.com/Achthar/requiem-swap-sdk.git",
   "keywords": [
-    "pancakeswap",
+    "requiem",
     "bsc"
   ],
   "module": "dist/sdk.esm.js",

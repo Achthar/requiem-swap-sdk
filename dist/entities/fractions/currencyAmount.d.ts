@@ -1,5 +1,6 @@
 import { Currency } from '../currency';
 import JSBI from 'jsbi';
+import { BigNumber } from '@ethersproject/bignumber';
 import { BigintIsh, Rounding, ChainId } from '../../constants';
 import { Fraction } from './fraction';
 export declare class CurrencyAmount extends Fraction {
@@ -22,4 +23,5 @@ export declare class CurrencyAmount extends Fraction {
     toSignificant(significantDigits?: number, format?: object, rounding?: Rounding): string;
     toFixed(decimalPlaces?: number, format?: object, rounding?: Rounding): string;
     toExact(format?: object): string;
+    toBigNumber(): BigNumber;
 }

@@ -5,6 +5,13 @@ import JSBI from 'jsbi'
 
 import { BigintIsh } from '../../constants'
 
+
+// minimal interface so the input output comparator may be shared across types
+export interface InputOutput {
+  readonly inputAmount: CurrencyAmount
+  readonly outputAmount: CurrencyAmount
+}
+
 export class TokenAmount extends CurrencyAmount {
   public readonly token: Token
 

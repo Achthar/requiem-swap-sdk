@@ -50,6 +50,11 @@ export class RouteV3 {
     this.output = output ?? path[path.length - 1]
   }
 
+
+  public connectPairs(){
+    
+  }
+
   public get chainId(): ChainId {
     return this.pairs[0].chainId
   }
