@@ -6,9 +6,9 @@ import { Price } from './fractions/price';
 import { InputOutput } from './fractions/tokenAmount';
 import { Pair } from './pair';
 import { RouteV3 } from './routeV3';
-export declare function inputOutputComparator(a: InputOutput, b: InputOutput): number;
-export declare function tradeComparator(a: TradeV3, b: TradeV3): number;
-export interface BestTradeOptions {
+export declare function inputOutputComparatorV3(a: InputOutput, b: InputOutput): number;
+export declare function tradeComparatorV3(a: TradeV3, b: TradeV3): number;
+export interface BestTradeOptionsV3 {
     maxNumResults?: number;
     maxHops?: number;
 }
@@ -82,7 +82,7 @@ export declare class TradeV3 {
      * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
      * @param bestTrades used in recursion; the current list of best trades
      */
-    static bestTradeExactIn(pairs: Pair[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, { maxNumResults, maxHops }?: BestTradeOptions, currentPairs?: Pair[], originalAmountIn?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
+    static bestTradeExactIn(pairs: Pair[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentPairs?: Pair[], originalAmountIn?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
     /**
      * similar to the above method but instead targets a fixed output amount
      * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
@@ -98,5 +98,5 @@ export declare class TradeV3 {
      * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
      * @param bestTrades used in recursion; the current list of best trades
      */
-    static bestTradeExactOut(pairs: Pair[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, { maxNumResults, maxHops }?: BestTradeOptions, currentPairs?: Pair[], originalAmountOut?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
+    static bestTradeExactOut(pairs: Pair[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentPairs?: Pair[], originalAmountOut?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
 }

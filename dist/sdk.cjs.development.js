@@ -13,6 +13,7 @@ var toFormat = _interopDefault(require('toformat'));
 var bignumber = require('@ethersproject/bignumber');
 var _Decimal = _interopDefault(require('decimal.js-light'));
 var solidity = require('@ethersproject/solidity');
+var ethers = require('ethers');
 var contracts = require('@ethersproject/contracts');
 var networks = require('@ethersproject/networks');
 var providers = require('@ethersproject/providers');
@@ -54,6 +55,9 @@ var INIT_CODE_HASH = {
   97: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
   80001: '0xc2b3644608b464a0df0eb711ce9c6ce7535d1bd4d0154b8389738a3e7fbb1a61',
   43113: '0x197a29e2e90d809812f533e62529432f8e2741455e49d25365a66b4be2a453dd'
+};
+var STABLE_POOL_ADDRESS = {
+  43113: '0x9067e2C2bf8531283AB97C34EaA74599E0004842'
 };
 var MINIMUM_LIQUIDITY = /*#__PURE__*/JSBI.BigInt(1000); // exports for internal consumption
 
@@ -987,6 +991,2112 @@ var Pair = /*#__PURE__*/function () {
   return Pair;
 }();
 
+var MAX_ITERATION = 256;
+var A_PRECISION = /*#__PURE__*/ethers.BigNumber.from(100);
+var FEE_DENOMINATOR = /*#__PURE__*/ethers.BigNumber.from(1e10);
+function _xp(balances, rates) {
+  var result = [];
+
+  for (var i = 0; i < balances.length; i++) {
+    result.push(rates[i].mul(balances[i]));
+  }
+
+  return result;
+}
+function _getAPrecise(blockTimestamp, swapStorage) {
+  if (blockTimestamp.gte(swapStorage.futureATime)) {
+    return swapStorage.futureA;
+  }
+
+  if (swapStorage.futureA.gt(swapStorage.initialA)) {
+    return swapStorage.initialA.add(swapStorage.futureA.sub(swapStorage.initialA).mul(blockTimestamp.sub(swapStorage.initialATime)).div(swapStorage.futureATime.sub(swapStorage.initialATime)));
+  }
+
+  return swapStorage.initialA.sub(swapStorage.initialA.sub(swapStorage.futureA).mul(blockTimestamp.sub(swapStorage.initialATime))).div(swapStorage.futureATime.sub(swapStorage.initialATime));
+}
+function _sumOf(x) {
+  var sum = ethers.BigNumber.from(0);
+
+  for (var i = 0; i < x.length; i++) {
+    sum = sum.add(x[i]);
+  }
+
+  return sum;
+}
+function _distance(x, y) {
+  return x.gt(y) ? x.sub(y) : y.sub(x);
+}
+/**
+ * Calculate D for *NORMALIZED* balances of each tokens
+ * @param xp normalized balances of token
+ */
+
+function _getD(xp, amp) {
+  var nCoins = xp.length;
+
+  var sum = _sumOf(xp);
+
+  if (sum.eq(0)) {
+    return ethers.BigNumber.from(0);
+  }
+
+  var Dprev = ethers.BigNumber.from(0);
+  var D = sum;
+  var Ann = amp.mul(nCoins);
+
+  for (var i = 0; i < MAX_ITERATION; i++) {
+    var D_P = D;
+
+    for (var j = 0; j < xp.length; j++) {
+      D_P = D_P.mul(D).div(xp[j].mul(nCoins));
+    }
+
+    Dprev = D;
+    D = Ann.mul(sum).div(A_PRECISION).add(D_P.mul(nCoins)).mul(D).div(Ann.sub(A_PRECISION).mul(D).div(A_PRECISION).add(D_P.mul(nCoins + 1)));
+
+    if (_distance(D, Dprev).lte(1)) {
+      return D;
+    }
+  } // Convergence should occur in 4 loops or less. If this is reached, there may be something wrong
+  return D;
+}
+function _getY(inIndex, outIndex, inBalance, // self, shoudl be replaced with swapStorage object
+blockTimestamp, swapStorage, normalizedBalances) {
+  !(inIndex != outIndex) ?  invariant(false, "sameToken")  : void 0;
+  var nCoins = normalizedBalances.length;
+  !(inIndex < nCoins && outIndex < nCoins) ?  invariant(false, "indexOutOfRange")  : void 0;
+
+  var amp = _getAPrecise(blockTimestamp, swapStorage);
+
+  var Ann = amp.mul(nCoins);
+
+  var D = _getD(normalizedBalances, amp);
+
+  var sum = ethers.BigNumber.from(0); // sum of new balances except output token
+
+  var c = D;
+
+  for (var i = 0; i < nCoins; i++) {
+    if (i == outIndex) {
+      continue;
+    }
+
+    var x = i == inIndex ? inBalance : normalizedBalances[i];
+    sum = sum.add(x);
+    c = c.mul(D).div(x.mul(nCoins));
+  }
+
+  c = c.mul(D.mul(A_PRECISION)).div(Ann.mul(nCoins));
+  var b = sum.add(D.mul(A_PRECISION).div(Ann));
+  var lastY = ethers.BigNumber.from(0);
+  var y = D;
+
+  for (var index = 0; index < MAX_ITERATION; index++) {
+    lastY = y;
+    y = y.mul(y).add(c).div(y.mul(2).add(b).sub(D));
+
+    if (_distance(lastY, y).lte(1)) {
+      return y;
+    }
+  }
+  return ethers.BigNumber.from(0);
+}
+function calculateSwap(inIndex, outIndex, inAmount, // standard fields
+balances, blockTimestamp, swapStorage) {
+  var normalizedBalances = _xp(balances, swapStorage.tokenMultipliers);
+
+  var newInBalance = normalizedBalances[inIndex].add(inAmount.mul(swapStorage.tokenMultipliers[inIndex]));
+
+  var outBalance = _getY(inIndex, outIndex, newInBalance, blockTimestamp, swapStorage, normalizedBalances);
+
+  var outAmount = normalizedBalances[outIndex].sub(outBalance).sub(1).div(swapStorage.tokenMultipliers[outIndex]);
+
+  var _fee = swapStorage.fee.mul(outAmount).div(FEE_DENOMINATOR);
+
+  return outAmount.sub(_fee);
+} // function to calculate the amounts of stables from the amounts of LP
+
+function _calculateRemoveLiquidity(amount, swapStorage, totalSupply, currentWithdrawFee, balances) {
+  !(amount <= totalSupply) ?  invariant(false, "Cannot exceed total supply")  : void 0;
+  var feeAdjustedAmount = amount.mul(FEE_DENOMINATOR.sub(currentWithdrawFee)).div(FEE_DENOMINATOR);
+  var amounts = [];
+
+  for (var i = 0; i < swapStorage.tokenMultipliers.length; i++) {
+    amounts.push(balances[i].mul(feeAdjustedAmount).div(totalSupply));
+  }
+
+  return amounts;
+}
+
+function _getYD(A, index, xp, D) {
+  var nCoins = xp.length;
+  !(index < nCoins) ?  invariant(false, "INDEX")  : void 0;
+  var Ann = A.mul(nCoins);
+  var c = D;
+  var s = ethers.BigNumber.from(0);
+
+  var _x = ethers.BigNumber.from(0);
+
+  var yPrev = ethers.BigNumber.from(0);
+
+  for (var i = 0; i < nCoins; i++) {
+    if (i == index) {
+      continue;
+    }
+
+    _x = xp[i];
+    s = s.add(_x);
+    c = c.mul(D).div(_x.mul(nCoins));
+  }
+
+  c = c.mul(D).mul(A_PRECISION).div(Ann.mul(nCoins));
+  var b = s.add(D.mul(A_PRECISION).div(Ann));
+  var y = D;
+
+  for (var _i = 0; _i < MAX_ITERATION; _i++) {
+    yPrev = y;
+    y = y.mul(y).add(c).div(y.mul(2).add(b).sub(D));
+
+    if (_distance(yPrev, y).lt(1)) {
+      return y;
+    }
+  }
+  return ethers.BigNumber.from(0);
+}
+
+function _feePerToken(swapStorage) {
+  var nCoins = swapStorage.tokenMultipliers.length;
+  return swapStorage.fee.mul(nCoins).div(4 * (nCoins - 1));
+}
+
+function _calculateRemoveLiquidityOneToken(swapStorage, tokenAmount, index, blockTimestamp, balances, totalSupply, currentWithdrawFee) {
+  !(index < swapStorage.tokenMultipliers.length) ?  invariant(false, "indexOutOfRange")  : void 0;
+
+  var amp = _getAPrecise(blockTimestamp, swapStorage);
+
+  var xp = _xp(balances, swapStorage.tokenMultipliers);
+
+  var D0 = _getD(xp, amp);
+
+  var D1 = D0.sub(tokenAmount.mul(D0).div(totalSupply));
+
+  var newY = _getYD(amp, index, xp, D1);
+
+  var reducedXP = xp;
+
+  var _fee = _feePerToken(swapStorage);
+
+  for (var i = 0; i < swapStorage.tokenMultipliers.length; i++) {
+    var expectedDx = ethers.BigNumber.from(0);
+
+    if (i == index) {
+      expectedDx = xp[i].mul(D1).div(D0).sub(newY);
+    } else {
+      expectedDx = xp[i].sub(xp[i].mul(D1).div(D0));
+    }
+
+    reducedXP[i] = reducedXP[i].sub(_fee.mul(expectedDx).div(FEE_DENOMINATOR));
+  }
+
+  var dy = reducedXP[index].sub(_getYD(amp, index, reducedXP, D1));
+  dy = dy.sub(1).div(swapStorage.tokenMultipliers[index]);
+  var fee = xp[index].sub(newY).div(swapStorage.tokenMultipliers[index]).sub(dy);
+  dy = dy.mul(FEE_DENOMINATOR.sub(currentWithdrawFee)).div(FEE_DENOMINATOR);
+  return {
+    "dy": dy,
+    "fee": fee
+  };
+}
+/**
+ * Estimate amount of LP token minted or burned at deposit or withdrawal
+ * without taking fees into account
+ */
+
+function _calculateTokenAmount(swapStorage, amounts, deposit, balances, blockTimestamp, totalSupply) {
+  var nCoins = swapStorage.tokenMultipliers.length;
+  !(amounts.length == nCoins) ?  invariant(false, "invalidAmountsLength")  : void 0;
+
+  var amp = _getAPrecise(blockTimestamp, swapStorage);
+
+  var D0 = _getD(_xp(balances, swapStorage.tokenMultipliers), amp);
+
+  var newBalances = balances;
+
+  for (var i = 0; i < nCoins; i++) {
+    if (deposit) {
+      newBalances[i] = newBalances[i].add(amounts[i]);
+    } else {
+      newBalances[i] = newBalances[i].add(amounts[i]);
+    }
+  }
+
+  var D1 = _getD(_xp(newBalances, swapStorage.tokenMultipliers), amp);
+
+  if (totalSupply.eq(0)) {
+    return D1; // first depositor take it all
+  }
+
+  var diff = deposit ? D1.sub(D0) : D0.sub(D1);
+  return diff.mul(totalSupply).div(D0);
+}
+
+var SwapStorage = /*#__PURE__*/function () {
+  function SwapStorage(tokenMultipliers, fee, adminFee, initialA, futureA, initialATime, futureATime, lpAddress) {
+    this.lpAddress = lpAddress;
+    this.tokenMultipliers = tokenMultipliers;
+    this.fee = fee;
+    this.adminFee = adminFee;
+    this.initialA = initialA;
+    this.futureA = futureA;
+    this.initialATime = initialATime;
+    this.futureATime = futureATime;
+  }
+
+  SwapStorage.mock = function mock() {
+    var dummy = ethers.BigNumber.from(0);
+    return new SwapStorage([dummy], dummy, dummy, dummy, dummy, dummy, dummy, '');
+  };
+
+  return SwapStorage;
+}();
+
+var StableSwap = [
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "provider",
+				type: "address"
+			},
+			{
+				indexed: false,
+				internalType: "uint256[]",
+				name: "tokenAmounts",
+				type: "uint256[]"
+			},
+			{
+				indexed: false,
+				internalType: "uint256[]",
+				name: "fees",
+				type: "uint256[]"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "invariant",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "tokenSupply",
+				type: "uint256"
+			}
+		],
+		name: "AddLiquidity",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: false,
+				internalType: "address",
+				name: "token",
+				type: "address"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "amount",
+				type: "uint256"
+			}
+		],
+		name: "CollectProtocolFee",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: false,
+				internalType: "address",
+				name: "newController",
+				type: "address"
+			}
+		],
+		name: "FeeControllerChanged",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: false,
+				internalType: "address",
+				name: "newController",
+				type: "address"
+			}
+		],
+		name: "FeeDistributorChanged",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "fee",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "adminFee",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "withdrawFee",
+				type: "uint256"
+			}
+		],
+		name: "NewFee",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "previousOwner",
+				type: "address"
+			},
+			{
+				indexed: true,
+				internalType: "address",
+				name: "newOwner",
+				type: "address"
+			}
+		],
+		name: "OwnershipTransferred",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: false,
+				internalType: "address",
+				name: "account",
+				type: "address"
+			}
+		],
+		name: "Paused",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "oldA",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "newA",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "initialTime",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "futureTime",
+				type: "uint256"
+			}
+		],
+		name: "RampA",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "provider",
+				type: "address"
+			},
+			{
+				indexed: false,
+				internalType: "uint256[]",
+				name: "tokenAmounts",
+				type: "uint256[]"
+			},
+			{
+				indexed: false,
+				internalType: "uint256[]",
+				name: "fees",
+				type: "uint256[]"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "tokenSupply",
+				type: "uint256"
+			}
+		],
+		name: "RemoveLiquidity",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "provider",
+				type: "address"
+			},
+			{
+				indexed: false,
+				internalType: "uint256[]",
+				name: "tokenAmounts",
+				type: "uint256[]"
+			},
+			{
+				indexed: false,
+				internalType: "uint256[]",
+				name: "fees",
+				type: "uint256[]"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "invariant",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "tokenSupply",
+				type: "uint256"
+			}
+		],
+		name: "RemoveLiquidityImbalance",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "provider",
+				type: "address"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "tokenIndex",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "tokenAmount",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "coinAmount",
+				type: "uint256"
+			}
+		],
+		name: "RemoveLiquidityOne",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "A",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "timestamp",
+				type: "uint256"
+			}
+		],
+		name: "StopRampA",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "buyer",
+				type: "address"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "soldId",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "tokensSold",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "boughtId",
+				type: "uint256"
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "tokensBought",
+				type: "uint256"
+			}
+		],
+		name: "TokenExchange",
+		type: "event"
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: false,
+				internalType: "address",
+				name: "account",
+				type: "address"
+			}
+		],
+		name: "Unpaused",
+		type: "event"
+	},
+	{
+		inputs: [
+		],
+		name: "MAX_A",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "MAX_ADMIN_FEE",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "MAX_A_CHANGE",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "MAX_SWAP_FEE",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "MAX_WITHDRAW_FEE",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "MIN_RAMP_TIME",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint256[]",
+				name: "amounts",
+				type: "uint256[]"
+			},
+			{
+				internalType: "uint256",
+				name: "minMintAmount",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "deadline",
+				type: "uint256"
+			}
+		],
+		name: "addLiquidity",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "account",
+				type: "address"
+			}
+		],
+		name: "calculateCurrentWithdrawFee",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "account",
+				type: "address"
+			},
+			{
+				internalType: "uint256",
+				name: "amount",
+				type: "uint256"
+			}
+		],
+		name: "calculateRemoveLiquidity",
+		outputs: [
+			{
+				internalType: "uint256[]",
+				name: "",
+				type: "uint256[]"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "account",
+				type: "address"
+			},
+			{
+				internalType: "uint256",
+				name: "amount",
+				type: "uint256"
+			},
+			{
+				internalType: "uint8",
+				name: "index",
+				type: "uint8"
+			}
+		],
+		name: "calculateRemoveLiquidityOneToken",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint8",
+				name: "inIndex",
+				type: "uint8"
+			},
+			{
+				internalType: "uint8",
+				name: "outIndex",
+				type: "uint8"
+			},
+			{
+				internalType: "uint256",
+				name: "inAmount",
+				type: "uint256"
+			}
+		],
+		name: "calculateSwap",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint256[]",
+				name: "amounts",
+				type: "uint256[]"
+			},
+			{
+				internalType: "bool",
+				name: "deposit",
+				type: "bool"
+			}
+		],
+		name: "calculateTokenAmount",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "feeController",
+		outputs: [
+			{
+				internalType: "address",
+				name: "",
+				type: "address"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "feeDistributor",
+		outputs: [
+			{
+				internalType: "address",
+				name: "",
+				type: "address"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "getA",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "getAPrecise",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint8",
+				name: "index",
+				type: "uint8"
+			}
+		],
+		name: "getAdminBalance",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "getAdminBalances",
+		outputs: [
+			{
+				internalType: "uint256[]",
+				name: "adminBalances",
+				type: "uint256[]"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "getLpToken",
+		outputs: [
+			{
+				internalType: "contract IERC20",
+				name: "",
+				type: "address"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "getNumberOfTokens",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint8",
+				name: "index",
+				type: "uint8"
+			}
+		],
+		name: "getToken",
+		outputs: [
+			{
+				internalType: "contract IERC20",
+				name: "",
+				type: "address"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint8",
+				name: "index",
+				type: "uint8"
+			}
+		],
+		name: "getTokenBalance",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "getTokenBalances",
+		outputs: [
+			{
+				internalType: "uint256[]",
+				name: "",
+				type: "uint256[]"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "token",
+				type: "address"
+			}
+		],
+		name: "getTokenIndex",
+		outputs: [
+			{
+				internalType: "uint8",
+				name: "index",
+				type: "uint8"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "getTokenPrecisionMultipliers",
+		outputs: [
+			{
+				internalType: "uint256[]",
+				name: "",
+				type: "uint256[]"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "getTokens",
+		outputs: [
+			{
+				internalType: "contract IERC20[]",
+				name: "",
+				type: "address[]"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "getVirtualPrice",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address[]",
+				name: "_coins",
+				type: "address[]"
+			},
+			{
+				internalType: "uint8[]",
+				name: "_decimals",
+				type: "uint8[]"
+			},
+			{
+				internalType: "string",
+				name: "lpTokenName",
+				type: "string"
+			},
+			{
+				internalType: "string",
+				name: "lpTokenSymbol",
+				type: "string"
+			},
+			{
+				internalType: "uint256",
+				name: "_A",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "_fee",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "_adminFee",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "_withdrawFee",
+				type: "uint256"
+			},
+			{
+				internalType: "address",
+				name: "_feeDistributor",
+				type: "address"
+			}
+		],
+		name: "initialize",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "owner",
+		outputs: [
+			{
+				internalType: "address",
+				name: "",
+				type: "address"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "pause",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "paused",
+		outputs: [
+			{
+				internalType: "bool",
+				name: "",
+				type: "bool"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint256",
+				name: "futureA",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "futureATime",
+				type: "uint256"
+			}
+		],
+		name: "rampA",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint256",
+				name: "lpAmount",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256[]",
+				name: "minAmounts",
+				type: "uint256[]"
+			},
+			{
+				internalType: "uint256",
+				name: "deadline",
+				type: "uint256"
+			}
+		],
+		name: "removeLiquidity",
+		outputs: [
+			{
+				internalType: "uint256[]",
+				name: "",
+				type: "uint256[]"
+			}
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint256[]",
+				name: "amounts",
+				type: "uint256[]"
+			},
+			{
+				internalType: "uint256",
+				name: "maxBurnAmount",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "deadline",
+				type: "uint256"
+			}
+		],
+		name: "removeLiquidityImbalance",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint256",
+				name: "lpAmount",
+				type: "uint256"
+			},
+			{
+				internalType: "uint8",
+				name: "index",
+				type: "uint8"
+			},
+			{
+				internalType: "uint256",
+				name: "minAmount",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "deadline",
+				type: "uint256"
+			}
+		],
+		name: "removeLiquidityOneToken",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "renounceOwnership",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint256",
+				name: "newSwapFee",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "newAdminFee",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "newWithdrawFee",
+				type: "uint256"
+			}
+		],
+		name: "setFee",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "_feeController",
+				type: "address"
+			}
+		],
+		name: "setFeeController",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "_feeDistributor",
+				type: "address"
+			}
+		],
+		name: "setFeeDistributor",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "stopRampA",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "uint8",
+				name: "fromIndex",
+				type: "uint8"
+			},
+			{
+				internalType: "uint8",
+				name: "toIndex",
+				type: "uint8"
+			},
+			{
+				internalType: "uint256",
+				name: "inAmount",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "minOutAmount",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "deadline",
+				type: "uint256"
+			}
+		],
+		name: "swap",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "swapStorage",
+		outputs: [
+			{
+				internalType: "contract LPToken",
+				name: "lpToken",
+				type: "address"
+			},
+			{
+				internalType: "uint256",
+				name: "fee",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "adminFee",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "initialA",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "futureA",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "initialATime",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "futureATime",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "defaultWithdrawFee",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "",
+				type: "address"
+			}
+		],
+		name: "tokenIndexes",
+		outputs: [
+			{
+				internalType: "uint8",
+				name: "",
+				type: "uint8"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "newOwner",
+				type: "address"
+			}
+		],
+		name: "transferOwnership",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "unpause",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "recipient",
+				type: "address"
+			},
+			{
+				internalType: "uint256",
+				name: "transferAmount",
+				type: "uint256"
+			}
+		],
+		name: "updateUserWithdrawFee",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+		],
+		name: "withdrawAdminFee",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	}
+];
+
+/**
+  * A class that contains relevant stablePool information
+  * It is mainly designed to save the map between the indices
+  * and actual tokens in the pool and access the swap with addresses
+  * instead of the index
+  */
+
+var StablePool = /*#__PURE__*/function () {
+  function StablePool(tokens, tokenBalances, _A, swapStorage, blockTimestamp, lpTotalSupply, currentWithdrawFee) {
+    this.currentWithdrawFee = currentWithdrawFee;
+    this.lpTotalSupply = lpTotalSupply;
+    this.swapStorage = swapStorage;
+    this.blockTimestamp = ethers.BigNumber.from(blockTimestamp);
+    this.tokens = tokens;
+    this.tokenBalances = tokenBalances;
+    this._A = _A;
+    this.liquidityToken = new Token(tokens[0].chainId, StablePool.getAddress(tokens[0].chainId), 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
+
+    for (var i = 0; i < Object.values(this.tokens).length; i++) {
+      !(tokens[i].address != ethers.ethers.constants.AddressZero) ?  invariant(false, "invalidTokenAddress")  : void 0;
+      !(tokens[i].decimals <= 18) ?  invariant(false, "invalidDecimals")  : void 0;
+      !(tokens[i].chainId === tokens[0].chainId) ?  invariant(false, 'INVALID TOKENS')  : void 0;
+    }
+  }
+
+  StablePool.getAddress = function getAddress(chainId) {
+    return STABLE_POOL_ADDRESS[chainId];
+  };
+
+  StablePool.mock = function mock() {
+    var dummy = ethers.BigNumber.from(0);
+    return new StablePool({
+      0: new Token(-1, '', 1)
+    }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy);
+  }
+  /**
+   * Returns true if the token is either token0 or token1
+   * @param token to check
+   */
+  ;
+
+  var _proto = StablePool.prototype;
+
+  _proto.involvesToken = function involvesToken(token) {
+    var res = false;
+
+    for (var i = 0; i < Object.keys(this.tokens).length; i++) {
+       token.equals(this.tokens[i]);
+    }
+
+    return res;
+  } // maps the index to the token in the stablePool
+  ;
+
+  _proto.tokenFromIndex = function tokenFromIndex(index) {
+    return this.tokens[index];
+  };
+
+  _proto.indexFromToken = function indexFromToken(token) {
+    for (var index = 0; index < Object.keys(this.tokens).length; index++) {
+      if (token.equals(this.tokens[index])) {
+        return index;
+      }
+    }
+
+    throw new Error('token not in pool');
+  };
+
+  _proto.getBalances = function getBalances() {
+    var _this = this;
+
+    return Object.keys(this.tokens).map(function (_, index) {
+      return _this.tokenBalances[index];
+    });
+  };
+
+  _proto.generatePairs = function generatePairs(pairs) {
+    var _this2 = this;
+
+    var relevantStables = [];
+    var generatedPairs = [];
+    pairs.forEach(function (pair) {
+      if (Object.values(_this2.tokens).includes(pair.token0)) {
+        relevantStables.push(pair.token0);
+      }
+
+      if (Object.values(_this2.tokens).includes(pair.token1)) {
+        relevantStables.push(pair.token1);
+      }
+    });
+
+    if (relevantStables.length === 0) {
+      return [];
+    }
+
+    return generatedPairs;
+  } // calculates the output amount usingn the input for the swableSwap
+  // requires the view on a contract as manual calculation on the frontend would
+  // be inefficient
+  ;
+
+  _proto.calculateSwapViaPing = function calculateSwapViaPing(inIndex, outIndex, inAmount, provider) {
+    try {
+      var _this4 = this;
+
+      return Promise.resolve(new contracts.Contract(_this4.liquidityToken.address, new ethers.ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount));
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  } // calculates the swap output amount without
+  // pinging the blockchain for data
+  ;
+
+  _proto.calculateSwap = function calculateSwap$1(inIndex, outIndex, inAmount) {
+    var outAmount = calculateSwap(inIndex, outIndex, inAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
+
+    return outAmount;
+  };
+
+  _proto.getOutputAmount = function getOutputAmount(inputAmount, outIndex) {
+    var swap = this.calculateSwap(this.indexFromToken(inputAmount.token), outIndex, inputAmount.toBigNumber());
+    return new TokenAmount(this.tokenFromIndex(outIndex), swap.toBigInt());
+  }
+  /**
+   * Returns the chain ID of the tokens in the pair.
+   */
+  ;
+
+  _proto.token = function token(index) {
+    return this.tokens[index];
+  };
+
+  _proto.reserveOf = function reserveOf(token) {
+    !this.involvesToken(token) ?  invariant(false, 'TOKEN')  : void 0;
+
+    for (var i = 0; i < Object.keys(this.tokens).length; i++) {
+      if (token.equals(this.tokens[i])) return this.tokenBalances[i];
+    }
+
+    return ethers.BigNumber.from(0);
+  };
+
+  _proto.calculateRemoveLiquidity = function calculateRemoveLiquidity(amountLp) {
+    return _calculateRemoveLiquidity(amountLp, this.swapStorage, this.lpTotalSupply, this.currentWithdrawFee, this.getBalances());
+  };
+
+  _proto.calculateRemoveLiquidityOneToken = function calculateRemoveLiquidityOneToken(amount, index) {
+    return _calculateRemoveLiquidityOneToken(this.swapStorage, amount, index, this.blockTimestamp, this.getBalances(), this.lpTotalSupply, this.currentWithdrawFee);
+  };
+
+  _proto.getLiquidityMinted = function getLiquidityMinted(amounts, deposit) {
+    return _calculateTokenAmount(this.swapStorage, amounts, deposit, this.getBalances(), this.blockTimestamp, this.lpTotalSupply);
+  };
+
+  _createClass(StablePool, [{
+    key: "chainId",
+    get: function get() {
+      return this.tokens[0].chainId;
+    }
+  }]);
+
+  return StablePool;
+}();
+
+var _100_PERCENT = /*#__PURE__*/new Fraction(_100);
+
+var Percent = /*#__PURE__*/function (_Fraction) {
+  _inheritsLoose(Percent, _Fraction);
+
+  function Percent() {
+    return _Fraction.apply(this, arguments) || this;
+  }
+
+  var _proto = Percent.prototype;
+
+  _proto.toSignificant = function toSignificant(significantDigits, format, rounding) {
+    if (significantDigits === void 0) {
+      significantDigits = 5;
+    }
+
+    return this.multiply(_100_PERCENT).toSignificant(significantDigits, format, rounding);
+  };
+
+  _proto.toFixed = function toFixed(decimalPlaces, format, rounding) {
+    if (decimalPlaces === void 0) {
+      decimalPlaces = 2;
+    }
+
+    return this.multiply(_100_PERCENT).toFixed(decimalPlaces, format, rounding);
+  };
+
+  return Percent;
+}(Fraction);
+
+// the first verion to include the stable pool for less friction
+
+var RouteV3 = /*#__PURE__*/function () {
+  function RouteV3(pairs, input, output, stablePool) {
+    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !pairs.every(function (pair) {
+      return pair.chainId === pairs[0].chainId;
+    }) ?  invariant(false, 'CHAIN_IDS')  : void 0;
+    !(input instanceof Token && pairs[0].involvesToken(input) || input === NETWORK_CCY[pairs[0].chainId] && pairs[0].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'INPUT')  : void 0;
+    !(typeof output === 'undefined' || output instanceof Token && pairs[pairs.length - 1].involvesToken(output) || output === NETWORK_CCY[pairs[0].chainId] && pairs[pairs.length - 1].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'OUTPUT')  : void 0;
+    var path = [input instanceof Token ? input : WRAPPED_NETWORK_TOKENS[pairs[0].chainId]];
+
+    for (var _iterator = _createForOfIteratorHelperLoose(pairs.entries()), _step; !(_step = _iterator()).done;) {
+      var _step$value = _step.value,
+          i = _step$value[0],
+          pair = _step$value[1];
+      var currentInput = path[i];
+      !(currentInput.equals(pair.token0) || currentInput.equals(pair.token1)) ?  invariant(false, 'PATH')  : void 0;
+
+      var _output = currentInput.equals(pair.token0) ? pair.token1 : pair.token0;
+
+      path.push(_output);
+    }
+
+    this.stablePool = stablePool !== null && stablePool !== void 0 ? stablePool : StablePool.mock();
+    this.pairs = pairs;
+    this.path = path;
+    this.midPrice = Price.fromRoute(this);
+    this.input = input;
+    this.output = output !== null && output !== void 0 ? output : path[path.length - 1];
+  }
+
+  var _proto = RouteV3.prototype;
+
+  _proto.connectPairs = function connectPairs() {};
+
+  _createClass(RouteV3, [{
+    key: "chainId",
+    get: function get() {
+      return this.pairs[0].chainId;
+    }
+  }]);
+
+  return RouteV3;
+}();
+
+/**
+ * Returns the percent difference between the mid price and the execution price, i.e. price impact.
+ * @param midPrice mid price before the trade
+ * @param inputAmount the input amount of the trade
+ * @param outputAmount the output amount of the trade
+ */
+
+function computePriceImpact(midPrice, inputAmount, outputAmount) {
+  var exactQuote = midPrice.raw.multiply(inputAmount.raw); // calculate slippage := (exactQuote - outputAmount) / exactQuote
+
+  var slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote);
+  return new Percent(slippage.numerator, slippage.denominator);
+} // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
+// in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
+
+
+function inputOutputComparatorV3(a, b) {
+  // must have same input and output token for comparison
+  !currencyEquals(a.inputAmount.currency, b.inputAmount.currency) ?  invariant(false, 'INPUT_CURRENCY')  : void 0;
+  !currencyEquals(a.outputAmount.currency, b.outputAmount.currency) ?  invariant(false, 'OUTPUT_CURRENCY')  : void 0;
+
+  if (a.outputAmount.equalTo(b.outputAmount)) {
+    if (a.inputAmount.equalTo(b.inputAmount)) {
+      return 0;
+    } // trade A requires less input than trade B, so A should come first
+
+
+    if (a.inputAmount.lessThan(b.inputAmount)) {
+      return -1;
+    } else {
+      return 1;
+    }
+  } else {
+    // tradeA has less output than trade B, so should come second
+    if (a.outputAmount.lessThan(b.outputAmount)) {
+      return 1;
+    } else {
+      return -1;
+    }
+  }
+} // extension of the input output comparator that also considers other dimensions of the trade in ranking them
+
+function tradeComparatorV3(a, b) {
+  var ioComp = inputOutputComparatorV3(a, b);
+
+  if (ioComp !== 0) {
+    return ioComp;
+  } // consider lowest slippage next, since these are less likely to fail
+
+
+  if (a.priceImpact.lessThan(b.priceImpact)) {
+    return -1;
+  } else if (a.priceImpact.greaterThan(b.priceImpact)) {
+    return 1;
+  } // finally consider the number of hops since each hop costs gas
+
+
+  return a.route.path.length - b.route.path.length;
+}
+/**
+ * Given a currency amount and a chain ID, returns the equivalent representation as the token amount.
+ * In other words, if the currency is ETHER, returns the WETH token amount for the given chain. Otherwise, returns
+ * the input currency amount.
+ */
+
+function wrappedAmount(currencyAmount, chainId) {
+  if (currencyAmount instanceof TokenAmount) return currencyAmount;
+  if (currencyAmount.currency === NETWORK_CCY[chainId]) return new TokenAmount(WRAPPED_NETWORK_TOKENS[chainId], currencyAmount.raw);
+    invariant(false, 'CURRENCY')  ;
+}
+
+function wrappedCurrency(currency, chainId) {
+  if (currency instanceof Token) return currency;
+  if (currency === NETWORK_CCY[chainId]) return WRAPPED_NETWORK_TOKENS[chainId];
+    invariant(false, 'CURRENCY')  ;
+}
+/**
+ * Represents a trade executed against a list of pairs.
+ * Does not account for slippage, i.e. trades that front run this trade and move the price.
+ */
+
+
+var TradeV3 = /*#__PURE__*/function () {
+  function TradeV3(route, amount, tradeType) {
+    var amounts = new Array(route.path.length);
+    var nextPairs = new Array(route.pairs.length);
+
+    if (tradeType === exports.TradeType.EXACT_INPUT) {
+      !currencyEquals(amount.currency, route.input) ?  invariant(false, 'INPUT')  : void 0;
+      amounts[0] = wrappedAmount(amount, route.chainId);
+
+      for (var i = 0; i < route.path.length - 1; i++) {
+        var pair = route.pairs[i];
+
+        var _pair$getOutputAmount = pair.getOutputAmount(amounts[i]),
+            outputAmount = _pair$getOutputAmount[0],
+            nextPair = _pair$getOutputAmount[1];
+
+        amounts[i + 1] = outputAmount;
+        nextPairs[i] = nextPair;
+      }
+    } else {
+      !currencyEquals(amount.currency, route.output) ?  invariant(false, 'OUTPUT')  : void 0;
+      amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId);
+
+      for (var _i = route.path.length - 1; _i > 0; _i--) {
+        var _pair = route.pairs[_i - 1];
+
+        var _pair$getInputAmount = _pair.getInputAmount(amounts[_i]),
+            inputAmount = _pair$getInputAmount[0],
+            _nextPair = _pair$getInputAmount[1];
+
+        amounts[_i - 1] = inputAmount;
+        nextPairs[_i - 1] = _nextPair;
+      }
+    }
+
+    this.route = route;
+    this.tradeType = tradeType;
+    this.inputAmount = tradeType === exports.TradeType.EXACT_INPUT ? amount : route.input === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw) : amounts[0];
+    this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
+    this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
+    this.nextMidPrice = Price.fromRoute(new RouteV3(nextPairs, route.input));
+    this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount);
+  }
+  /**
+   * Constructs an exact in trade with the given amount in and route
+   * @param route route of the exact in trade
+   * @param amountIn the amount being passed in
+   */
+
+
+  TradeV3.exactIn = function exactIn(route, amountIn) {
+    return new TradeV3(route, amountIn, exports.TradeType.EXACT_INPUT);
+  }
+  /**
+   * Constructs an exact out trade with the given amount out and route
+   * @param route route of the exact out trade
+   * @param amountOut the amount returned by the trade
+   */
+  ;
+
+  TradeV3.exactOut = function exactOut(route, amountOut) {
+    return new TradeV3(route, amountOut, exports.TradeType.EXACT_OUTPUT);
+  }
+  /**
+   * Get the minimum amount that must be received from this trade for the given slippage tolerance
+   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
+   */
+  ;
+
+  var _proto = TradeV3.prototype;
+
+  _proto.minimumAmountOut = function minimumAmountOut(slippageTolerance) {
+    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
+
+    if (this.tradeType === exports.TradeType.EXACT_OUTPUT) {
+      return this.outputAmount;
+    } else {
+      var slippageAdjustedAmountOut = new Fraction(ONE).add(slippageTolerance).invert().multiply(this.outputAmount.raw).quotient;
+      return this.outputAmount instanceof TokenAmount ? new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountOut);
+    }
+  }
+  /**
+   * Get the maximum amount in that can be spent via this trade for the given slippage tolerance
+   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
+   */
+  ;
+
+  _proto.maximumAmountIn = function maximumAmountIn(slippageTolerance) {
+    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
+
+    if (this.tradeType === exports.TradeType.EXACT_INPUT) {
+      return this.inputAmount;
+    } else {
+      var slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient;
+      return this.inputAmount instanceof TokenAmount ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn);
+    }
+  }
+  /**
+   * Given a list of pairs, and a fixed amount in, returns the top `maxNumResults` trades that go from an input token
+   * amount to an output token, making at most `maxHops` hops.
+   * Note this does not consider aggregation, as routes are linear. It's possible a better route exists by splitting
+   * the amount in among multiple routes.
+   * @param pairs the pairs to consider in finding the best trade
+   * @param currencyAmountIn exact amount of input currency to spend
+   * @param currencyOut the desired currency out
+   * @param maxNumResults maximum number of results to return
+   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
+   * @param currentPairs used in recursion; the current list of pairs
+   * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
+   * @param bestTrades used in recursion; the current list of best trades
+   */
+  ;
+
+  TradeV3.bestTradeExactIn = function bestTradeExactIn(pairs, currencyAmountIn, currencyOut, _temp, // used in recursion.
+  currentPairs, originalAmountIn, bestTrades) {
+    var _ref = _temp === void 0 ? {} : _temp,
+        _ref$maxNumResults = _ref.maxNumResults,
+        maxNumResults = _ref$maxNumResults === void 0 ? 3 : _ref$maxNumResults,
+        _ref$maxHops = _ref.maxHops,
+        maxHops = _ref$maxHops === void 0 ? 3 : _ref$maxHops;
+
+    if (currentPairs === void 0) {
+      currentPairs = [];
+    }
+
+    if (originalAmountIn === void 0) {
+      originalAmountIn = currencyAmountIn;
+    }
+
+    if (bestTrades === void 0) {
+      bestTrades = [];
+    }
+
+    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
+    !(originalAmountIn === currencyAmountIn || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
+    var chainId = currencyAmountIn instanceof TokenAmount ? currencyAmountIn.token.chainId : currencyOut instanceof Token ? currencyOut.chainId : undefined;
+    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
+    var amountIn = wrappedAmount(currencyAmountIn, chainId);
+    var tokenOut = wrappedCurrency(currencyOut, chainId);
+
+    for (var i = 0; i < pairs.length; i++) {
+      var pair = pairs[i]; // pair irrelevant
+
+      if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue;
+      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
+      var amountOut = void 0;
+
+      try {
+        ;
+
+        var _pair$getOutputAmount2 = pair.getOutputAmount(amountIn);
+
+        amountOut = _pair$getOutputAmount2[0];
+      } catch (error) {
+        // input too low
+        if (error.isInsufficientInputAmountError) {
+          continue;
+        }
+
+        throw error;
+      } // we have arrived at the output token, so this is the final trade of one of the paths
+
+
+      if (amountOut.token.equals(tokenOut)) {
+        sortedInsert(bestTrades, new TradeV3(new RouteV3([].concat(currentPairs, [pair]), originalAmountIn.currency, currencyOut), originalAmountIn, exports.TradeType.EXACT_INPUT), maxNumResults, tradeComparatorV3);
+      } else if (maxHops > 1 && pairs.length > 1) {
+        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
+
+        TradeV3.bestTradeExactIn(pairsExcludingThisPair, amountOut, currencyOut, {
+          maxNumResults: maxNumResults,
+          maxHops: maxHops - 1
+        }, [].concat(currentPairs, [pair]), originalAmountIn, bestTrades);
+      }
+    }
+
+    return bestTrades;
+  }
+  /**
+   * similar to the above method but instead targets a fixed output amount
+   * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
+   * to an output token amount, making at most `maxHops` hops
+   * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
+   * the amount in among multiple routes.
+   * @param pairs the pairs to consider in finding the best trade
+   * @param currencyIn the currency to spend
+   * @param currencyAmountOut the exact amount of currency out
+   * @param maxNumResults maximum number of results to return
+   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
+   * @param currentPairs used in recursion; the current list of pairs
+   * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
+   * @param bestTrades used in recursion; the current list of best trades
+   */
+  ;
+
+  TradeV3.bestTradeExactOut = function bestTradeExactOut(pairs, currencyIn, currencyAmountOut, _temp2, // used in recursion.
+  currentPairs, originalAmountOut, bestTrades) {
+    var _ref2 = _temp2 === void 0 ? {} : _temp2,
+        _ref2$maxNumResults = _ref2.maxNumResults,
+        maxNumResults = _ref2$maxNumResults === void 0 ? 3 : _ref2$maxNumResults,
+        _ref2$maxHops = _ref2.maxHops,
+        maxHops = _ref2$maxHops === void 0 ? 3 : _ref2$maxHops;
+
+    if (currentPairs === void 0) {
+      currentPairs = [];
+    }
+
+    if (originalAmountOut === void 0) {
+      originalAmountOut = currencyAmountOut;
+    }
+
+    if (bestTrades === void 0) {
+      bestTrades = [];
+    }
+
+    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
+    !(originalAmountOut === currencyAmountOut || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
+    var chainId = currencyAmountOut instanceof TokenAmount ? currencyAmountOut.token.chainId : currencyIn instanceof Token ? currencyIn.chainId : undefined;
+    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
+    var amountOut = wrappedAmount(currencyAmountOut, chainId);
+    var tokenIn = wrappedCurrency(currencyIn, chainId);
+
+    for (var i = 0; i < pairs.length; i++) {
+      var pair = pairs[i]; // pair irrelevant
+
+      if (!pair.token0.equals(amountOut.token) && !pair.token1.equals(amountOut.token)) continue;
+      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
+      var amountIn = void 0;
+
+      try {
+        ;
+
+        var _pair$getInputAmount2 = pair.getInputAmount(amountOut);
+
+        amountIn = _pair$getInputAmount2[0];
+      } catch (error) {
+        // not enough liquidity in this pair
+        if (error.isInsufficientReservesError) {
+          continue;
+        }
+
+        throw error;
+      } // we have arrived at the input token, so this is the first trade of one of the paths
+
+
+      if (amountIn.token.equals(tokenIn)) {
+        sortedInsert(bestTrades, new TradeV3(new RouteV3([pair].concat(currentPairs), currencyIn, originalAmountOut.currency), originalAmountOut, exports.TradeType.EXACT_OUTPUT), maxNumResults, tradeComparatorV3);
+      } else if (maxHops > 1 && pairs.length > 1) {
+        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
+
+        TradeV3.bestTradeExactOut(pairsExcludingThisPair, currencyIn, amountIn, {
+          maxNumResults: maxNumResults,
+          maxHops: maxHops - 1
+        }, [pair].concat(currentPairs), originalAmountOut, bestTrades);
+      }
+    }
+
+    return bestTrades;
+  };
+
+  return TradeV3;
+}();
+
+var STABLECOINS = {
+  43113: [/*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0x0bE04001Ad4725c697b6c6bD8Bc23d9848992CA0', 6, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0x66960440491bCc68BD30B2b0B08fF9e7aB3F9078', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xCCf7ed44c5A0f3Cb5c9a9B9f765F8D836fb93BA1', 18, 'TUSD', 'True USD')]
+};
+var STABLES_INDEX_MAP = {
+  43113: {
+    0: STABLECOINS[43113][0],
+    1: STABLECOINS[43113][1],
+    2: STABLECOINS[43113][2],
+    3: STABLECOINS[43113][3]
+  }
+};
+
 var Route = /*#__PURE__*/function () {
   function Route(pairs, input, output) {
     !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
@@ -1026,36 +3136,6 @@ var Route = /*#__PURE__*/function () {
   return Route;
 }();
 
-var _100_PERCENT = /*#__PURE__*/new Fraction(_100);
-
-var Percent = /*#__PURE__*/function (_Fraction) {
-  _inheritsLoose(Percent, _Fraction);
-
-  function Percent() {
-    return _Fraction.apply(this, arguments) || this;
-  }
-
-  var _proto = Percent.prototype;
-
-  _proto.toSignificant = function toSignificant(significantDigits, format, rounding) {
-    if (significantDigits === void 0) {
-      significantDigits = 5;
-    }
-
-    return this.multiply(_100_PERCENT).toSignificant(significantDigits, format, rounding);
-  };
-
-  _proto.toFixed = function toFixed(decimalPlaces, format, rounding) {
-    if (decimalPlaces === void 0) {
-      decimalPlaces = 2;
-    }
-
-    return this.multiply(_100_PERCENT).toFixed(decimalPlaces, format, rounding);
-  };
-
-  return Percent;
-}(Fraction);
-
 /**
  * Returns the percent difference between the mid price and the execution price, i.e. price impact.
  * @param midPrice mid price before the trade
@@ -1063,7 +3143,7 @@ var Percent = /*#__PURE__*/function (_Fraction) {
  * @param outputAmount the output amount of the trade
  */
 
-function computePriceImpact(midPrice, inputAmount, outputAmount) {
+function computePriceImpact$1(midPrice, inputAmount, outputAmount) {
   var exactQuote = midPrice.raw.multiply(inputAmount.raw); // calculate slippage := (exactQuote - outputAmount) / exactQuote
 
   var slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote);
@@ -1121,13 +3201,13 @@ function tradeComparator(a, b) {
  * the input currency amount.
  */
 
-function wrappedAmount(currencyAmount, chainId) {
+function wrappedAmount$1(currencyAmount, chainId) {
   if (currencyAmount instanceof TokenAmount) return currencyAmount;
   if (currencyAmount.currency === NETWORK_CCY[chainId]) return new TokenAmount(WRAPPED_NETWORK_TOKENS[chainId], currencyAmount.raw);
     invariant(false, 'CURRENCY')  ;
 }
 
-function wrappedCurrency(currency, chainId) {
+function wrappedCurrency$1(currency, chainId) {
   if (currency instanceof Token) return currency;
   if (currency === NETWORK_CCY[chainId]) return WRAPPED_NETWORK_TOKENS[chainId];
     invariant(false, 'CURRENCY')  ;
@@ -1145,7 +3225,7 @@ var Trade = /*#__PURE__*/function () {
 
     if (tradeType === exports.TradeType.EXACT_INPUT) {
       !currencyEquals(amount.currency, route.input) ?  invariant(false, 'INPUT')  : void 0;
-      amounts[0] = wrappedAmount(amount, route.chainId);
+      amounts[0] = wrappedAmount$1(amount, route.chainId);
 
       for (var i = 0; i < route.path.length - 1; i++) {
         var pair = route.pairs[i];
@@ -1159,7 +3239,7 @@ var Trade = /*#__PURE__*/function () {
       }
     } else {
       !currencyEquals(amount.currency, route.output) ?  invariant(false, 'OUTPUT')  : void 0;
-      amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId);
+      amounts[amounts.length - 1] = wrappedAmount$1(amount, route.chainId);
 
       for (var _i = route.path.length - 1; _i > 0; _i--) {
         var _pair = route.pairs[_i - 1];
@@ -1179,7 +3259,7 @@ var Trade = /*#__PURE__*/function () {
     this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
     this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
     this.nextMidPrice = Price.fromRoute(new Route(nextPairs, route.input));
-    this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount);
+    this.priceImpact = computePriceImpact$1(route.midPrice, this.inputAmount, this.outputAmount);
   }
   /**
    * Constructs an exact in trade with the given amount in and route
@@ -1276,8 +3356,8 @@ var Trade = /*#__PURE__*/function () {
     !(originalAmountIn === currencyAmountIn || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
     var chainId = currencyAmountIn instanceof TokenAmount ? currencyAmountIn.token.chainId : currencyOut instanceof Token ? currencyOut.chainId : undefined;
     !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
-    var amountIn = wrappedAmount(currencyAmountIn, chainId);
-    var tokenOut = wrappedCurrency(currencyOut, chainId);
+    var amountIn = wrappedAmount$1(currencyAmountIn, chainId);
+    var tokenOut = wrappedCurrency$1(currencyOut, chainId);
 
     for (var i = 0; i < pairs.length; i++) {
       var pair = pairs[i]; // pair irrelevant
@@ -1358,8 +3438,8 @@ var Trade = /*#__PURE__*/function () {
     !(originalAmountOut === currencyAmountOut || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
     var chainId = currencyAmountOut instanceof TokenAmount ? currencyAmountOut.token.chainId : currencyIn instanceof Token ? currencyIn.chainId : undefined;
     !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
-    var amountOut = wrappedAmount(currencyAmountOut, chainId);
-    var tokenIn = wrappedCurrency(currencyIn, chainId);
+    var amountOut = wrappedAmount$1(currencyAmountOut, chainId);
+    var tokenIn = wrappedCurrency$1(currencyIn, chainId);
 
     for (var i = 0; i < pairs.length; i++) {
       var pair = pairs[i]; // pair irrelevant
@@ -1605,6 +3685,54 @@ var Fetcher = /*#__PURE__*/function () {
   return Fetcher;
 }();
 
+// import { Token } from './entities/token'
+
+/**
+ * Contains methods for constructing instances of pairs and tokens from on-chain data.
+ */
+
+var StablesFetcher = /*#__PURE__*/function () {
+  /**
+   * Cannot be constructed.
+   */
+  function StablesFetcher() {}
+  /**
+   * Fetches information about the stablePool and constructs a StablePool Object from the contract deployed.
+   * @param tokenA first token
+   * @param tokenB second token
+   * @param provider the provider to use to fetch the data
+   */
+
+
+  StablesFetcher.fetchStablePoolData = function fetchStablePoolData(chainId, provider) {
+    try {
+      var address = StablePool.getAddress(chainId);
+      console.log("address", address);
+      return Promise.resolve(new ethers.ethers.Contract(address, StableSwap, provider).getTokens()).then(function (tokenAddresses) {
+        console.log("TokenAddresses", tokenAddresses); // const tokenReserves = await new ethers.Contract(address, StableSwap, provider).getTokenBalances()
+
+        var indexes = [];
+
+        for (var i = 0; i < tokenAddresses.length; i++) {
+          indexes.push(i);
+        } // const tokenMap = Object.assign({},
+        //   ...(tokenAddresses as string[]).map((_, index) => ({
+        //     [index]: new TokenAmount(
+        //       STABLES_INDEX_MAP[chainId][index],
+        //       tokenReserves[index])
+        //   })))
+
+
+        return StablePool.mock();
+      });
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  };
+
+  return StablesFetcher;
+}();
+
 exports.JSBI = JSBI;
 exports.Currency = Currency;
 exports.CurrencyAmount = CurrencyAmount;
@@ -1621,13 +3749,22 @@ exports.Pair = Pair;
 exports.Percent = Percent;
 exports.Price = Price;
 exports.Route = Route;
+exports.RouteV3 = RouteV3;
 exports.Router = Router;
+exports.STABLECOINS = STABLECOINS;
+exports.STABLES_INDEX_MAP = STABLES_INDEX_MAP;
+exports.StablePool = StablePool;
+exports.StablesFetcher = StablesFetcher;
+exports.SwapStorage = SwapStorage;
 exports.Token = Token;
 exports.TokenAmount = TokenAmount;
 exports.Trade = Trade;
+exports.TradeV3 = TradeV3;
 exports.WETH = WETH;
 exports.WRAPPED_NETWORK_TOKENS = WRAPPED_NETWORK_TOKENS;
 exports.currencyEquals = currencyEquals;
 exports.inputOutputComparator = inputOutputComparator;
+exports.inputOutputComparatorV3 = inputOutputComparatorV3;
 exports.tradeComparator = tradeComparator;
+exports.tradeComparatorV3 = tradeComparatorV3;
 //# sourceMappingURL=sdk.cjs.development.js.map
