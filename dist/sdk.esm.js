@@ -2553,9 +2553,9 @@ var StablePool = /*#__PURE__*/function () {
     }
 
     return res;
-  } // maps the index to the token in the stablePool
-  ;
+  };
 
+  // maps the index to the token in the stablePool
   _proto.tokenFromIndex = function tokenFromIndex(index) {
     return this.tokens[index];
   };
@@ -2657,6 +2657,11 @@ var StablePool = /*#__PURE__*/function () {
   };
 
   _createClass(StablePool, [{
+    key: "setCurrentWithdrawFee",
+    set: function set(feeToSet) {
+      this.currentWithdrawFee = feeToSet;
+    }
+  }, {
     key: "chainId",
     get: function get() {
       return this.tokens[0].chainId;

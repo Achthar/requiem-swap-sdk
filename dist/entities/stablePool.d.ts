@@ -21,7 +21,7 @@ export declare class StablePool {
     readonly swapStorage: SwapStorage;
     readonly blockTimestamp: BigNumber;
     readonly lpTotalSupply: BigNumber;
-    readonly currentWithdrawFee: BigNumber;
+    currentWithdrawFee: BigNumber;
     static getAddress(chainId: number): string;
     constructor(tokens: {
         [index: number]: Token;
@@ -32,6 +32,7 @@ export declare class StablePool {
      * @param token to check
      */
     involvesToken(token: Token): boolean;
+    set setCurrentWithdrawFee(feeToSet: BigNumber);
     tokenFromIndex(index: number): Token;
     indexFromToken(token: Token): number;
     getBalances(): BigNumber[];

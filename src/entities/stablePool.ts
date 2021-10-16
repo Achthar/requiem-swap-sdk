@@ -37,7 +37,7 @@ export class StablePool {
   public readonly blockTimestamp: BigNumber
 
   public readonly lpTotalSupply: BigNumber
-  public readonly currentWithdrawFee: BigNumber
+  public currentWithdrawFee: BigNumber
 
   public static getAddress(chainId: number): string {
     return STABLE_POOL_ADDRESS[chainId]
@@ -91,6 +91,10 @@ export class StablePool {
 
     return res
   }
+
+public set setCurrentWithdrawFee(feeToSet:BigNumber){
+  this.currentWithdrawFee = feeToSet
+}
 
   // maps the index to the token in the stablePool
   public tokenFromIndex(index: number): Token {
