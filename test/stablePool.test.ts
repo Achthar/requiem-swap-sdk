@@ -15,14 +15,14 @@ import { BigNumber } from 'ethers'
 // import invariant from 'tiny-invariant'
 import IERC20 from '../src/abis/IERC20.json'
 import StableSwap from '../src/abis/RequiemStableSwap.json'
-import { STABLES_INDEX_MAP } from '../src/entities/stables'
 import * as dotenv from 'dotenv';
 import { TokenAmount } from '../src//entities'
+import { STABLES_INDEX_MAP } from '../src/entities/stables'
 
-describe('StablePool', () => {
+describe('StablePool', async () => {
   jest.setTimeout(30000);
 
-  describe('fetcher', () => {
+  describe('fetcher', async () => {
     it('constructor test', async () => {
       dotenv.config();
       console.log('start fetchings', dotenv)

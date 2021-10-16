@@ -16,10 +16,10 @@ export declare class StablePool {
     readonly tokens: {
         [index: number]: Token;
     };
-    readonly tokenBalances: BigNumber[];
-    readonly _A: BigNumber;
-    readonly swapStorage: SwapStorage;
-    readonly blockTimestamp: BigNumber;
+    tokenBalances: BigNumber[];
+    _A: BigNumber;
+    swapStorage: SwapStorage;
+    blockTimestamp: BigNumber;
     readonly lpTotalSupply: BigNumber;
     currentWithdrawFee: BigNumber;
     static getAddress(chainId: number): string;
@@ -51,4 +51,7 @@ export declare class StablePool {
         [returnVal: string]: BigNumber;
     };
     getLiquidityMinted(amounts: BigNumber[], deposit: boolean): BigNumber;
+    setSwapStorage(swapStorage: SwapStorage): void;
+    setTokenBalances(tokenBalances: BigNumber[]): void;
+    setBlockTimestamp(blockTimestamp: BigNumber): void;
 }

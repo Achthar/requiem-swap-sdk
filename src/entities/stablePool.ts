@@ -30,11 +30,11 @@ export class StablePool {
   public readonly liquidityToken: Token
   // the index-token map 
   public readonly tokens: { [index: number]: Token }
-  public readonly tokenBalances: BigNumber[]
-  public readonly _A: BigNumber
-  public readonly swapStorage: SwapStorage
+  public tokenBalances: BigNumber[]
+  public _A: BigNumber
+  public swapStorage: SwapStorage
   // public readonly rates: BigNumber[]
-  public readonly blockTimestamp: BigNumber
+  public blockTimestamp: BigNumber
 
   public readonly lpTotalSupply: BigNumber
   public currentWithdrawFee: BigNumber
@@ -92,9 +92,9 @@ export class StablePool {
     return res
   }
 
-public set setCurrentWithdrawFee(feeToSet:BigNumber){
-  this.currentWithdrawFee = feeToSet
-}
+  public set setCurrentWithdrawFee(feeToSet: BigNumber) {
+    this.currentWithdrawFee = feeToSet
+  }
 
   // maps the index to the token in the stablePool
   public tokenFromIndex(index: number): Token {
@@ -117,7 +117,7 @@ public set setCurrentWithdrawFee(feeToSet:BigNumber){
 
   public generatePairs(pairs: Pair[]) {
     let relevantStables: Token[] = []
-    let generatedPairs:Pair[]=[]
+    let generatedPairs: Pair[] = []
     pairs.forEach(pair => {
       if (Object.values(this.tokens).includes(pair.token0)) {
         relevantStables.push(pair.token0)
@@ -226,6 +226,19 @@ public set setCurrentWithdrawFee(feeToSet:BigNumber){
       this.lpTotalSupply
     )
   }
+
+  public setSwapStorage(swapStorage: SwapStorage) {
+    this.swapStorage = swapStorage
+  }
+
+  public setTokenBalances(tokenBalances: BigNumber[]) {
+    this.tokenBalances = tokenBalances
+  }
+
+  public setBlockTimestamp(blockTimestamp: BigNumber) {
+    this.blockTimestamp = blockTimestamp
+  }
+
   /*
     public getOutputAmount(inputAmount: TokenAmount): [TokenAmount, StablePool] {
       invariant(this.involvesToken(inputAmount.token), 'TOKEN')
