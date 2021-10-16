@@ -59,6 +59,9 @@ var INIT_CODE_HASH = {
 var STABLE_POOL_ADDRESS = {
   43113: '0x9067e2C2bf8531283AB97C34EaA74599E0004842'
 };
+var STABLE_POOL_LP_ADDRESS = {
+  43113: '0xDf65aC8079A71f5174A35dE3D29e5458d03D5787'
+};
 var MINIMUM_LIQUIDITY = /*#__PURE__*/JSBI.BigInt(1000); // exports for internal consumption
 
 var ZERO = /*#__PURE__*/JSBI.BigInt(0);
@@ -3753,6 +3756,8 @@ exports.RouteV3 = RouteV3;
 exports.Router = Router;
 exports.STABLECOINS = STABLECOINS;
 exports.STABLES_INDEX_MAP = STABLES_INDEX_MAP;
+exports.STABLE_POOL_ADDRESS = STABLE_POOL_ADDRESS;
+exports.STABLE_POOL_LP_ADDRESS = STABLE_POOL_LP_ADDRESS;
 exports.StablePool = StablePool;
 exports.StablesFetcher = StablesFetcher;
 exports.SwapStorage = SwapStorage;

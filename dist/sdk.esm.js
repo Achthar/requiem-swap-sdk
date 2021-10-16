@@ -59,6 +59,9 @@ var INIT_CODE_HASH = {
 var STABLE_POOL_ADDRESS = {
   43113: '0x9067e2C2bf8531283AB97C34EaA74599E0004842'
 };
+var STABLE_POOL_LP_ADDRESS = {
+  43113: '0xDf65aC8079A71f5174A35dE3D29e5458d03D5787'
+};
 var MINIMUM_LIQUIDITY = /*#__PURE__*/JSBI.BigInt(1000); // exports for internal consumption
 
 var ZERO = /*#__PURE__*/JSBI.BigInt(0);
@@ -3733,5 +3736,5 @@ var StablesFetcher = /*#__PURE__*/function () {
   return StablesFetcher;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, Price, Rounding, Route, RouteV3, Router, STABLECOINS, STABLES_INDEX_MAP, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, WETH, WRAPPED_NETWORK_TOKENS, currencyEquals, inputOutputComparator, inputOutputComparatorV3, tradeComparator, tradeComparatorV3 };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, Price, Rounding, Route, RouteV3, Router, STABLECOINS, STABLES_INDEX_MAP, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, WETH, WRAPPED_NETWORK_TOKENS, currencyEquals, inputOutputComparator, inputOutputComparatorV3, tradeComparator, tradeComparatorV3 };
 //# sourceMappingURL=sdk.esm.js.map
