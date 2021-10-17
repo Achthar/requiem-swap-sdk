@@ -1266,6 +1266,19 @@ var SwapStorage = /*#__PURE__*/function () {
   return SwapStorage;
 }();
 
+var STABLECOINS = {
+  43113: [/*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0x0bE04001Ad4725c697b6c6bD8Bc23d9848992CA0', 6, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0x66960440491bCc68BD30B2b0B08fF9e7aB3F9078', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xCCf7ed44c5A0f3Cb5c9a9B9f765F8D836fb93BA1', 18, 'TUSD', 'True USD')],
+  0: [/*#__PURE__*/new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin')]
+};
+var STABLES_INDEX_MAP = {
+  43113: {
+    0: STABLECOINS[43113][0],
+    1: STABLECOINS[43113][1],
+    2: STABLECOINS[43113][2],
+    3: STABLECOINS[43113][3]
+  }
+};
+
 var StableSwap = [
 	{
 		anonymous: false,
@@ -2537,7 +2550,7 @@ var StablePool = /*#__PURE__*/function () {
   StablePool.mock = function mock() {
     var dummy = BigNumber$1.from(0);
     return new StablePool({
-      0: new Token(-1, '', 1)
+      0: STABLECOINS[0][0]
     }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy);
   }
   /**
@@ -3107,18 +3120,6 @@ var TradeV3 = /*#__PURE__*/function () {
 
   return TradeV3;
 }();
-
-var STABLECOINS = {
-  43113: [/*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0x0bE04001Ad4725c697b6c6bD8Bc23d9848992CA0', 6, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0x66960440491bCc68BD30B2b0B08fF9e7aB3F9078', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xCCf7ed44c5A0f3Cb5c9a9B9f765F8D836fb93BA1', 18, 'TUSD', 'True USD')]
-};
-var STABLES_INDEX_MAP = {
-  43113: {
-    0: STABLECOINS[43113][0],
-    1: STABLECOINS[43113][1],
-    2: STABLECOINS[43113][2],
-    3: STABLECOINS[43113][3]
-  }
-};
 
 var Route = /*#__PURE__*/function () {
   function Route(pairs, input, output) {

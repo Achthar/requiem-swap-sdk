@@ -10,10 +10,11 @@ import {
 import { Contract } from '@ethersproject/contracts'
 import { ethers } from 'ethers'
 import { SwapStorage } from './swapStorage'
+import { STABLECOINS } from './stables'
 import {
   BigintIsh,
   ChainId,
-  STABLE_POOL_ADDRESS
+  STABLE_POOL_ADDRESS,
 } from '../constants'
 import StableSwap from '../abis/RequiemStableSwap.json'
 import { Token } from './token'
@@ -76,7 +77,7 @@ export class StablePool {
 
   public static mock() {
     const dummy = BigNumber.from(0)
-    return new StablePool({ 0: new Token(-1, '', 1) }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy)
+    return new StablePool({ 0: STABLECOINS[0][0] }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy)
   }
 
   /**
