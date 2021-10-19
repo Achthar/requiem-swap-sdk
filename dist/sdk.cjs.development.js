@@ -3742,7 +3742,7 @@ var TradeV3 = /*#__PURE__*/function () {
 }();
 
 var STABLECOINS = {
-  43113: [/*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0x0bE04001Ad4725c697b6c6bD8Bc23d9848992CA0', 6, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0x66960440491bCc68BD30B2b0B08fF9e7aB3F9078', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xCCf7ed44c5A0f3Cb5c9a9B9f765F8D836fb93BA1', 18, 'TUSD', 'True USD')],
+  43113: [/*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xca9ec7085ed564154a9233e1e7d8fef460438eea', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xffb3ed4960cac85372e6838fbc9ce47bcf2d073e', 6, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xaea51e4fee50a980928b4353e852797b54deacd8', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xccf7ed44c5a0f3cb5c9a9b9f765f8d836fb93ba1', 18, 'TUSD', 'True USD')],
   0: [/*#__PURE__*/new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin')]
 };
 var STABLES_INDEX_MAP = {
