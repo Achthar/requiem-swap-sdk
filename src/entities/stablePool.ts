@@ -7,18 +7,18 @@ import {
   _calculateRemoveLiquidityOneToken,
   _calculateTokenAmount
 } from './stableCalc'
-// import { Contract } from '@ethersproject/contracts'
+import { Contract } from '@ethersproject/contracts'
 import { ethers } from 'ethers'
 import { SwapStorage } from './swapStorage'
 import {
-  // BigintIsh,
+  BigintIsh,
   ChainId,
   STABLE_POOL_ADDRESS,
 } from '../constants'
-// import StableSwap from '../abis/RequiemStableSwap.json'
+import StableSwap from '../abis/RequiemStableSwap.json'
 import { Token } from './token'
-import { TokenAmount } from '../entities'
-import { Pair } from '..'
+import { TokenAmount } from '../entities/fractions/tokenAmount'
+import { Pair } from './pair'
 /**
   * A class that contains relevant stablePool information
   * It is mainly designed to save the map between the indices
@@ -140,16 +140,16 @@ export class StablePool {
   // calculates the output amount usingn the input for the swableSwap
   // requires the view on a contract as manual calculation on the frontend would
   // be inefficient
-  // public async calculateSwapViaPing(
-  //   inIndex: number,
-  //   outIndex: number,
-  //   inAmount: BigintIsh,
-  //   provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh> {
+  public async calculateSwapViaPing(
+    inIndex: number,
+    outIndex: number,
+    inAmount: BigintIsh,
+    provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh> {
 
-  //   const outAmount: BigintIsh = await new Contract(this.liquidityToken.address, new ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount)
+    const outAmount: BigintIsh = await new Contract(this.liquidityToken.address, new ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount)
 
-  //   return outAmount
-  // }
+    return outAmount
+  }
 
 
   // calculates the swap output amount without

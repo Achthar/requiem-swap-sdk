@@ -13,11 +13,11 @@ var toFormat = _interopDefault(require('toformat'));
 var bignumber = require('@ethersproject/bignumber');
 var _Decimal = _interopDefault(require('decimal.js-light'));
 var solidity = require('@ethersproject/solidity');
-var ethers = require('ethers');
 var contracts = require('@ethersproject/contracts');
 var networks = require('@ethersproject/networks');
 var providers = require('@ethersproject/providers');
 var IPancakePair = _interopDefault(require('@pancakeswap-libs/pancake-swap-core/build/IPancakePair.json'));
+var ethers = require('ethers');
 
 var _SOLIDITY_TYPE_MAXIMA;
 
@@ -997,6 +997,624 @@ var Pair = /*#__PURE__*/function () {
   return Pair;
 }();
 
+var Route = /*#__PURE__*/function () {
+  function Route(pairs, input, output) {
+    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !pairs.every(function (pair) {
+      return pair.chainId === pairs[0].chainId;
+    }) ?  invariant(false, 'CHAIN_IDS')  : void 0;
+    !(input instanceof Token && pairs[0].involvesToken(input) || input === NETWORK_CCY[pairs[0].chainId] && pairs[0].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'INPUT')  : void 0;
+    !(typeof output === 'undefined' || output instanceof Token && pairs[pairs.length - 1].involvesToken(output) || output === NETWORK_CCY[pairs[0].chainId] && pairs[pairs.length - 1].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'OUTPUT')  : void 0;
+    var path = [input instanceof Token ? input : WRAPPED_NETWORK_TOKENS[pairs[0].chainId]];
+
+    for (var _iterator = _createForOfIteratorHelperLoose(pairs.entries()), _step; !(_step = _iterator()).done;) {
+      var _step$value = _step.value,
+          i = _step$value[0],
+          pair = _step$value[1];
+      var currentInput = path[i];
+      !(currentInput.equals(pair.token0) || currentInput.equals(pair.token1)) ?  invariant(false, 'PATH')  : void 0;
+
+      var _output = currentInput.equals(pair.token0) ? pair.token1 : pair.token0;
+
+      path.push(_output);
+    }
+
+    this.pairs = pairs;
+    this.path = path;
+    this.midPrice = Price.fromRoute(this);
+    this.input = input;
+    this.output = output !== null && output !== void 0 ? output : path[path.length - 1];
+  }
+
+  _createClass(Route, [{
+    key: "chainId",
+    get: function get() {
+      return this.pairs[0].chainId;
+    }
+  }]);
+
+  return Route;
+}();
+
+var _100_PERCENT = /*#__PURE__*/new Fraction(_100);
+
+var Percent = /*#__PURE__*/function (_Fraction) {
+  _inheritsLoose(Percent, _Fraction);
+
+  function Percent() {
+    return _Fraction.apply(this, arguments) || this;
+  }
+
+  var _proto = Percent.prototype;
+
+  _proto.toSignificant = function toSignificant(significantDigits, format, rounding) {
+    if (significantDigits === void 0) {
+      significantDigits = 5;
+    }
+
+    return this.multiply(_100_PERCENT).toSignificant(significantDigits, format, rounding);
+  };
+
+  _proto.toFixed = function toFixed(decimalPlaces, format, rounding) {
+    if (decimalPlaces === void 0) {
+      decimalPlaces = 2;
+    }
+
+    return this.multiply(_100_PERCENT).toFixed(decimalPlaces, format, rounding);
+  };
+
+  return Percent;
+}(Fraction);
+
+/**
+ * Returns the percent difference between the mid price and the execution price, i.e. price impact.
+ * @param midPrice mid price before the trade
+ * @param inputAmount the input amount of the trade
+ * @param outputAmount the output amount of the trade
+ */
+
+function computePriceImpact(midPrice, inputAmount, outputAmount) {
+  var exactQuote = midPrice.raw.multiply(inputAmount.raw); // calculate slippage := (exactQuote - outputAmount) / exactQuote
+
+  var slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote);
+  return new Percent(slippage.numerator, slippage.denominator);
+} // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
+// in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
+
+
+function inputOutputComparator(a, b) {
+  // must have same input and output token for comparison
+  !currencyEquals(a.inputAmount.currency, b.inputAmount.currency) ?  invariant(false, 'INPUT_CURRENCY')  : void 0;
+  !currencyEquals(a.outputAmount.currency, b.outputAmount.currency) ?  invariant(false, 'OUTPUT_CURRENCY')  : void 0;
+
+  if (a.outputAmount.equalTo(b.outputAmount)) {
+    if (a.inputAmount.equalTo(b.inputAmount)) {
+      return 0;
+    } // trade A requires less input than trade B, so A should come first
+
+
+    if (a.inputAmount.lessThan(b.inputAmount)) {
+      return -1;
+    } else {
+      return 1;
+    }
+  } else {
+    // tradeA has less output than trade B, so should come second
+    if (a.outputAmount.lessThan(b.outputAmount)) {
+      return 1;
+    } else {
+      return -1;
+    }
+  }
+} // extension of the input output comparator that also considers other dimensions of the trade in ranking them
+
+function tradeComparator(a, b) {
+  var ioComp = inputOutputComparator(a, b);
+
+  if (ioComp !== 0) {
+    return ioComp;
+  } // consider lowest slippage next, since these are less likely to fail
+
+
+  if (a.priceImpact.lessThan(b.priceImpact)) {
+    return -1;
+  } else if (a.priceImpact.greaterThan(b.priceImpact)) {
+    return 1;
+  } // finally consider the number of hops since each hop costs gas
+
+
+  return a.route.path.length - b.route.path.length;
+}
+/**
+ * Given a currency amount and a chain ID, returns the equivalent representation as the token amount.
+ * In other words, if the currency is ETHER, returns the WETH token amount for the given chain. Otherwise, returns
+ * the input currency amount.
+ */
+
+function wrappedAmount(currencyAmount, chainId) {
+  if (currencyAmount instanceof TokenAmount) return currencyAmount;
+  if (currencyAmount.currency === NETWORK_CCY[chainId]) return new TokenAmount(WRAPPED_NETWORK_TOKENS[chainId], currencyAmount.raw);
+    invariant(false, 'CURRENCY')  ;
+}
+
+function wrappedCurrency(currency, chainId) {
+  if (currency instanceof Token) return currency;
+  if (currency === NETWORK_CCY[chainId]) return WRAPPED_NETWORK_TOKENS[chainId];
+    invariant(false, 'CURRENCY')  ;
+}
+/**
+ * Represents a trade executed against a list of pairs.
+ * Does not account for slippage, i.e. trades that front run this trade and move the price.
+ */
+
+
+var Trade = /*#__PURE__*/function () {
+  function Trade(route, amount, tradeType) {
+    var amounts = new Array(route.path.length);
+    var nextPairs = new Array(route.pairs.length);
+
+    if (tradeType === exports.TradeType.EXACT_INPUT) {
+      !currencyEquals(amount.currency, route.input) ?  invariant(false, 'INPUT')  : void 0;
+      amounts[0] = wrappedAmount(amount, route.chainId);
+
+      for (var i = 0; i < route.path.length - 1; i++) {
+        var pair = route.pairs[i];
+
+        var _pair$getOutputAmount = pair.getOutputAmount(amounts[i]),
+            outputAmount = _pair$getOutputAmount[0],
+            nextPair = _pair$getOutputAmount[1];
+
+        amounts[i + 1] = outputAmount;
+        nextPairs[i] = nextPair;
+      }
+    } else {
+      !currencyEquals(amount.currency, route.output) ?  invariant(false, 'OUTPUT')  : void 0;
+      amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId);
+
+      for (var _i = route.path.length - 1; _i > 0; _i--) {
+        var _pair = route.pairs[_i - 1];
+
+        var _pair$getInputAmount = _pair.getInputAmount(amounts[_i]),
+            inputAmount = _pair$getInputAmount[0],
+            _nextPair = _pair$getInputAmount[1];
+
+        amounts[_i - 1] = inputAmount;
+        nextPairs[_i - 1] = _nextPair;
+      }
+    }
+
+    this.route = route;
+    this.tradeType = tradeType;
+    this.inputAmount = tradeType === exports.TradeType.EXACT_INPUT ? amount : route.input === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw) : amounts[0];
+    this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
+    this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
+    this.nextMidPrice = Price.fromRoute(new Route(nextPairs, route.input));
+    this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount);
+  }
+  /**
+   * Constructs an exact in trade with the given amount in and route
+   * @param route route of the exact in trade
+   * @param amountIn the amount being passed in
+   */
+
+
+  Trade.exactIn = function exactIn(route, amountIn) {
+    return new Trade(route, amountIn, exports.TradeType.EXACT_INPUT);
+  }
+  /**
+   * Constructs an exact out trade with the given amount out and route
+   * @param route route of the exact out trade
+   * @param amountOut the amount returned by the trade
+   */
+  ;
+
+  Trade.exactOut = function exactOut(route, amountOut) {
+    return new Trade(route, amountOut, exports.TradeType.EXACT_OUTPUT);
+  }
+  /**
+   * Get the minimum amount that must be received from this trade for the given slippage tolerance
+   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
+   */
+  ;
+
+  var _proto = Trade.prototype;
+
+  _proto.minimumAmountOut = function minimumAmountOut(slippageTolerance) {
+    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
+
+    if (this.tradeType === exports.TradeType.EXACT_OUTPUT) {
+      return this.outputAmount;
+    } else {
+      var slippageAdjustedAmountOut = new Fraction(ONE).add(slippageTolerance).invert().multiply(this.outputAmount.raw).quotient;
+      return this.outputAmount instanceof TokenAmount ? new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountOut);
+    }
+  }
+  /**
+   * Get the maximum amount in that can be spent via this trade for the given slippage tolerance
+   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
+   */
+  ;
+
+  _proto.maximumAmountIn = function maximumAmountIn(slippageTolerance) {
+    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
+
+    if (this.tradeType === exports.TradeType.EXACT_INPUT) {
+      return this.inputAmount;
+    } else {
+      var slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient;
+      return this.inputAmount instanceof TokenAmount ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn);
+    }
+  }
+  /**
+   * Given a list of pairs, and a fixed amount in, returns the top `maxNumResults` trades that go from an input token
+   * amount to an output token, making at most `maxHops` hops.
+   * Note this does not consider aggregation, as routes are linear. It's possible a better route exists by splitting
+   * the amount in among multiple routes.
+   * @param pairs the pairs to consider in finding the best trade
+   * @param currencyAmountIn exact amount of input currency to spend
+   * @param currencyOut the desired currency out
+   * @param maxNumResults maximum number of results to return
+   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
+   * @param currentPairs used in recursion; the current list of pairs
+   * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
+   * @param bestTrades used in recursion; the current list of best trades
+   */
+  ;
+
+  Trade.bestTradeExactIn = function bestTradeExactIn(pairs, currencyAmountIn, currencyOut, _temp, // used in recursion.
+  currentPairs, originalAmountIn, bestTrades) {
+    var _ref = _temp === void 0 ? {} : _temp,
+        _ref$maxNumResults = _ref.maxNumResults,
+        maxNumResults = _ref$maxNumResults === void 0 ? 3 : _ref$maxNumResults,
+        _ref$maxHops = _ref.maxHops,
+        maxHops = _ref$maxHops === void 0 ? 3 : _ref$maxHops;
+
+    if (currentPairs === void 0) {
+      currentPairs = [];
+    }
+
+    if (originalAmountIn === void 0) {
+      originalAmountIn = currencyAmountIn;
+    }
+
+    if (bestTrades === void 0) {
+      bestTrades = [];
+    }
+
+    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
+    !(originalAmountIn === currencyAmountIn || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
+    var chainId = currencyAmountIn instanceof TokenAmount ? currencyAmountIn.token.chainId : currencyOut instanceof Token ? currencyOut.chainId : undefined;
+    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
+    var amountIn = wrappedAmount(currencyAmountIn, chainId);
+    var tokenOut = wrappedCurrency(currencyOut, chainId);
+
+    for (var i = 0; i < pairs.length; i++) {
+      var pair = pairs[i]; // pair irrelevant
+
+      if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue;
+      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
+      var amountOut = void 0;
+
+      try {
+        ;
+
+        var _pair$getOutputAmount2 = pair.getOutputAmount(amountIn);
+
+        amountOut = _pair$getOutputAmount2[0];
+      } catch (error) {
+        // input too low
+        if (error.isInsufficientInputAmountError) {
+          continue;
+        }
+
+        throw error;
+      } // we have arrived at the output token, so this is the final trade of one of the paths
+
+
+      if (amountOut.token.equals(tokenOut)) {
+        sortedInsert(bestTrades, new Trade(new Route([].concat(currentPairs, [pair]), originalAmountIn.currency, currencyOut), originalAmountIn, exports.TradeType.EXACT_INPUT), maxNumResults, tradeComparator);
+      } else if (maxHops > 1 && pairs.length > 1) {
+        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
+
+        Trade.bestTradeExactIn(pairsExcludingThisPair, amountOut, currencyOut, {
+          maxNumResults: maxNumResults,
+          maxHops: maxHops - 1
+        }, [].concat(currentPairs, [pair]), originalAmountIn, bestTrades);
+      }
+    }
+
+    return bestTrades;
+  }
+  /**
+   * similar to the above method but instead targets a fixed output amount
+   * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
+   * to an output token amount, making at most `maxHops` hops
+   * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
+   * the amount in among multiple routes.
+   * @param pairs the pairs to consider in finding the best trade
+   * @param currencyIn the currency to spend
+   * @param currencyAmountOut the exact amount of currency out
+   * @param maxNumResults maximum number of results to return
+   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
+   * @param currentPairs used in recursion; the current list of pairs
+   * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
+   * @param bestTrades used in recursion; the current list of best trades
+   */
+  ;
+
+  Trade.bestTradeExactOut = function bestTradeExactOut(pairs, currencyIn, currencyAmountOut, _temp2, // used in recursion.
+  currentPairs, originalAmountOut, bestTrades) {
+    var _ref2 = _temp2 === void 0 ? {} : _temp2,
+        _ref2$maxNumResults = _ref2.maxNumResults,
+        maxNumResults = _ref2$maxNumResults === void 0 ? 3 : _ref2$maxNumResults,
+        _ref2$maxHops = _ref2.maxHops,
+        maxHops = _ref2$maxHops === void 0 ? 3 : _ref2$maxHops;
+
+    if (currentPairs === void 0) {
+      currentPairs = [];
+    }
+
+    if (originalAmountOut === void 0) {
+      originalAmountOut = currencyAmountOut;
+    }
+
+    if (bestTrades === void 0) {
+      bestTrades = [];
+    }
+
+    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
+    !(originalAmountOut === currencyAmountOut || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
+    var chainId = currencyAmountOut instanceof TokenAmount ? currencyAmountOut.token.chainId : currencyIn instanceof Token ? currencyIn.chainId : undefined;
+    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
+    var amountOut = wrappedAmount(currencyAmountOut, chainId);
+    var tokenIn = wrappedCurrency(currencyIn, chainId);
+
+    for (var i = 0; i < pairs.length; i++) {
+      var pair = pairs[i]; // pair irrelevant
+
+      if (!pair.token0.equals(amountOut.token) && !pair.token1.equals(amountOut.token)) continue;
+      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
+      var amountIn = void 0;
+
+      try {
+        ;
+
+        var _pair$getInputAmount2 = pair.getInputAmount(amountOut);
+
+        amountIn = _pair$getInputAmount2[0];
+      } catch (error) {
+        // not enough liquidity in this pair
+        if (error.isInsufficientReservesError) {
+          continue;
+        }
+
+        throw error;
+      } // we have arrived at the input token, so this is the first trade of one of the paths
+
+
+      if (amountIn.token.equals(tokenIn)) {
+        sortedInsert(bestTrades, new Trade(new Route([pair].concat(currentPairs), currencyIn, originalAmountOut.currency), originalAmountOut, exports.TradeType.EXACT_OUTPUT), maxNumResults, tradeComparator);
+      } else if (maxHops > 1 && pairs.length > 1) {
+        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
+
+        Trade.bestTradeExactOut(pairsExcludingThisPair, currencyIn, amountIn, {
+          maxNumResults: maxNumResults,
+          maxHops: maxHops - 1
+        }, [pair].concat(currentPairs), originalAmountOut, bestTrades);
+      }
+    }
+
+    return bestTrades;
+  };
+
+  return Trade;
+}();
+
+function toHex(currencyAmount) {
+  return "0x" + currencyAmount.raw.toString(16);
+}
+
+var ZERO_HEX = '0x0';
+/**
+ * Represents the Pancake Router, and has static methods for helping execute trades.
+ */
+
+var Router = /*#__PURE__*/function () {
+  /**
+   * Cannot be constructed.
+   */
+  function Router() {}
+  /**
+   * Produces the on-chain method name to call and the hex encoded parameters to pass as arguments for a given trade.
+   * @param trade to produce call parameters for
+   * @param options options for the call parameters
+   */
+
+
+  Router.swapCallParameters = function swapCallParameters(trade, options) {
+    var etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId];
+    var etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]; // the router does not support both ether in and out
+
+    !!(etherIn && etherOut) ?  invariant(false, 'ETHER_IN_OUT')  : void 0;
+    !(!('ttl' in options) || options.ttl > 0) ?  invariant(false, 'TTL')  : void 0;
+    var to = validateAndParseAddress(options.recipient);
+    var amountIn = toHex(trade.maximumAmountIn(options.allowedSlippage));
+    var amountOut = toHex(trade.minimumAmountOut(options.allowedSlippage));
+    var path = trade.route.path.map(function (token) {
+      return token.address;
+    });
+    var deadline = 'ttl' in options ? "0x" + (Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16) : "0x" + options.deadline.toString(16);
+    var useFeeOnTransfer = Boolean(options.feeOnTransfer);
+    var methodName;
+    var args;
+    var value;
+
+    switch (trade.tradeType) {
+      case exports.TradeType.EXACT_INPUT:
+        if (etherIn) {
+          methodName = useFeeOnTransfer ? 'swapExactETHForTokensSupportingFeeOnTransferTokens' : 'swapExactETHForTokens'; // (uint amountOutMin, address[] calldata path, address to, uint deadline)
+
+          args = [amountOut, path, to, deadline];
+          value = amountIn;
+        } else if (etherOut) {
+          methodName = useFeeOnTransfer ? 'swapExactTokensForETHSupportingFeeOnTransferTokens' : 'swapExactTokensForETH'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+
+          args = [amountIn, amountOut, path, to, deadline];
+          value = ZERO_HEX;
+        } else {
+          methodName = useFeeOnTransfer ? 'swapExactTokensForTokensSupportingFeeOnTransferTokens' : 'swapExactTokensForTokens'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+
+          args = [amountIn, amountOut, path, to, deadline];
+          value = ZERO_HEX;
+        }
+
+        break;
+
+      case exports.TradeType.EXACT_OUTPUT:
+        !!useFeeOnTransfer ?  invariant(false, 'EXACT_OUT_FOT')  : void 0;
+
+        if (etherIn) {
+          methodName = 'swapETHForExactTokens'; // (uint amountOut, address[] calldata path, address to, uint deadline)
+
+          args = [amountOut, path, to, deadline];
+          value = amountIn;
+        } else if (etherOut) {
+          methodName = 'swapTokensForExactETH'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+
+          args = [amountOut, amountIn, path, to, deadline];
+          value = ZERO_HEX;
+        } else {
+          methodName = 'swapTokensForExactTokens'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+
+          args = [amountOut, amountIn, path, to, deadline];
+          value = ZERO_HEX;
+        }
+
+        break;
+    }
+
+    return {
+      methodName: methodName,
+      args: args,
+      value: value
+    };
+  };
+
+  return Router;
+}();
+
+var ERC20 = [
+	{
+		constant: true,
+		inputs: [
+		],
+		name: "decimals",
+		outputs: [
+			{
+				name: "",
+				type: "uint8"
+			}
+		],
+		payable: false,
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		constant: true,
+		inputs: [
+			{
+				name: "",
+				type: "address"
+			}
+		],
+		name: "balanceOf",
+		outputs: [
+			{
+				name: "",
+				type: "uint256"
+			}
+		],
+		payable: false,
+		stateMutability: "view",
+		type: "function"
+	}
+];
+
+var _TOKEN_DECIMALS_CACHE;
+var TOKEN_DECIMALS_CACHE = (_TOKEN_DECIMALS_CACHE = {}, _TOKEN_DECIMALS_CACHE[exports.ChainId.BSC_MAINNET] = {
+  '0xE0B7927c4aF23765Cb51314A0E0521A9645F0E2A': 9 // DGD
+
+}, _TOKEN_DECIMALS_CACHE);
+/**
+ * Contains methods for constructing instances of pairs and tokens from on-chain data.
+ */
+
+var Fetcher = /*#__PURE__*/function () {
+  /**
+   * Cannot be constructed.
+   */
+  function Fetcher() {}
+  /**
+   * Fetch information for a given token on the given chain, using the given ethers provider.
+   * @param chainId chain of the token
+   * @param address address of the token on the chain
+   * @param provider provider used to fetch the token
+   * @param symbol optional symbol of the token
+   * @param name optional name of the token
+   */
+
+
+  Fetcher.fetchTokenData = function fetchTokenData(chainId, address, provider, symbol, name) {
+    try {
+      var _TOKEN_DECIMALS_CACHE2, _TOKEN_DECIMALS_CACHE3;
+
+      var _temp3 = function _temp3(parsedDecimals) {
+        return new Token(chainId, address, parsedDecimals, symbol, name);
+      };
+
+      if (provider === undefined) provider = providers.getDefaultProvider(networks.getNetwork(chainId));
+
+      var _temp4 = typeof ((_TOKEN_DECIMALS_CACHE2 = TOKEN_DECIMALS_CACHE) === null || _TOKEN_DECIMALS_CACHE2 === void 0 ? void 0 : (_TOKEN_DECIMALS_CACHE3 = _TOKEN_DECIMALS_CACHE2[chainId]) === null || _TOKEN_DECIMALS_CACHE3 === void 0 ? void 0 : _TOKEN_DECIMALS_CACHE3[address]) === 'number';
+
+      return Promise.resolve(_temp4 ? _temp3(TOKEN_DECIMALS_CACHE[chainId][address]) : Promise.resolve(new contracts.Contract(address, ERC20, provider).decimals().then(function (decimals) {
+        var _TOKEN_DECIMALS_CACHE4, _extends2, _extends3;
+
+        TOKEN_DECIMALS_CACHE = _extends({}, TOKEN_DECIMALS_CACHE, (_extends3 = {}, _extends3[chainId] = _extends({}, (_TOKEN_DECIMALS_CACHE4 = TOKEN_DECIMALS_CACHE) === null || _TOKEN_DECIMALS_CACHE4 === void 0 ? void 0 : _TOKEN_DECIMALS_CACHE4[chainId], (_extends2 = {}, _extends2[address] = decimals, _extends2)), _extends3));
+        return decimals;
+      })).then(_temp3));
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  }
+  /**
+   * Fetches information about a pair and constructs a pair from the given two tokens.
+   * @param tokenA first token
+   * @param tokenB second token
+   * @param provider the provider to use to fetch the data
+   */
+  ;
+
+  Fetcher.fetchPairData = function fetchPairData(tokenA, tokenB, provider) {
+    try {
+      if (provider === undefined) provider = providers.getDefaultProvider(networks.getNetwork(tokenA.chainId));
+      !(tokenA.chainId === tokenB.chainId) ? "development" !== "production" ? invariant(false, 'CHAIN_ID') : invariant(false) : void 0;
+      var address = Pair.getAddress(tokenA, tokenB);
+      return Promise.resolve(new contracts.Contract(address, IPancakePair.abi, provider).getReserves()).then(function (_ref) {
+        var reserves0 = _ref[0],
+            reserves1 = _ref[1];
+        var balances = tokenA.sortsBefore(tokenB) ? [reserves0, reserves1] : [reserves1, reserves0];
+        return new Pair(new TokenAmount(tokenA, balances[0]), new TokenAmount(tokenB, balances[1]));
+      });
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  };
+
+  return Fetcher;
+}();
+
 var MAX_ITERATION = 256;
 var A_PRECISION = /*#__PURE__*/ethers.BigNumber.from(100);
 var FEE_DENOMINATOR = /*#__PURE__*/ethers.BigNumber.from(1e10);
@@ -1264,1208 +1882,6 @@ var SwapStorage = /*#__PURE__*/function () {
   };
 
   return SwapStorage;
-}();
-
-/**
-  * A class that contains relevant stablePool information
-  * It is mainly designed to save the map between the indices
-  * and actual tokens in the pool and access the swap with addresses
-  * instead of the index
-  */
-
-var StablePool = /*#__PURE__*/function () {
-  function StablePool(tokens, tokenBalances, _A, swapStorage, blockTimestamp, lpTotalSupply, currentWithdrawFee) {
-    this.currentWithdrawFee = currentWithdrawFee;
-    this.lpTotalSupply = lpTotalSupply;
-    this.swapStorage = swapStorage;
-    this.blockTimestamp = ethers.BigNumber.from(blockTimestamp);
-    this.tokens = tokens;
-    this.tokenBalances = tokenBalances;
-    this._A = _A;
-    this.liquidityToken = new Token(tokens[0].chainId, StablePool.getAddress(tokens[0].chainId), 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
-
-    for (var i = 0; i < Object.values(this.tokens).length; i++) {
-      !(tokens[i].address != ethers.ethers.constants.AddressZero) ?  invariant(false, "invalidTokenAddress")  : void 0;
-      !(tokens[i].decimals <= 18) ?  invariant(false, "invalidDecimals")  : void 0;
-      !(tokens[i].chainId === tokens[0].chainId) ?  invariant(false, 'INVALID TOKENS')  : void 0;
-    }
-  }
-
-  StablePool.getAddress = function getAddress(chainId) {
-    return STABLE_POOL_ADDRESS[chainId];
-  };
-
-  StablePool.mock = function mock() {
-    var dummy = ethers.BigNumber.from(0);
-    return new StablePool({
-      0: new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'Mock USDC', 'MUSDC')
-    }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy);
-  }
-  /**
-   * Returns true if the token is either token0 or token1
-   * @param token to check
-   */
-  ;
-
-  var _proto = StablePool.prototype;
-
-  _proto.involvesToken = function involvesToken(token) {
-    var res = false;
-
-    for (var i = 0; i < Object.keys(this.tokens).length; i++) {
-       token.equals(this.tokens[i]);
-    }
-
-    return res;
-  };
-
-  // maps the index to the token in the stablePool
-  _proto.tokenFromIndex = function tokenFromIndex(index) {
-    return this.tokens[index];
-  };
-
-  _proto.indexFromToken = function indexFromToken(token) {
-    for (var index = 0; index < Object.keys(this.tokens).length; index++) {
-      if (token.equals(this.tokens[index])) {
-        return index;
-      }
-    }
-
-    throw new Error('token not in pool');
-  };
-
-  _proto.getBalances = function getBalances() {
-    var _this = this;
-
-    return Object.keys(this.tokens).map(function (_, index) {
-      return _this.tokenBalances[index];
-    });
-  };
-
-  _proto.generatePairs = function generatePairs(pairs) {
-    var _this2 = this;
-
-    var relevantStables = [];
-    var generatedPairs = [];
-    pairs.forEach(function (pair) {
-      if (Object.values(_this2.tokens).includes(pair.token0)) {
-        relevantStables.push(pair.token0);
-      }
-
-      if (Object.values(_this2.tokens).includes(pair.token1)) {
-        relevantStables.push(pair.token1);
-      }
-    });
-
-    if (relevantStables.length === 0) {
-      return [];
-    }
-
-    return generatedPairs;
-  } // calculates the output amount usingn the input for the swableSwap
-  // requires the view on a contract as manual calculation on the frontend would
-  // be inefficient
-  // public async calculateSwapViaPing(
-  //   inIndex: number,
-  //   outIndex: number,
-  //   inAmount: BigintIsh,
-  //   provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh> {
-  //   const outAmount: BigintIsh = await new Contract(this.liquidityToken.address, new ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount)
-  //   return outAmount
-  // }
-  // calculates the swap output amount without
-  // pinging the blockchain for data
-  ;
-
-  _proto.calculateSwap = function calculateSwap$1(inIndex, outIndex, inAmount) {
-    var outAmount = calculateSwap(inIndex, outIndex, inAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
-
-    return outAmount;
-  };
-
-  _proto.getOutputAmount = function getOutputAmount(inputAmount, outIndex) {
-    var swap = this.calculateSwap(this.indexFromToken(inputAmount.token), outIndex, inputAmount.toBigNumber());
-    return new TokenAmount(this.tokenFromIndex(outIndex), swap.toBigInt());
-  }
-  /**
-   * Returns the chain ID of the tokens in the pair.
-   */
-  ;
-
-  _proto.token = function token(index) {
-    return this.tokens[index];
-  };
-
-  _proto.reserveOf = function reserveOf(token) {
-    !this.involvesToken(token) ?  invariant(false, 'TOKEN')  : void 0;
-
-    for (var i = 0; i < Object.keys(this.tokens).length; i++) {
-      if (token.equals(this.tokens[i])) return this.tokenBalances[i];
-    }
-
-    return ethers.BigNumber.from(0);
-  };
-
-  _proto.calculateRemoveLiquidity = function calculateRemoveLiquidity(amountLp) {
-    return _calculateRemoveLiquidity(amountLp, this.swapStorage, this.lpTotalSupply, this.currentWithdrawFee, this.getBalances());
-  };
-
-  _proto.calculateRemoveLiquidityOneToken = function calculateRemoveLiquidityOneToken(amount, index) {
-    return _calculateRemoveLiquidityOneToken(this.swapStorage, amount, index, this.blockTimestamp, this.getBalances(), this.lpTotalSupply, this.currentWithdrawFee);
-  };
-
-  _proto.getLiquidityMinted = function getLiquidityMinted(amounts, deposit) {
-    return _calculateTokenAmount(this.swapStorage, amounts, deposit, this.getBalances(), this.blockTimestamp, this.lpTotalSupply);
-  };
-
-  _proto.setSwapStorage = function setSwapStorage(swapStorage) {
-    this.swapStorage = swapStorage;
-  };
-
-  _proto.setTokenBalances = function setTokenBalances(tokenBalances) {
-    this.tokenBalances = tokenBalances;
-  };
-
-  _proto.setBlockTimestamp = function setBlockTimestamp(blockTimestamp) {
-    this.blockTimestamp = blockTimestamp;
-  };
-
-  _createClass(StablePool, [{
-    key: "setCurrentWithdrawFee",
-    set: function set(feeToSet) {
-      this.currentWithdrawFee = feeToSet;
-    }
-  }, {
-    key: "chainId",
-    get: function get() {
-      return this.tokens[0].chainId;
-    }
-  }]);
-
-  return StablePool;
-}();
-
-var _100_PERCENT = /*#__PURE__*/new Fraction(_100);
-
-var Percent = /*#__PURE__*/function (_Fraction) {
-  _inheritsLoose(Percent, _Fraction);
-
-  function Percent() {
-    return _Fraction.apply(this, arguments) || this;
-  }
-
-  var _proto = Percent.prototype;
-
-  _proto.toSignificant = function toSignificant(significantDigits, format, rounding) {
-    if (significantDigits === void 0) {
-      significantDigits = 5;
-    }
-
-    return this.multiply(_100_PERCENT).toSignificant(significantDigits, format, rounding);
-  };
-
-  _proto.toFixed = function toFixed(decimalPlaces, format, rounding) {
-    if (decimalPlaces === void 0) {
-      decimalPlaces = 2;
-    }
-
-    return this.multiply(_100_PERCENT).toFixed(decimalPlaces, format, rounding);
-  };
-
-  return Percent;
-}(Fraction);
-
-// the first verion to include the stable pool for less friction
-
-var RouteV3 = /*#__PURE__*/function () {
-  function RouteV3(pairs, input, output, stablePool) {
-    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
-    !pairs.every(function (pair) {
-      return pair.chainId === pairs[0].chainId;
-    }) ?  invariant(false, 'CHAIN_IDS')  : void 0;
-    !(input instanceof Token && pairs[0].involvesToken(input) || input === NETWORK_CCY[pairs[0].chainId] && pairs[0].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'INPUT')  : void 0;
-    !(typeof output === 'undefined' || output instanceof Token && pairs[pairs.length - 1].involvesToken(output) || output === NETWORK_CCY[pairs[0].chainId] && pairs[pairs.length - 1].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'OUTPUT')  : void 0;
-    var path = [input instanceof Token ? input : WRAPPED_NETWORK_TOKENS[pairs[0].chainId]];
-
-    for (var _iterator = _createForOfIteratorHelperLoose(pairs.entries()), _step; !(_step = _iterator()).done;) {
-      var _step$value = _step.value,
-          i = _step$value[0],
-          pair = _step$value[1];
-      var currentInput = path[i];
-      !(currentInput.equals(pair.token0) || currentInput.equals(pair.token1)) ?  invariant(false, 'PATH')  : void 0;
-
-      var _output = currentInput.equals(pair.token0) ? pair.token1 : pair.token0;
-
-      path.push(_output);
-    }
-
-    this.stablePool = stablePool !== null && stablePool !== void 0 ? stablePool : StablePool.mock();
-    this.pairs = pairs;
-    this.path = path;
-    this.midPrice = Price.fromRoute(this);
-    this.input = input;
-    this.output = output !== null && output !== void 0 ? output : path[path.length - 1];
-  }
-
-  var _proto = RouteV3.prototype;
-
-  _proto.connectPairs = function connectPairs() {};
-
-  _createClass(RouteV3, [{
-    key: "chainId",
-    get: function get() {
-      return this.pairs[0].chainId;
-    }
-  }]);
-
-  return RouteV3;
-}();
-
-/**
- * Returns the percent difference between the mid price and the execution price, i.e. price impact.
- * @param midPrice mid price before the trade
- * @param inputAmount the input amount of the trade
- * @param outputAmount the output amount of the trade
- */
-
-function computePriceImpact(midPrice, inputAmount, outputAmount) {
-  var exactQuote = midPrice.raw.multiply(inputAmount.raw); // calculate slippage := (exactQuote - outputAmount) / exactQuote
-
-  var slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote);
-  return new Percent(slippage.numerator, slippage.denominator);
-} // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
-// in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
-
-
-function inputOutputComparatorV3(a, b) {
-  // must have same input and output token for comparison
-  !currencyEquals(a.inputAmount.currency, b.inputAmount.currency) ?  invariant(false, 'INPUT_CURRENCY')  : void 0;
-  !currencyEquals(a.outputAmount.currency, b.outputAmount.currency) ?  invariant(false, 'OUTPUT_CURRENCY')  : void 0;
-
-  if (a.outputAmount.equalTo(b.outputAmount)) {
-    if (a.inputAmount.equalTo(b.inputAmount)) {
-      return 0;
-    } // trade A requires less input than trade B, so A should come first
-
-
-    if (a.inputAmount.lessThan(b.inputAmount)) {
-      return -1;
-    } else {
-      return 1;
-    }
-  } else {
-    // tradeA has less output than trade B, so should come second
-    if (a.outputAmount.lessThan(b.outputAmount)) {
-      return 1;
-    } else {
-      return -1;
-    }
-  }
-} // extension of the input output comparator that also considers other dimensions of the trade in ranking them
-
-function tradeComparatorV3(a, b) {
-  var ioComp = inputOutputComparatorV3(a, b);
-
-  if (ioComp !== 0) {
-    return ioComp;
-  } // consider lowest slippage next, since these are less likely to fail
-
-
-  if (a.priceImpact.lessThan(b.priceImpact)) {
-    return -1;
-  } else if (a.priceImpact.greaterThan(b.priceImpact)) {
-    return 1;
-  } // finally consider the number of hops since each hop costs gas
-
-
-  return a.route.path.length - b.route.path.length;
-}
-/**
- * Given a currency amount and a chain ID, returns the equivalent representation as the token amount.
- * In other words, if the currency is ETHER, returns the WETH token amount for the given chain. Otherwise, returns
- * the input currency amount.
- */
-
-function wrappedAmount(currencyAmount, chainId) {
-  if (currencyAmount instanceof TokenAmount) return currencyAmount;
-  if (currencyAmount.currency === NETWORK_CCY[chainId]) return new TokenAmount(WRAPPED_NETWORK_TOKENS[chainId], currencyAmount.raw);
-    invariant(false, 'CURRENCY')  ;
-}
-
-function wrappedCurrency(currency, chainId) {
-  if (currency instanceof Token) return currency;
-  if (currency === NETWORK_CCY[chainId]) return WRAPPED_NETWORK_TOKENS[chainId];
-    invariant(false, 'CURRENCY')  ;
-}
-/**
- * Represents a trade executed against a list of pairs.
- * Does not account for slippage, i.e. trades that front run this trade and move the price.
- */
-
-
-var TradeV3 = /*#__PURE__*/function () {
-  function TradeV3(route, amount, tradeType) {
-    var amounts = new Array(route.path.length);
-    var nextPairs = new Array(route.pairs.length);
-
-    if (tradeType === exports.TradeType.EXACT_INPUT) {
-      !currencyEquals(amount.currency, route.input) ?  invariant(false, 'INPUT')  : void 0;
-      amounts[0] = wrappedAmount(amount, route.chainId);
-
-      for (var i = 0; i < route.path.length - 1; i++) {
-        var pair = route.pairs[i];
-
-        var _pair$getOutputAmount = pair.getOutputAmount(amounts[i]),
-            outputAmount = _pair$getOutputAmount[0],
-            nextPair = _pair$getOutputAmount[1];
-
-        amounts[i + 1] = outputAmount;
-        nextPairs[i] = nextPair;
-      }
-    } else {
-      !currencyEquals(amount.currency, route.output) ?  invariant(false, 'OUTPUT')  : void 0;
-      amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId);
-
-      for (var _i = route.path.length - 1; _i > 0; _i--) {
-        var _pair = route.pairs[_i - 1];
-
-        var _pair$getInputAmount = _pair.getInputAmount(amounts[_i]),
-            inputAmount = _pair$getInputAmount[0],
-            _nextPair = _pair$getInputAmount[1];
-
-        amounts[_i - 1] = inputAmount;
-        nextPairs[_i - 1] = _nextPair;
-      }
-    }
-
-    this.route = route;
-    this.tradeType = tradeType;
-    this.inputAmount = tradeType === exports.TradeType.EXACT_INPUT ? amount : route.input === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw) : amounts[0];
-    this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
-    this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
-    this.nextMidPrice = Price.fromRoute(new RouteV3(nextPairs, route.input));
-    this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount);
-  }
-  /**
-   * Constructs an exact in trade with the given amount in and route
-   * @param route route of the exact in trade
-   * @param amountIn the amount being passed in
-   */
-
-
-  TradeV3.exactIn = function exactIn(route, amountIn) {
-    return new TradeV3(route, amountIn, exports.TradeType.EXACT_INPUT);
-  }
-  /**
-   * Constructs an exact out trade with the given amount out and route
-   * @param route route of the exact out trade
-   * @param amountOut the amount returned by the trade
-   */
-  ;
-
-  TradeV3.exactOut = function exactOut(route, amountOut) {
-    return new TradeV3(route, amountOut, exports.TradeType.EXACT_OUTPUT);
-  }
-  /**
-   * Get the minimum amount that must be received from this trade for the given slippage tolerance
-   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
-   */
-  ;
-
-  var _proto = TradeV3.prototype;
-
-  _proto.minimumAmountOut = function minimumAmountOut(slippageTolerance) {
-    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
-
-    if (this.tradeType === exports.TradeType.EXACT_OUTPUT) {
-      return this.outputAmount;
-    } else {
-      var slippageAdjustedAmountOut = new Fraction(ONE).add(slippageTolerance).invert().multiply(this.outputAmount.raw).quotient;
-      return this.outputAmount instanceof TokenAmount ? new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountOut);
-    }
-  }
-  /**
-   * Get the maximum amount in that can be spent via this trade for the given slippage tolerance
-   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
-   */
-  ;
-
-  _proto.maximumAmountIn = function maximumAmountIn(slippageTolerance) {
-    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
-
-    if (this.tradeType === exports.TradeType.EXACT_INPUT) {
-      return this.inputAmount;
-    } else {
-      var slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient;
-      return this.inputAmount instanceof TokenAmount ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn);
-    }
-  }
-  /**
-   * Given a list of pairs, and a fixed amount in, returns the top `maxNumResults` trades that go from an input token
-   * amount to an output token, making at most `maxHops` hops.
-   * Note this does not consider aggregation, as routes are linear. It's possible a better route exists by splitting
-   * the amount in among multiple routes.
-   * @param pairs the pairs to consider in finding the best trade
-   * @param currencyAmountIn exact amount of input currency to spend
-   * @param currencyOut the desired currency out
-   * @param maxNumResults maximum number of results to return
-   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
-   * @param currentPairs used in recursion; the current list of pairs
-   * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
-   * @param bestTrades used in recursion; the current list of best trades
-   */
-  ;
-
-  TradeV3.bestTradeExactIn = function bestTradeExactIn(pairs, currencyAmountIn, currencyOut, _temp, // used in recursion.
-  currentPairs, originalAmountIn, bestTrades) {
-    var _ref = _temp === void 0 ? {} : _temp,
-        _ref$maxNumResults = _ref.maxNumResults,
-        maxNumResults = _ref$maxNumResults === void 0 ? 3 : _ref$maxNumResults,
-        _ref$maxHops = _ref.maxHops,
-        maxHops = _ref$maxHops === void 0 ? 3 : _ref$maxHops;
-
-    if (currentPairs === void 0) {
-      currentPairs = [];
-    }
-
-    if (originalAmountIn === void 0) {
-      originalAmountIn = currencyAmountIn;
-    }
-
-    if (bestTrades === void 0) {
-      bestTrades = [];
-    }
-
-    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
-    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
-    !(originalAmountIn === currencyAmountIn || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
-    var chainId = currencyAmountIn instanceof TokenAmount ? currencyAmountIn.token.chainId : currencyOut instanceof Token ? currencyOut.chainId : undefined;
-    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
-    var amountIn = wrappedAmount(currencyAmountIn, chainId);
-    var tokenOut = wrappedCurrency(currencyOut, chainId);
-
-    for (var i = 0; i < pairs.length; i++) {
-      var pair = pairs[i]; // pair irrelevant
-
-      if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue;
-      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
-      var amountOut = void 0;
-
-      try {
-        ;
-
-        var _pair$getOutputAmount2 = pair.getOutputAmount(amountIn);
-
-        amountOut = _pair$getOutputAmount2[0];
-      } catch (error) {
-        // input too low
-        if (error.isInsufficientInputAmountError) {
-          continue;
-        }
-
-        throw error;
-      } // we have arrived at the output token, so this is the final trade of one of the paths
-
-
-      if (amountOut.token.equals(tokenOut)) {
-        sortedInsert(bestTrades, new TradeV3(new RouteV3([].concat(currentPairs, [pair]), originalAmountIn.currency, currencyOut), originalAmountIn, exports.TradeType.EXACT_INPUT), maxNumResults, tradeComparatorV3);
-      } else if (maxHops > 1 && pairs.length > 1) {
-        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
-
-        TradeV3.bestTradeExactIn(pairsExcludingThisPair, amountOut, currencyOut, {
-          maxNumResults: maxNumResults,
-          maxHops: maxHops - 1
-        }, [].concat(currentPairs, [pair]), originalAmountIn, bestTrades);
-      }
-    }
-
-    return bestTrades;
-  }
-  /**
-   * similar to the above method but instead targets a fixed output amount
-   * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
-   * to an output token amount, making at most `maxHops` hops
-   * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
-   * the amount in among multiple routes.
-   * @param pairs the pairs to consider in finding the best trade
-   * @param currencyIn the currency to spend
-   * @param currencyAmountOut the exact amount of currency out
-   * @param maxNumResults maximum number of results to return
-   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
-   * @param currentPairs used in recursion; the current list of pairs
-   * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
-   * @param bestTrades used in recursion; the current list of best trades
-   */
-  ;
-
-  TradeV3.bestTradeExactOut = function bestTradeExactOut(pairs, currencyIn, currencyAmountOut, _temp2, // used in recursion.
-  currentPairs, originalAmountOut, bestTrades) {
-    var _ref2 = _temp2 === void 0 ? {} : _temp2,
-        _ref2$maxNumResults = _ref2.maxNumResults,
-        maxNumResults = _ref2$maxNumResults === void 0 ? 3 : _ref2$maxNumResults,
-        _ref2$maxHops = _ref2.maxHops,
-        maxHops = _ref2$maxHops === void 0 ? 3 : _ref2$maxHops;
-
-    if (currentPairs === void 0) {
-      currentPairs = [];
-    }
-
-    if (originalAmountOut === void 0) {
-      originalAmountOut = currencyAmountOut;
-    }
-
-    if (bestTrades === void 0) {
-      bestTrades = [];
-    }
-
-    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
-    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
-    !(originalAmountOut === currencyAmountOut || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
-    var chainId = currencyAmountOut instanceof TokenAmount ? currencyAmountOut.token.chainId : currencyIn instanceof Token ? currencyIn.chainId : undefined;
-    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
-    var amountOut = wrappedAmount(currencyAmountOut, chainId);
-    var tokenIn = wrappedCurrency(currencyIn, chainId);
-
-    for (var i = 0; i < pairs.length; i++) {
-      var pair = pairs[i]; // pair irrelevant
-
-      if (!pair.token0.equals(amountOut.token) && !pair.token1.equals(amountOut.token)) continue;
-      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
-      var amountIn = void 0;
-
-      try {
-        ;
-
-        var _pair$getInputAmount2 = pair.getInputAmount(amountOut);
-
-        amountIn = _pair$getInputAmount2[0];
-      } catch (error) {
-        // not enough liquidity in this pair
-        if (error.isInsufficientReservesError) {
-          continue;
-        }
-
-        throw error;
-      } // we have arrived at the input token, so this is the first trade of one of the paths
-
-
-      if (amountIn.token.equals(tokenIn)) {
-        sortedInsert(bestTrades, new TradeV3(new RouteV3([pair].concat(currentPairs), currencyIn, originalAmountOut.currency), originalAmountOut, exports.TradeType.EXACT_OUTPUT), maxNumResults, tradeComparatorV3);
-      } else if (maxHops > 1 && pairs.length > 1) {
-        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
-
-        TradeV3.bestTradeExactOut(pairsExcludingThisPair, currencyIn, amountIn, {
-          maxNumResults: maxNumResults,
-          maxHops: maxHops - 1
-        }, [pair].concat(currentPairs), originalAmountOut, bestTrades);
-      }
-    }
-
-    return bestTrades;
-  };
-
-  return TradeV3;
-}();
-
-var STABLECOINS = {
-  43113: [/*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0x0bE04001Ad4725c697b6c6bD8Bc23d9848992CA0', 6, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0x66960440491bCc68BD30B2b0B08fF9e7aB3F9078', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xCCf7ed44c5A0f3Cb5c9a9B9f765F8D836fb93BA1', 18, 'TUSD', 'True USD')],
-  0: [/*#__PURE__*/new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin')]
-};
-var STABLES_INDEX_MAP = {
-  43113: {
-    0: STABLECOINS[43113][0],
-    1: STABLECOINS[43113][1],
-    2: STABLECOINS[43113][2],
-    3: STABLECOINS[43113][3]
-  }
-};
-
-var Route = /*#__PURE__*/function () {
-  function Route(pairs, input, output) {
-    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
-    !pairs.every(function (pair) {
-      return pair.chainId === pairs[0].chainId;
-    }) ?  invariant(false, 'CHAIN_IDS')  : void 0;
-    !(input instanceof Token && pairs[0].involvesToken(input) || input === NETWORK_CCY[pairs[0].chainId] && pairs[0].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'INPUT')  : void 0;
-    !(typeof output === 'undefined' || output instanceof Token && pairs[pairs.length - 1].involvesToken(output) || output === NETWORK_CCY[pairs[0].chainId] && pairs[pairs.length - 1].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'OUTPUT')  : void 0;
-    var path = [input instanceof Token ? input : WRAPPED_NETWORK_TOKENS[pairs[0].chainId]];
-
-    for (var _iterator = _createForOfIteratorHelperLoose(pairs.entries()), _step; !(_step = _iterator()).done;) {
-      var _step$value = _step.value,
-          i = _step$value[0],
-          pair = _step$value[1];
-      var currentInput = path[i];
-      !(currentInput.equals(pair.token0) || currentInput.equals(pair.token1)) ?  invariant(false, 'PATH')  : void 0;
-
-      var _output = currentInput.equals(pair.token0) ? pair.token1 : pair.token0;
-
-      path.push(_output);
-    }
-
-    this.pairs = pairs;
-    this.path = path;
-    this.midPrice = Price.fromRoute(this);
-    this.input = input;
-    this.output = output !== null && output !== void 0 ? output : path[path.length - 1];
-  }
-
-  _createClass(Route, [{
-    key: "chainId",
-    get: function get() {
-      return this.pairs[0].chainId;
-    }
-  }]);
-
-  return Route;
-}();
-
-/**
- * Returns the percent difference between the mid price and the execution price, i.e. price impact.
- * @param midPrice mid price before the trade
- * @param inputAmount the input amount of the trade
- * @param outputAmount the output amount of the trade
- */
-
-function computePriceImpact$1(midPrice, inputAmount, outputAmount) {
-  var exactQuote = midPrice.raw.multiply(inputAmount.raw); // calculate slippage := (exactQuote - outputAmount) / exactQuote
-
-  var slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote);
-  return new Percent(slippage.numerator, slippage.denominator);
-} // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
-// in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
-
-
-function inputOutputComparator(a, b) {
-  // must have same input and output token for comparison
-  !currencyEquals(a.inputAmount.currency, b.inputAmount.currency) ?  invariant(false, 'INPUT_CURRENCY')  : void 0;
-  !currencyEquals(a.outputAmount.currency, b.outputAmount.currency) ?  invariant(false, 'OUTPUT_CURRENCY')  : void 0;
-
-  if (a.outputAmount.equalTo(b.outputAmount)) {
-    if (a.inputAmount.equalTo(b.inputAmount)) {
-      return 0;
-    } // trade A requires less input than trade B, so A should come first
-
-
-    if (a.inputAmount.lessThan(b.inputAmount)) {
-      return -1;
-    } else {
-      return 1;
-    }
-  } else {
-    // tradeA has less output than trade B, so should come second
-    if (a.outputAmount.lessThan(b.outputAmount)) {
-      return 1;
-    } else {
-      return -1;
-    }
-  }
-} // extension of the input output comparator that also considers other dimensions of the trade in ranking them
-
-function tradeComparator(a, b) {
-  var ioComp = inputOutputComparator(a, b);
-
-  if (ioComp !== 0) {
-    return ioComp;
-  } // consider lowest slippage next, since these are less likely to fail
-
-
-  if (a.priceImpact.lessThan(b.priceImpact)) {
-    return -1;
-  } else if (a.priceImpact.greaterThan(b.priceImpact)) {
-    return 1;
-  } // finally consider the number of hops since each hop costs gas
-
-
-  return a.route.path.length - b.route.path.length;
-}
-/**
- * Given a currency amount and a chain ID, returns the equivalent representation as the token amount.
- * In other words, if the currency is ETHER, returns the WETH token amount for the given chain. Otherwise, returns
- * the input currency amount.
- */
-
-function wrappedAmount$1(currencyAmount, chainId) {
-  if (currencyAmount instanceof TokenAmount) return currencyAmount;
-  if (currencyAmount.currency === NETWORK_CCY[chainId]) return new TokenAmount(WRAPPED_NETWORK_TOKENS[chainId], currencyAmount.raw);
-    invariant(false, 'CURRENCY')  ;
-}
-
-function wrappedCurrency$1(currency, chainId) {
-  if (currency instanceof Token) return currency;
-  if (currency === NETWORK_CCY[chainId]) return WRAPPED_NETWORK_TOKENS[chainId];
-    invariant(false, 'CURRENCY')  ;
-}
-/**
- * Represents a trade executed against a list of pairs.
- * Does not account for slippage, i.e. trades that front run this trade and move the price.
- */
-
-
-var Trade = /*#__PURE__*/function () {
-  function Trade(route, amount, tradeType) {
-    var amounts = new Array(route.path.length);
-    var nextPairs = new Array(route.pairs.length);
-
-    if (tradeType === exports.TradeType.EXACT_INPUT) {
-      !currencyEquals(amount.currency, route.input) ?  invariant(false, 'INPUT')  : void 0;
-      amounts[0] = wrappedAmount$1(amount, route.chainId);
-
-      for (var i = 0; i < route.path.length - 1; i++) {
-        var pair = route.pairs[i];
-
-        var _pair$getOutputAmount = pair.getOutputAmount(amounts[i]),
-            outputAmount = _pair$getOutputAmount[0],
-            nextPair = _pair$getOutputAmount[1];
-
-        amounts[i + 1] = outputAmount;
-        nextPairs[i] = nextPair;
-      }
-    } else {
-      !currencyEquals(amount.currency, route.output) ?  invariant(false, 'OUTPUT')  : void 0;
-      amounts[amounts.length - 1] = wrappedAmount$1(amount, route.chainId);
-
-      for (var _i = route.path.length - 1; _i > 0; _i--) {
-        var _pair = route.pairs[_i - 1];
-
-        var _pair$getInputAmount = _pair.getInputAmount(amounts[_i]),
-            inputAmount = _pair$getInputAmount[0],
-            _nextPair = _pair$getInputAmount[1];
-
-        amounts[_i - 1] = inputAmount;
-        nextPairs[_i - 1] = _nextPair;
-      }
-    }
-
-    this.route = route;
-    this.tradeType = tradeType;
-    this.inputAmount = tradeType === exports.TradeType.EXACT_INPUT ? amount : route.input === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw) : amounts[0];
-    this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
-    this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
-    this.nextMidPrice = Price.fromRoute(new Route(nextPairs, route.input));
-    this.priceImpact = computePriceImpact$1(route.midPrice, this.inputAmount, this.outputAmount);
-  }
-  /**
-   * Constructs an exact in trade with the given amount in and route
-   * @param route route of the exact in trade
-   * @param amountIn the amount being passed in
-   */
-
-
-  Trade.exactIn = function exactIn(route, amountIn) {
-    return new Trade(route, amountIn, exports.TradeType.EXACT_INPUT);
-  }
-  /**
-   * Constructs an exact out trade with the given amount out and route
-   * @param route route of the exact out trade
-   * @param amountOut the amount returned by the trade
-   */
-  ;
-
-  Trade.exactOut = function exactOut(route, amountOut) {
-    return new Trade(route, amountOut, exports.TradeType.EXACT_OUTPUT);
-  }
-  /**
-   * Get the minimum amount that must be received from this trade for the given slippage tolerance
-   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
-   */
-  ;
-
-  var _proto = Trade.prototype;
-
-  _proto.minimumAmountOut = function minimumAmountOut(slippageTolerance) {
-    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
-
-    if (this.tradeType === exports.TradeType.EXACT_OUTPUT) {
-      return this.outputAmount;
-    } else {
-      var slippageAdjustedAmountOut = new Fraction(ONE).add(slippageTolerance).invert().multiply(this.outputAmount.raw).quotient;
-      return this.outputAmount instanceof TokenAmount ? new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountOut);
-    }
-  }
-  /**
-   * Get the maximum amount in that can be spent via this trade for the given slippage tolerance
-   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
-   */
-  ;
-
-  _proto.maximumAmountIn = function maximumAmountIn(slippageTolerance) {
-    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
-
-    if (this.tradeType === exports.TradeType.EXACT_INPUT) {
-      return this.inputAmount;
-    } else {
-      var slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient;
-      return this.inputAmount instanceof TokenAmount ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn);
-    }
-  }
-  /**
-   * Given a list of pairs, and a fixed amount in, returns the top `maxNumResults` trades that go from an input token
-   * amount to an output token, making at most `maxHops` hops.
-   * Note this does not consider aggregation, as routes are linear. It's possible a better route exists by splitting
-   * the amount in among multiple routes.
-   * @param pairs the pairs to consider in finding the best trade
-   * @param currencyAmountIn exact amount of input currency to spend
-   * @param currencyOut the desired currency out
-   * @param maxNumResults maximum number of results to return
-   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
-   * @param currentPairs used in recursion; the current list of pairs
-   * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
-   * @param bestTrades used in recursion; the current list of best trades
-   */
-  ;
-
-  Trade.bestTradeExactIn = function bestTradeExactIn(pairs, currencyAmountIn, currencyOut, _temp, // used in recursion.
-  currentPairs, originalAmountIn, bestTrades) {
-    var _ref = _temp === void 0 ? {} : _temp,
-        _ref$maxNumResults = _ref.maxNumResults,
-        maxNumResults = _ref$maxNumResults === void 0 ? 3 : _ref$maxNumResults,
-        _ref$maxHops = _ref.maxHops,
-        maxHops = _ref$maxHops === void 0 ? 3 : _ref$maxHops;
-
-    if (currentPairs === void 0) {
-      currentPairs = [];
-    }
-
-    if (originalAmountIn === void 0) {
-      originalAmountIn = currencyAmountIn;
-    }
-
-    if (bestTrades === void 0) {
-      bestTrades = [];
-    }
-
-    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
-    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
-    !(originalAmountIn === currencyAmountIn || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
-    var chainId = currencyAmountIn instanceof TokenAmount ? currencyAmountIn.token.chainId : currencyOut instanceof Token ? currencyOut.chainId : undefined;
-    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
-    var amountIn = wrappedAmount$1(currencyAmountIn, chainId);
-    var tokenOut = wrappedCurrency$1(currencyOut, chainId);
-
-    for (var i = 0; i < pairs.length; i++) {
-      var pair = pairs[i]; // pair irrelevant
-
-      if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue;
-      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
-      var amountOut = void 0;
-
-      try {
-        ;
-
-        var _pair$getOutputAmount2 = pair.getOutputAmount(amountIn);
-
-        amountOut = _pair$getOutputAmount2[0];
-      } catch (error) {
-        // input too low
-        if (error.isInsufficientInputAmountError) {
-          continue;
-        }
-
-        throw error;
-      } // we have arrived at the output token, so this is the final trade of one of the paths
-
-
-      if (amountOut.token.equals(tokenOut)) {
-        sortedInsert(bestTrades, new Trade(new Route([].concat(currentPairs, [pair]), originalAmountIn.currency, currencyOut), originalAmountIn, exports.TradeType.EXACT_INPUT), maxNumResults, tradeComparator);
-      } else if (maxHops > 1 && pairs.length > 1) {
-        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
-
-        Trade.bestTradeExactIn(pairsExcludingThisPair, amountOut, currencyOut, {
-          maxNumResults: maxNumResults,
-          maxHops: maxHops - 1
-        }, [].concat(currentPairs, [pair]), originalAmountIn, bestTrades);
-      }
-    }
-
-    return bestTrades;
-  }
-  /**
-   * similar to the above method but instead targets a fixed output amount
-   * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
-   * to an output token amount, making at most `maxHops` hops
-   * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
-   * the amount in among multiple routes.
-   * @param pairs the pairs to consider in finding the best trade
-   * @param currencyIn the currency to spend
-   * @param currencyAmountOut the exact amount of currency out
-   * @param maxNumResults maximum number of results to return
-   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
-   * @param currentPairs used in recursion; the current list of pairs
-   * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
-   * @param bestTrades used in recursion; the current list of best trades
-   */
-  ;
-
-  Trade.bestTradeExactOut = function bestTradeExactOut(pairs, currencyIn, currencyAmountOut, _temp2, // used in recursion.
-  currentPairs, originalAmountOut, bestTrades) {
-    var _ref2 = _temp2 === void 0 ? {} : _temp2,
-        _ref2$maxNumResults = _ref2.maxNumResults,
-        maxNumResults = _ref2$maxNumResults === void 0 ? 3 : _ref2$maxNumResults,
-        _ref2$maxHops = _ref2.maxHops,
-        maxHops = _ref2$maxHops === void 0 ? 3 : _ref2$maxHops;
-
-    if (currentPairs === void 0) {
-      currentPairs = [];
-    }
-
-    if (originalAmountOut === void 0) {
-      originalAmountOut = currencyAmountOut;
-    }
-
-    if (bestTrades === void 0) {
-      bestTrades = [];
-    }
-
-    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
-    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
-    !(originalAmountOut === currencyAmountOut || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
-    var chainId = currencyAmountOut instanceof TokenAmount ? currencyAmountOut.token.chainId : currencyIn instanceof Token ? currencyIn.chainId : undefined;
-    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
-    var amountOut = wrappedAmount$1(currencyAmountOut, chainId);
-    var tokenIn = wrappedCurrency$1(currencyIn, chainId);
-
-    for (var i = 0; i < pairs.length; i++) {
-      var pair = pairs[i]; // pair irrelevant
-
-      if (!pair.token0.equals(amountOut.token) && !pair.token1.equals(amountOut.token)) continue;
-      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
-      var amountIn = void 0;
-
-      try {
-        ;
-
-        var _pair$getInputAmount2 = pair.getInputAmount(amountOut);
-
-        amountIn = _pair$getInputAmount2[0];
-      } catch (error) {
-        // not enough liquidity in this pair
-        if (error.isInsufficientReservesError) {
-          continue;
-        }
-
-        throw error;
-      } // we have arrived at the input token, so this is the first trade of one of the paths
-
-
-      if (amountIn.token.equals(tokenIn)) {
-        sortedInsert(bestTrades, new Trade(new Route([pair].concat(currentPairs), currencyIn, originalAmountOut.currency), originalAmountOut, exports.TradeType.EXACT_OUTPUT), maxNumResults, tradeComparator);
-      } else if (maxHops > 1 && pairs.length > 1) {
-        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
-
-        Trade.bestTradeExactOut(pairsExcludingThisPair, currencyIn, amountIn, {
-          maxNumResults: maxNumResults,
-          maxHops: maxHops - 1
-        }, [pair].concat(currentPairs), originalAmountOut, bestTrades);
-      }
-    }
-
-    return bestTrades;
-  };
-
-  return Trade;
-}();
-
-function toHex(currencyAmount) {
-  return "0x" + currencyAmount.raw.toString(16);
-}
-
-var ZERO_HEX = '0x0';
-/**
- * Represents the Pancake Router, and has static methods for helping execute trades.
- */
-
-var Router = /*#__PURE__*/function () {
-  /**
-   * Cannot be constructed.
-   */
-  function Router() {}
-  /**
-   * Produces the on-chain method name to call and the hex encoded parameters to pass as arguments for a given trade.
-   * @param trade to produce call parameters for
-   * @param options options for the call parameters
-   */
-
-
-  Router.swapCallParameters = function swapCallParameters(trade, options) {
-    var etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId];
-    var etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]; // the router does not support both ether in and out
-
-    !!(etherIn && etherOut) ?  invariant(false, 'ETHER_IN_OUT')  : void 0;
-    !(!('ttl' in options) || options.ttl > 0) ?  invariant(false, 'TTL')  : void 0;
-    var to = validateAndParseAddress(options.recipient);
-    var amountIn = toHex(trade.maximumAmountIn(options.allowedSlippage));
-    var amountOut = toHex(trade.minimumAmountOut(options.allowedSlippage));
-    var path = trade.route.path.map(function (token) {
-      return token.address;
-    });
-    var deadline = 'ttl' in options ? "0x" + (Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16) : "0x" + options.deadline.toString(16);
-    var useFeeOnTransfer = Boolean(options.feeOnTransfer);
-    var methodName;
-    var args;
-    var value;
-
-    switch (trade.tradeType) {
-      case exports.TradeType.EXACT_INPUT:
-        if (etherIn) {
-          methodName = useFeeOnTransfer ? 'swapExactETHForTokensSupportingFeeOnTransferTokens' : 'swapExactETHForTokens'; // (uint amountOutMin, address[] calldata path, address to, uint deadline)
-
-          args = [amountOut, path, to, deadline];
-          value = amountIn;
-        } else if (etherOut) {
-          methodName = useFeeOnTransfer ? 'swapExactTokensForETHSupportingFeeOnTransferTokens' : 'swapExactTokensForETH'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
-
-          args = [amountIn, amountOut, path, to, deadline];
-          value = ZERO_HEX;
-        } else {
-          methodName = useFeeOnTransfer ? 'swapExactTokensForTokensSupportingFeeOnTransferTokens' : 'swapExactTokensForTokens'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
-
-          args = [amountIn, amountOut, path, to, deadline];
-          value = ZERO_HEX;
-        }
-
-        break;
-
-      case exports.TradeType.EXACT_OUTPUT:
-        !!useFeeOnTransfer ?  invariant(false, 'EXACT_OUT_FOT')  : void 0;
-
-        if (etherIn) {
-          methodName = 'swapETHForExactTokens'; // (uint amountOut, address[] calldata path, address to, uint deadline)
-
-          args = [amountOut, path, to, deadline];
-          value = amountIn;
-        } else if (etherOut) {
-          methodName = 'swapTokensForExactETH'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
-
-          args = [amountOut, amountIn, path, to, deadline];
-          value = ZERO_HEX;
-        } else {
-          methodName = 'swapTokensForExactTokens'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
-
-          args = [amountOut, amountIn, path, to, deadline];
-          value = ZERO_HEX;
-        }
-
-        break;
-    }
-
-    return {
-      methodName: methodName,
-      args: args,
-      value: value
-    };
-  };
-
-  return Router;
-}();
-
-var ERC20 = [
-	{
-		constant: true,
-		inputs: [
-		],
-		name: "decimals",
-		outputs: [
-			{
-				name: "",
-				type: "uint8"
-			}
-		],
-		payable: false,
-		stateMutability: "view",
-		type: "function"
-	},
-	{
-		constant: true,
-		inputs: [
-			{
-				name: "",
-				type: "address"
-			}
-		],
-		name: "balanceOf",
-		outputs: [
-			{
-				name: "",
-				type: "uint256"
-			}
-		],
-		payable: false,
-		stateMutability: "view",
-		type: "function"
-	}
-];
-
-var _TOKEN_DECIMALS_CACHE;
-var TOKEN_DECIMALS_CACHE = (_TOKEN_DECIMALS_CACHE = {}, _TOKEN_DECIMALS_CACHE[exports.ChainId.BSC_MAINNET] = {
-  '0xE0B7927c4aF23765Cb51314A0E0521A9645F0E2A': 9 // DGD
-
-}, _TOKEN_DECIMALS_CACHE);
-/**
- * Contains methods for constructing instances of pairs and tokens from on-chain data.
- */
-
-var Fetcher = /*#__PURE__*/function () {
-  /**
-   * Cannot be constructed.
-   */
-  function Fetcher() {}
-  /**
-   * Fetch information for a given token on the given chain, using the given ethers provider.
-   * @param chainId chain of the token
-   * @param address address of the token on the chain
-   * @param provider provider used to fetch the token
-   * @param symbol optional symbol of the token
-   * @param name optional name of the token
-   */
-
-
-  Fetcher.fetchTokenData = function fetchTokenData(chainId, address, provider, symbol, name) {
-    try {
-      var _TOKEN_DECIMALS_CACHE2, _TOKEN_DECIMALS_CACHE3;
-
-      var _temp3 = function _temp3(parsedDecimals) {
-        return new Token(chainId, address, parsedDecimals, symbol, name);
-      };
-
-      if (provider === undefined) provider = providers.getDefaultProvider(networks.getNetwork(chainId));
-
-      var _temp4 = typeof ((_TOKEN_DECIMALS_CACHE2 = TOKEN_DECIMALS_CACHE) === null || _TOKEN_DECIMALS_CACHE2 === void 0 ? void 0 : (_TOKEN_DECIMALS_CACHE3 = _TOKEN_DECIMALS_CACHE2[chainId]) === null || _TOKEN_DECIMALS_CACHE3 === void 0 ? void 0 : _TOKEN_DECIMALS_CACHE3[address]) === 'number';
-
-      return Promise.resolve(_temp4 ? _temp3(TOKEN_DECIMALS_CACHE[chainId][address]) : Promise.resolve(new contracts.Contract(address, ERC20, provider).decimals().then(function (decimals) {
-        var _TOKEN_DECIMALS_CACHE4, _extends2, _extends3;
-
-        TOKEN_DECIMALS_CACHE = _extends({}, TOKEN_DECIMALS_CACHE, (_extends3 = {}, _extends3[chainId] = _extends({}, (_TOKEN_DECIMALS_CACHE4 = TOKEN_DECIMALS_CACHE) === null || _TOKEN_DECIMALS_CACHE4 === void 0 ? void 0 : _TOKEN_DECIMALS_CACHE4[chainId], (_extends2 = {}, _extends2[address] = decimals, _extends2)), _extends3));
-        return decimals;
-      })).then(_temp3));
-    } catch (e) {
-      return Promise.reject(e);
-    }
-  }
-  /**
-   * Fetches information about a pair and constructs a pair from the given two tokens.
-   * @param tokenA first token
-   * @param tokenB second token
-   * @param provider the provider to use to fetch the data
-   */
-  ;
-
-  Fetcher.fetchPairData = function fetchPairData(tokenA, tokenB, provider) {
-    try {
-      if (provider === undefined) provider = providers.getDefaultProvider(networks.getNetwork(tokenA.chainId));
-      !(tokenA.chainId === tokenB.chainId) ? "development" !== "production" ? invariant(false, 'CHAIN_ID') : invariant(false) : void 0;
-      var address = Pair.getAddress(tokenA, tokenB);
-      return Promise.resolve(new contracts.Contract(address, IPancakePair.abi, provider).getReserves()).then(function (_ref) {
-        var reserves0 = _ref[0],
-            reserves1 = _ref[1];
-        var balances = tokenA.sortsBefore(tokenB) ? [reserves0, reserves1] : [reserves1, reserves0];
-        return new Pair(new TokenAmount(tokenA, balances[0]), new TokenAmount(tokenB, balances[1]));
-      });
-    } catch (e) {
-      return Promise.reject(e);
-    }
-  };
-
-  return Fetcher;
 }();
 
 var StableSwap = [
@@ -3707,6 +3123,187 @@ var StableSwap = [
 	}
 ];
 
+/**
+  * A class that contains relevant stablePool information
+  * It is mainly designed to save the map between the indices
+  * and actual tokens in the pool and access the swap with addresses
+  * instead of the index
+  */
+
+var StablePool = /*#__PURE__*/function () {
+  function StablePool(tokens, tokenBalances, _A, swapStorage, blockTimestamp, lpTotalSupply, currentWithdrawFee) {
+    this.currentWithdrawFee = currentWithdrawFee;
+    this.lpTotalSupply = lpTotalSupply;
+    this.swapStorage = swapStorage;
+    this.blockTimestamp = ethers.BigNumber.from(blockTimestamp);
+    this.tokens = tokens;
+    this.tokenBalances = tokenBalances;
+    this._A = _A;
+    this.liquidityToken = new Token(tokens[0].chainId, StablePool.getAddress(tokens[0].chainId), 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
+
+    for (var i = 0; i < Object.values(this.tokens).length; i++) {
+      !(tokens[i].address != ethers.ethers.constants.AddressZero) ?  invariant(false, "invalidTokenAddress")  : void 0;
+      !(tokens[i].decimals <= 18) ?  invariant(false, "invalidDecimals")  : void 0;
+      !(tokens[i].chainId === tokens[0].chainId) ?  invariant(false, 'INVALID TOKENS')  : void 0;
+    }
+  }
+
+  StablePool.getAddress = function getAddress(chainId) {
+    return STABLE_POOL_ADDRESS[chainId];
+  };
+
+  StablePool.mock = function mock() {
+    var dummy = ethers.BigNumber.from(0);
+    return new StablePool({
+      0: new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'Mock USDC', 'MUSDC')
+    }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy);
+  }
+  /**
+   * Returns true if the token is either token0 or token1
+   * @param token to check
+   */
+  ;
+
+  var _proto = StablePool.prototype;
+
+  _proto.involvesToken = function involvesToken(token) {
+    var res = false;
+
+    for (var i = 0; i < Object.keys(this.tokens).length; i++) {
+       token.equals(this.tokens[i]);
+    }
+
+    return res;
+  };
+
+  // maps the index to the token in the stablePool
+  _proto.tokenFromIndex = function tokenFromIndex(index) {
+    return this.tokens[index];
+  };
+
+  _proto.indexFromToken = function indexFromToken(token) {
+    for (var index = 0; index < Object.keys(this.tokens).length; index++) {
+      if (token.equals(this.tokens[index])) {
+        return index;
+      }
+    }
+
+    throw new Error('token not in pool');
+  };
+
+  _proto.getBalances = function getBalances() {
+    var _this = this;
+
+    return Object.keys(this.tokens).map(function (_, index) {
+      return _this.tokenBalances[index];
+    });
+  };
+
+  _proto.generatePairs = function generatePairs(pairs) {
+    var _this2 = this;
+
+    var relevantStables = [];
+    var generatedPairs = [];
+    pairs.forEach(function (pair) {
+      if (Object.values(_this2.tokens).includes(pair.token0)) {
+        relevantStables.push(pair.token0);
+      }
+
+      if (Object.values(_this2.tokens).includes(pair.token1)) {
+        relevantStables.push(pair.token1);
+      }
+    });
+
+    if (relevantStables.length === 0) {
+      return [];
+    }
+
+    return generatedPairs;
+  } // calculates the output amount usingn the input for the swableSwap
+  // requires the view on a contract as manual calculation on the frontend would
+  // be inefficient
+  ;
+
+  _proto.calculateSwapViaPing = function calculateSwapViaPing(inIndex, outIndex, inAmount, provider) {
+    try {
+      var _this4 = this;
+
+      return Promise.resolve(new contracts.Contract(_this4.liquidityToken.address, new ethers.ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount));
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  } // calculates the swap output amount without
+  // pinging the blockchain for data
+  ;
+
+  _proto.calculateSwap = function calculateSwap$1(inIndex, outIndex, inAmount) {
+    var outAmount = calculateSwap(inIndex, outIndex, inAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
+
+    return outAmount;
+  };
+
+  _proto.getOutputAmount = function getOutputAmount(inputAmount, outIndex) {
+    var swap = this.calculateSwap(this.indexFromToken(inputAmount.token), outIndex, inputAmount.toBigNumber());
+    return new TokenAmount(this.tokenFromIndex(outIndex), swap.toBigInt());
+  }
+  /**
+   * Returns the chain ID of the tokens in the pair.
+   */
+  ;
+
+  _proto.token = function token(index) {
+    return this.tokens[index];
+  };
+
+  _proto.reserveOf = function reserveOf(token) {
+    !this.involvesToken(token) ?  invariant(false, 'TOKEN')  : void 0;
+
+    for (var i = 0; i < Object.keys(this.tokens).length; i++) {
+      if (token.equals(this.tokens[i])) return this.tokenBalances[i];
+    }
+
+    return ethers.BigNumber.from(0);
+  };
+
+  _proto.calculateRemoveLiquidity = function calculateRemoveLiquidity(amountLp) {
+    return _calculateRemoveLiquidity(amountLp, this.swapStorage, this.lpTotalSupply, this.currentWithdrawFee, this.getBalances());
+  };
+
+  _proto.calculateRemoveLiquidityOneToken = function calculateRemoveLiquidityOneToken(amount, index) {
+    return _calculateRemoveLiquidityOneToken(this.swapStorage, amount, index, this.blockTimestamp, this.getBalances(), this.lpTotalSupply, this.currentWithdrawFee);
+  };
+
+  _proto.getLiquidityMinted = function getLiquidityMinted(amounts, deposit) {
+    return _calculateTokenAmount(this.swapStorage, amounts, deposit, this.getBalances(), this.blockTimestamp, this.lpTotalSupply);
+  };
+
+  _proto.setSwapStorage = function setSwapStorage(swapStorage) {
+    this.swapStorage = swapStorage;
+  };
+
+  _proto.setTokenBalances = function setTokenBalances(tokenBalances) {
+    this.tokenBalances = tokenBalances;
+  };
+
+  _proto.setBlockTimestamp = function setBlockTimestamp(blockTimestamp) {
+    this.blockTimestamp = blockTimestamp;
+  };
+
+  _createClass(StablePool, [{
+    key: "setCurrentWithdrawFee",
+    set: function set(feeToSet) {
+      this.currentWithdrawFee = feeToSet;
+    }
+  }, {
+    key: "chainId",
+    get: function get() {
+      return this.tokens[0].chainId;
+    }
+  }]);
+
+  return StablePool;
+}();
+
 // import { Token } from './entities/token'
 
 /**
@@ -3754,6 +3351,411 @@ var StablesFetcher = /*#__PURE__*/function () {
 
   return StablesFetcher;
 }();
+
+// the first verion to include the stable pool for less friction
+
+var RouteV3 = /*#__PURE__*/function () {
+  function RouteV3(pairs, input, output, stablePool) {
+    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !pairs.every(function (pair) {
+      return pair.chainId === pairs[0].chainId;
+    }) ?  invariant(false, 'CHAIN_IDS')  : void 0;
+    !(input instanceof Token && pairs[0].involvesToken(input) || input === NETWORK_CCY[pairs[0].chainId] && pairs[0].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'INPUT')  : void 0;
+    !(typeof output === 'undefined' || output instanceof Token && pairs[pairs.length - 1].involvesToken(output) || output === NETWORK_CCY[pairs[0].chainId] && pairs[pairs.length - 1].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])) ?  invariant(false, 'OUTPUT')  : void 0;
+    var path = [input instanceof Token ? input : WRAPPED_NETWORK_TOKENS[pairs[0].chainId]];
+
+    for (var _iterator = _createForOfIteratorHelperLoose(pairs.entries()), _step; !(_step = _iterator()).done;) {
+      var _step$value = _step.value,
+          i = _step$value[0],
+          pair = _step$value[1];
+      var currentInput = path[i];
+      !(currentInput.equals(pair.token0) || currentInput.equals(pair.token1)) ?  invariant(false, 'PATH')  : void 0;
+
+      var _output = currentInput.equals(pair.token0) ? pair.token1 : pair.token0;
+
+      path.push(_output);
+    }
+
+    this.stablePool = stablePool !== null && stablePool !== void 0 ? stablePool : StablePool.mock();
+    this.pairs = pairs;
+    this.path = path;
+    this.midPrice = Price.fromRoute(this);
+    this.input = input;
+    this.output = output !== null && output !== void 0 ? output : path[path.length - 1];
+  }
+
+  var _proto = RouteV3.prototype;
+
+  _proto.connectPairs = function connectPairs() {};
+
+  _createClass(RouteV3, [{
+    key: "chainId",
+    get: function get() {
+      return this.pairs[0].chainId;
+    }
+  }]);
+
+  return RouteV3;
+}();
+
+/**
+ * Returns the percent difference between the mid price and the execution price, i.e. price impact.
+ * @param midPrice mid price before the trade
+ * @param inputAmount the input amount of the trade
+ * @param outputAmount the output amount of the trade
+ */
+
+function computePriceImpact$1(midPrice, inputAmount, outputAmount) {
+  var exactQuote = midPrice.raw.multiply(inputAmount.raw); // calculate slippage := (exactQuote - outputAmount) / exactQuote
+
+  var slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote);
+  return new Percent(slippage.numerator, slippage.denominator);
+} // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
+// in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
+
+
+function inputOutputComparatorV3(a, b) {
+  // must have same input and output token for comparison
+  !currencyEquals(a.inputAmount.currency, b.inputAmount.currency) ?  invariant(false, 'INPUT_CURRENCY')  : void 0;
+  !currencyEquals(a.outputAmount.currency, b.outputAmount.currency) ?  invariant(false, 'OUTPUT_CURRENCY')  : void 0;
+
+  if (a.outputAmount.equalTo(b.outputAmount)) {
+    if (a.inputAmount.equalTo(b.inputAmount)) {
+      return 0;
+    } // trade A requires less input than trade B, so A should come first
+
+
+    if (a.inputAmount.lessThan(b.inputAmount)) {
+      return -1;
+    } else {
+      return 1;
+    }
+  } else {
+    // tradeA has less output than trade B, so should come second
+    if (a.outputAmount.lessThan(b.outputAmount)) {
+      return 1;
+    } else {
+      return -1;
+    }
+  }
+} // extension of the input output comparator that also considers other dimensions of the trade in ranking them
+
+function tradeComparatorV3(a, b) {
+  var ioComp = inputOutputComparatorV3(a, b);
+
+  if (ioComp !== 0) {
+    return ioComp;
+  } // consider lowest slippage next, since these are less likely to fail
+
+
+  if (a.priceImpact.lessThan(b.priceImpact)) {
+    return -1;
+  } else if (a.priceImpact.greaterThan(b.priceImpact)) {
+    return 1;
+  } // finally consider the number of hops since each hop costs gas
+
+
+  return a.route.path.length - b.route.path.length;
+}
+/**
+ * Given a currency amount and a chain ID, returns the equivalent representation as the token amount.
+ * In other words, if the currency is ETHER, returns the WETH token amount for the given chain. Otherwise, returns
+ * the input currency amount.
+ */
+
+function wrappedAmount$1(currencyAmount, chainId) {
+  if (currencyAmount instanceof TokenAmount) return currencyAmount;
+  if (currencyAmount.currency === NETWORK_CCY[chainId]) return new TokenAmount(WRAPPED_NETWORK_TOKENS[chainId], currencyAmount.raw);
+    invariant(false, 'CURRENCY')  ;
+}
+
+function wrappedCurrency$1(currency, chainId) {
+  if (currency instanceof Token) return currency;
+  if (currency === NETWORK_CCY[chainId]) return WRAPPED_NETWORK_TOKENS[chainId];
+    invariant(false, 'CURRENCY')  ;
+}
+/**
+ * Represents a trade executed against a list of pairs.
+ * Does not account for slippage, i.e. trades that front run this trade and move the price.
+ */
+
+
+var TradeV3 = /*#__PURE__*/function () {
+  function TradeV3(route, amount, tradeType) {
+    var amounts = new Array(route.path.length);
+    var nextPairs = new Array(route.pairs.length);
+
+    if (tradeType === exports.TradeType.EXACT_INPUT) {
+      !currencyEquals(amount.currency, route.input) ?  invariant(false, 'INPUT')  : void 0;
+      amounts[0] = wrappedAmount$1(amount, route.chainId);
+
+      for (var i = 0; i < route.path.length - 1; i++) {
+        var pair = route.pairs[i];
+
+        var _pair$getOutputAmount = pair.getOutputAmount(amounts[i]),
+            outputAmount = _pair$getOutputAmount[0],
+            nextPair = _pair$getOutputAmount[1];
+
+        amounts[i + 1] = outputAmount;
+        nextPairs[i] = nextPair;
+      }
+    } else {
+      !currencyEquals(amount.currency, route.output) ?  invariant(false, 'OUTPUT')  : void 0;
+      amounts[amounts.length - 1] = wrappedAmount$1(amount, route.chainId);
+
+      for (var _i = route.path.length - 1; _i > 0; _i--) {
+        var _pair = route.pairs[_i - 1];
+
+        var _pair$getInputAmount = _pair.getInputAmount(amounts[_i]),
+            inputAmount = _pair$getInputAmount[0],
+            _nextPair = _pair$getInputAmount[1];
+
+        amounts[_i - 1] = inputAmount;
+        nextPairs[_i - 1] = _nextPair;
+      }
+    }
+
+    this.route = route;
+    this.tradeType = tradeType;
+    this.inputAmount = tradeType === exports.TradeType.EXACT_INPUT ? amount : route.input === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw) : amounts[0];
+    this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
+    this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
+    this.nextMidPrice = Price.fromRoute(new RouteV3(nextPairs, route.input));
+    this.priceImpact = computePriceImpact$1(route.midPrice, this.inputAmount, this.outputAmount);
+  }
+  /**
+   * Constructs an exact in trade with the given amount in and route
+   * @param route route of the exact in trade
+   * @param amountIn the amount being passed in
+   */
+
+
+  TradeV3.exactIn = function exactIn(route, amountIn) {
+    return new TradeV3(route, amountIn, exports.TradeType.EXACT_INPUT);
+  }
+  /**
+   * Constructs an exact out trade with the given amount out and route
+   * @param route route of the exact out trade
+   * @param amountOut the amount returned by the trade
+   */
+  ;
+
+  TradeV3.exactOut = function exactOut(route, amountOut) {
+    return new TradeV3(route, amountOut, exports.TradeType.EXACT_OUTPUT);
+  }
+  /**
+   * Get the minimum amount that must be received from this trade for the given slippage tolerance
+   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
+   */
+  ;
+
+  var _proto = TradeV3.prototype;
+
+  _proto.minimumAmountOut = function minimumAmountOut(slippageTolerance) {
+    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
+
+    if (this.tradeType === exports.TradeType.EXACT_OUTPUT) {
+      return this.outputAmount;
+    } else {
+      var slippageAdjustedAmountOut = new Fraction(ONE).add(slippageTolerance).invert().multiply(this.outputAmount.raw).quotient;
+      return this.outputAmount instanceof TokenAmount ? new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountOut);
+    }
+  }
+  /**
+   * Get the maximum amount in that can be spent via this trade for the given slippage tolerance
+   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
+   */
+  ;
+
+  _proto.maximumAmountIn = function maximumAmountIn(slippageTolerance) {
+    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
+
+    if (this.tradeType === exports.TradeType.EXACT_INPUT) {
+      return this.inputAmount;
+    } else {
+      var slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient;
+      return this.inputAmount instanceof TokenAmount ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn);
+    }
+  }
+  /**
+   * Given a list of pairs, and a fixed amount in, returns the top `maxNumResults` trades that go from an input token
+   * amount to an output token, making at most `maxHops` hops.
+   * Note this does not consider aggregation, as routes are linear. It's possible a better route exists by splitting
+   * the amount in among multiple routes.
+   * @param pairs the pairs to consider in finding the best trade
+   * @param currencyAmountIn exact amount of input currency to spend
+   * @param currencyOut the desired currency out
+   * @param maxNumResults maximum number of results to return
+   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
+   * @param currentPairs used in recursion; the current list of pairs
+   * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
+   * @param bestTrades used in recursion; the current list of best trades
+   */
+  ;
+
+  TradeV3.bestTradeExactIn = function bestTradeExactIn(pairs, currencyAmountIn, currencyOut, _temp, // used in recursion.
+  currentPairs, originalAmountIn, bestTrades) {
+    var _ref = _temp === void 0 ? {} : _temp,
+        _ref$maxNumResults = _ref.maxNumResults,
+        maxNumResults = _ref$maxNumResults === void 0 ? 3 : _ref$maxNumResults,
+        _ref$maxHops = _ref.maxHops,
+        maxHops = _ref$maxHops === void 0 ? 3 : _ref$maxHops;
+
+    if (currentPairs === void 0) {
+      currentPairs = [];
+    }
+
+    if (originalAmountIn === void 0) {
+      originalAmountIn = currencyAmountIn;
+    }
+
+    if (bestTrades === void 0) {
+      bestTrades = [];
+    }
+
+    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
+    !(originalAmountIn === currencyAmountIn || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
+    var chainId = currencyAmountIn instanceof TokenAmount ? currencyAmountIn.token.chainId : currencyOut instanceof Token ? currencyOut.chainId : undefined;
+    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
+    var amountIn = wrappedAmount$1(currencyAmountIn, chainId);
+    var tokenOut = wrappedCurrency$1(currencyOut, chainId);
+
+    for (var i = 0; i < pairs.length; i++) {
+      var pair = pairs[i]; // pair irrelevant
+
+      if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue;
+      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
+      var amountOut = void 0;
+
+      try {
+        ;
+
+        var _pair$getOutputAmount2 = pair.getOutputAmount(amountIn);
+
+        amountOut = _pair$getOutputAmount2[0];
+      } catch (error) {
+        // input too low
+        if (error.isInsufficientInputAmountError) {
+          continue;
+        }
+
+        throw error;
+      } // we have arrived at the output token, so this is the final trade of one of the paths
+
+
+      if (amountOut.token.equals(tokenOut)) {
+        sortedInsert(bestTrades, new TradeV3(new RouteV3([].concat(currentPairs, [pair]), originalAmountIn.currency, currencyOut), originalAmountIn, exports.TradeType.EXACT_INPUT), maxNumResults, tradeComparatorV3);
+      } else if (maxHops > 1 && pairs.length > 1) {
+        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
+
+        TradeV3.bestTradeExactIn(pairsExcludingThisPair, amountOut, currencyOut, {
+          maxNumResults: maxNumResults,
+          maxHops: maxHops - 1
+        }, [].concat(currentPairs, [pair]), originalAmountIn, bestTrades);
+      }
+    }
+
+    return bestTrades;
+  }
+  /**
+   * similar to the above method but instead targets a fixed output amount
+   * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
+   * to an output token amount, making at most `maxHops` hops
+   * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
+   * the amount in among multiple routes.
+   * @param pairs the pairs to consider in finding the best trade
+   * @param currencyIn the currency to spend
+   * @param currencyAmountOut the exact amount of currency out
+   * @param maxNumResults maximum number of results to return
+   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
+   * @param currentPairs used in recursion; the current list of pairs
+   * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
+   * @param bestTrades used in recursion; the current list of best trades
+   */
+  ;
+
+  TradeV3.bestTradeExactOut = function bestTradeExactOut(pairs, currencyIn, currencyAmountOut, _temp2, // used in recursion.
+  currentPairs, originalAmountOut, bestTrades) {
+    var _ref2 = _temp2 === void 0 ? {} : _temp2,
+        _ref2$maxNumResults = _ref2.maxNumResults,
+        maxNumResults = _ref2$maxNumResults === void 0 ? 3 : _ref2$maxNumResults,
+        _ref2$maxHops = _ref2.maxHops,
+        maxHops = _ref2$maxHops === void 0 ? 3 : _ref2$maxHops;
+
+    if (currentPairs === void 0) {
+      currentPairs = [];
+    }
+
+    if (originalAmountOut === void 0) {
+      originalAmountOut = currencyAmountOut;
+    }
+
+    if (bestTrades === void 0) {
+      bestTrades = [];
+    }
+
+    !(pairs.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
+    !(originalAmountOut === currencyAmountOut || currentPairs.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
+    var chainId = currencyAmountOut instanceof TokenAmount ? currencyAmountOut.token.chainId : currencyIn instanceof Token ? currencyIn.chainId : undefined;
+    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0;
+    var amountOut = wrappedAmount$1(currencyAmountOut, chainId);
+    var tokenIn = wrappedCurrency$1(currencyIn, chainId);
+
+    for (var i = 0; i < pairs.length; i++) {
+      var pair = pairs[i]; // pair irrelevant
+
+      if (!pair.token0.equals(amountOut.token) && !pair.token1.equals(amountOut.token)) continue;
+      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue;
+      var amountIn = void 0;
+
+      try {
+        ;
+
+        var _pair$getInputAmount2 = pair.getInputAmount(amountOut);
+
+        amountIn = _pair$getInputAmount2[0];
+      } catch (error) {
+        // not enough liquidity in this pair
+        if (error.isInsufficientReservesError) {
+          continue;
+        }
+
+        throw error;
+      } // we have arrived at the input token, so this is the first trade of one of the paths
+
+
+      if (amountIn.token.equals(tokenIn)) {
+        sortedInsert(bestTrades, new TradeV3(new RouteV3([pair].concat(currentPairs), currencyIn, originalAmountOut.currency), originalAmountOut, exports.TradeType.EXACT_OUTPUT), maxNumResults, tradeComparatorV3);
+      } else if (maxHops > 1 && pairs.length > 1) {
+        var pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length)); // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
+
+        TradeV3.bestTradeExactOut(pairsExcludingThisPair, currencyIn, amountIn, {
+          maxNumResults: maxNumResults,
+          maxHops: maxHops - 1
+        }, [pair].concat(currentPairs), originalAmountOut, bestTrades);
+      }
+    }
+
+    return bestTrades;
+  };
+
+  return TradeV3;
+}();
+
+var STABLECOINS = {
+  43113: [/*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0x0bE04001Ad4725c697b6c6bD8Bc23d9848992CA0', 18, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0x66960440491bCc68BD30B2b0B08fF9e7aB3F9078', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(exports.ChainId.AVAX_TESTNET, '0xCCf7ed44c5A0f3Cb5c9a9B9f765F8D836fb93BA1', 18, 'TUSD', 'True USD')],
+  0: [/*#__PURE__*/new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin')]
+};
+var STABLES_INDEX_MAP = {
+  43113: {
+    0: STABLECOINS[43113][0],
+    1: STABLECOINS[43113][1],
+    2: STABLECOINS[43113][2],
+    3: STABLECOINS[43113][3]
+  }
+};
 
 exports.JSBI = JSBI;
 exports.Currency = Currency;

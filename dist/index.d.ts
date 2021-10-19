@@ -6,3 +6,8 @@ export * from './entities';
 export * from './router';
 export * from './fetcher';
 export * from './stablesFetcher';
+export * from './entities/stablePool';
+export * from './entities/tradeV3';
+export * from './entities/routeV3';
+export * from './entities/swapStorage';
+export * from './entities/stables';
