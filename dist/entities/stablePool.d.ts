@@ -50,7 +50,7 @@ export declare class StablePool {
     calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): {
         [returnVal: string]: BigNumber;
     };
-    getLiquidityMinted(amounts: BigNumber[], deposit: boolean): BigNumber;
+    getLiquidityAmount(amounts: BigNumber[], deposit: boolean): BigNumber;
     getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount;
     setSwapStorage(swapStorage: SwapStorage): void;
     setTokenBalances(tokenBalances: BigNumber[]): void;

@@ -216,7 +216,7 @@ export class StablePool {
     )
   }
 
-  public getLiquidityMinted(amounts: BigNumber[], deposit: boolean) {
+  public getLiquidityAmount(amounts: BigNumber[], deposit: boolean) {
     return _calculateTokenAmount(
       this.swapStorage,
       amounts,
@@ -291,7 +291,7 @@ export class StablePool {
       return [inputAmount, new Pair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount))]
     }
   
-    public getLiquidityMinted(
+    public getLiquidityAmount(
       totalSupply: TokenAmount,
       tokenAmountA: TokenAmount,
       tokenAmountB: TokenAmount

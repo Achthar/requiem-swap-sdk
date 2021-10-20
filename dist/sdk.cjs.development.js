@@ -3270,7 +3270,7 @@ var StablePool = /*#__PURE__*/function () {
     return _calculateRemoveLiquidityOneToken(this.swapStorage, amount, index, this.blockTimestamp, this.getBalances(), this.lpTotalSupply, this.currentWithdrawFee);
   };
 
-  _proto.getLiquidityMinted = function getLiquidityMinted(amounts, deposit) {
+  _proto.getLiquidityAmount = function getLiquidityAmount(amounts, deposit) {
     return _calculateTokenAmount(this.swapStorage, amounts, deposit, this.getBalances(), this.blockTimestamp, this.lpTotalSupply);
   };
 

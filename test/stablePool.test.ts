@@ -126,12 +126,12 @@ describe('StablePool',  () => {
       console.log("calculateRemoveLiquidityOne manual", stablePool.calculateRemoveLiquidityOneToken(BigNumber.from('100000'), 3))
 
       const b = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateTokenAmount(['100000', '1000000', '100000', '1000000'], true)
-      console.log("getLiquidityMinted original", b)
+      console.log("getLiquidityAmount original", b)
 
-      console.log("getLiquidityMinted manual", stablePool.getLiquidityMinted([BigNumber.from('100000'), BigNumber.from('1000000'), BigNumber.from('100000'), BigNumber.from('1000000')], true))
+      console.log("getLiquidityAmount manual", stablePool.getLiquidityAmount([BigNumber.from('100000'), BigNumber.from('1000000'), BigNumber.from('100000'), BigNumber.from('1000000')], true))
 
 
-      console.log("getLiquidityMinted manual", stablePool.getLiquidityMinted([BigNumber.from('0'), BigNumber.from('0'), BigNumber.from('0'), BigNumber.from('0')], true))
+      console.log("getLiquidityAmount manual", stablePool.getLiquidityAmount([BigNumber.from('0'), BigNumber.from('0'), BigNumber.from('0'), BigNumber.from('0')], true))
 
       const inputTokenAmount = new TokenAmount(stablePool.tokenFromIndex(inIndex), inAmount.toBigInt())
 
