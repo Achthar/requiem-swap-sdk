@@ -138,6 +138,9 @@ describe('StablePool',  () => {
       const output = stablePool.getOutputAmount(inputTokenAmount, outIndex)
       console.log("input", inputTokenAmount.toFixed())
       console.log("output Token Amount Manual", output.toFixed())
+
+      const valueInUSDC = stablePool.getLiquidityValue(0, ['1000000', '1000000', '1000000000000000000', '1000000000000000000'].map((num)=>BigNumber.from(num)))
+      console.log("USDCVAL",valueInUSDC.toSignificant(6) )
       // const amp = _getAPrecise(stablePool.blockTimestamp,
       //   swapStorage)
       // console.log("APREC", amp)

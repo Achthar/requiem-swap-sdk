@@ -227,6 +227,16 @@ export class StablePool {
     )
   }
 
+  public getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount {
+    let amount = BigNumber.from(0)
+    for (let i = 0; i < userBalances.length; i++) {
+      if (i !== outIndex)
+        amount = amount.add(this.calculateSwap(i, outIndex, userBalances[i]))
+    }
+    amount = amount.add(userBalances[outIndex])
+    return new TokenAmount(this.tokens[outIndex], amount.toBigInt())
+  }
+
   public setSwapStorage(swapStorage: SwapStorage) {
     this.swapStorage = swapStorage
   }

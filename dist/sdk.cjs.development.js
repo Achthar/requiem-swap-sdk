@@ -3274,6 +3274,17 @@ var StablePool = /*#__PURE__*/function () {
     return _calculateTokenAmount(this.swapStorage, amounts, deposit, this.getBalances(), this.blockTimestamp, this.lpTotalSupply);
   };
 
+  _proto.getLiquidityValue = function getLiquidityValue(outIndex, userBalances) {
+    var amount = ethers.BigNumber.from(0);
+
+    for (var i = 0; i < userBalances.length; i++) {
+      if (i !== outIndex) amount = amount.add(this.calculateSwap(i, outIndex, userBalances[i]));
+    }
+
+    amount = amount.add(userBalances[outIndex]);
+    return new TokenAmount(this.tokens[outIndex], amount.toBigInt());
+  };
+
   _proto.setSwapStorage = function setSwapStorage(swapStorage) {
     this.swapStorage = swapStorage;
   };

@@ -51,6 +51,7 @@ export declare class StablePool {
         [returnVal: string]: BigNumber;
     };
     getLiquidityMinted(amounts: BigNumber[], deposit: boolean): BigNumber;
+    getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount;
     setSwapStorage(swapStorage: SwapStorage): void;
     setTokenBalances(tokenBalances: BigNumber[]): void;
     setBlockTimestamp(blockTimestamp: BigNumber): void;
