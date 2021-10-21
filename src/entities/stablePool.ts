@@ -14,6 +14,7 @@ import {
   BigintIsh,
   ChainId,
   STABLE_POOL_ADDRESS,
+  STABLE_POOL_LP_ADDRESS
 } from '../constants'
 import StableSwap from '../abis/RequiemStableSwap.json'
 import { Token } from './token'
@@ -39,8 +40,12 @@ export class StablePool {
   public readonly lpTotalSupply: BigNumber
   public currentWithdrawFee: BigNumber
 
-  public static getAddress(chainId: number): string {
+  public static getRouterAddress(chainId: number): string {
     return STABLE_POOL_ADDRESS[chainId]
+  }
+
+  public static getLpAddress(chainId: number): string {
+    return STABLE_POOL_LP_ADDRESS[chainId]
   }
 
   public constructor(
@@ -61,7 +66,7 @@ export class StablePool {
     this._A = _A
     this.liquidityToken = new Token(
       tokens[0].chainId,
-      StablePool.getAddress(tokens[0].chainId),
+      STABLE_POOL_LP_ADDRESS[tokens[0].chainId],
       18,
       'RequiemStable-LP',
       'Requiem StableSwap LPs'

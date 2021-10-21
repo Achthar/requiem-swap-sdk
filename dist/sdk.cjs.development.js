@@ -3136,7 +3136,7 @@ var StablePool = /*#__PURE__*/function () {
     this.tokens = tokens;
     this.tokenBalances = tokenBalances;
     this._A = _A;
-    this.liquidityToken = new Token(tokens[0].chainId, StablePool.getAddress(tokens[0].chainId), 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
+    this.liquidityToken = new Token(tokens[0].chainId, STABLE_POOL_LP_ADDRESS[tokens[0].chainId], 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
 
     for (var i = 0; i < Object.values(this.tokens).length; i++) {
       !(tokens[i].address != ethers.ethers.constants.AddressZero) ?  invariant(false, "invalidTokenAddress")  : void 0;
@@ -3145,8 +3145,12 @@ var StablePool = /*#__PURE__*/function () {
     }
   }
 
-  StablePool.getAddress = function getAddress(chainId) {
+  StablePool.getRouterAddress = function getRouterAddress(chainId) {
     return STABLE_POOL_ADDRESS[chainId];
+  };
+
+  StablePool.getLpAddress = function getLpAddress(chainId) {
+    return STABLE_POOL_LP_ADDRESS[chainId];
   };
 
   StablePool.mock = function mock() {
@@ -3333,7 +3337,7 @@ var StablesFetcher = /*#__PURE__*/function () {
 
   StablesFetcher.fetchStablePoolData = function fetchStablePoolData(chainId, provider) {
     try {
-      var address = StablePool.getAddress(chainId);
+      var address = StablePool.getRouterAddress(chainId);
       console.log("address", address);
       return Promise.resolve(new ethers.ethers.Contract(address, StableSwap, provider).getTokens()).then(function (tokenAddresses) {
         console.log("TokenAddresses", tokenAddresses); // const tokenReserves = await new ethers.Contract(address, StableSwap, provider).getTokenBalances()
@@ -3764,6 +3768,14 @@ var STABLES_INDEX_MAP = {
     3: STABLECOINS[43113][3]
   }
 };
+var STABLES_LP_TOKEN = {
+  43113: {
+    0: STABLECOINS[43113][0],
+    1: STABLECOINS[43113][1],
+    2: STABLECOINS[43113][2],
+    3: STABLECOINS[43113][3]
+  }
+};
 
 exports.JSBI = JSBI;
 exports.Currency = Currency;
@@ -3785,6 +3797,7 @@ exports.RouteV3 = RouteV3;
 exports.Router = Router;
 exports.STABLECOINS = STABLECOINS;
 exports.STABLES_INDEX_MAP = STABLES_INDEX_MAP;
+exports.STABLES_LP_TOKEN = STABLES_LP_TOKEN;
 exports.STABLE_POOL_ADDRESS = STABLE_POOL_ADDRESS;
 exports.STABLE_POOL_LP_ADDRESS = STABLE_POOL_LP_ADDRESS;
 exports.StablePool = StablePool;

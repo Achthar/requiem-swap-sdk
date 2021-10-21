@@ -22,7 +22,8 @@ export declare class StablePool {
     blockTimestamp: BigNumber;
     readonly lpTotalSupply: BigNumber;
     currentWithdrawFee: BigNumber;
-    static getAddress(chainId: number): string;
+    static getRouterAddress(chainId: number): string;
+    static getLpAddress(chainId: number): string;
     constructor(tokens: {
         [index: number]: Token;
     }, tokenBalances: BigNumber[], _A: BigNumber, swapStorage: SwapStorage, blockTimestamp: number, lpTotalSupply: BigNumber, currentWithdrawFee: BigNumber);

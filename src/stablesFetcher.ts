@@ -32,7 +32,7 @@ export abstract class StablesFetcher {
     chainId: number,
     provider: ethers.providers.Provider
   ): Promise<StablePool> {
-    const address = StablePool.getAddress(chainId)
+    const address = StablePool.getRouterAddress(chainId)
     console.log("address", address)
     const tokenAddresses = await new ethers.Contract(address, StableSwap, provider).getTokens()
     console.log("TokenAddresses", tokenAddresses)

@@ -48,7 +48,7 @@ describe('StablePool',  () => {
 
       // end setup providers
 
-      const address = StablePool.getAddress(chainId)
+      const address = StablePool.getRouterAddress(chainId)
       // console.log("address", address)
       const tokenAddresses = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).getTokens()
       // console.log("TokenAddresses", tokenAddresses)

@@ -21,3 +21,12 @@ export const STABLES_INDEX_MAP: { [chainId: number]: { [index: number]: Token } 
     3: STABLECOINS[43113][3]
   }
 }
+
+export const STABLES_LP_TOKEN: { [chainId: number]: { [index: number]: Token } } = {
+  43113: {
+    0: STABLECOINS[43113][0],
+    1: STABLECOINS[43113][1],
+    2: STABLECOINS[43113][2],
+    3: STABLECOINS[43113][3]
+  }
+}
