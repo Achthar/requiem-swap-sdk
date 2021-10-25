@@ -37,7 +37,7 @@ export class StablePool {
   // public readonly rates: BigNumber[]
   public blockTimestamp: BigNumber
 
-  public readonly lpTotalSupply: BigNumber
+  public lpTotalSupply: BigNumber
   public currentWithdrawFee: BigNumber
 
   public static getRouterAddress(chainId: number): string {
@@ -254,6 +254,8 @@ export class StablePool {
   public setBlockTimestamp(blockTimestamp: BigNumber) {
     this.blockTimestamp = blockTimestamp
   }
+
+  public setLpTotalSupply(totalSupply: BigNumber) { this.lpTotalSupply = totalSupply }
 
   /*
     public getOutputAmount(inputAmount: TokenAmount): [TokenAmount, StablePool] {

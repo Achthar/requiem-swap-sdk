@@ -20,7 +20,7 @@ export declare class StablePool {
     _A: BigNumber;
     swapStorage: SwapStorage;
     blockTimestamp: BigNumber;
-    readonly lpTotalSupply: BigNumber;
+    lpTotalSupply: BigNumber;
     currentWithdrawFee: BigNumber;
     static getRouterAddress(chainId: number): string;
     static getLpAddress(chainId: number): string;
@@ -56,4 +56,5 @@ export declare class StablePool {
     setSwapStorage(swapStorage: SwapStorage): void;
     setTokenBalances(tokenBalances: BigNumber[]): void;
     setBlockTimestamp(blockTimestamp: BigNumber): void;
+    setLpTotalSupply(totalSupply: BigNumber): void;
 }

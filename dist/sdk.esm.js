@@ -3299,6 +3299,10 @@ var StablePool = /*#__PURE__*/function () {
     this.blockTimestamp = blockTimestamp;
   };
 
+  _proto.setLpTotalSupply = function setLpTotalSupply(totalSupply) {
+    this.lpTotalSupply = totalSupply;
+  };
+
   _createClass(StablePool, [{
     key: "setCurrentWithdrawFee",
     set: function set(feeToSet) {
