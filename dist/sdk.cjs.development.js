@@ -1738,7 +1738,7 @@ balances, blockTimestamp, swapStorage) {
 } // function to calculate the amounts of stables from the amounts of LP
 
 function _calculateRemoveLiquidity(amount, swapStorage, totalSupply, currentWithdrawFee, balances) {
-  !(amount <= totalSupply) ?  invariant(false, "Cannot exceed total supply")  : void 0;
+  !amount.lte(totalSupply) ?  invariant(false, "Cannot exceed total supply")  : void 0;
   var feeAdjustedAmount = amount.mul(FEE_DENOMINATOR.sub(currentWithdrawFee)).div(FEE_DENOMINATOR);
   var amounts = [];
 

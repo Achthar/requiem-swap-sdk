@@ -160,7 +160,7 @@ export function _calculateRemoveLiquidity(
     balances: BigNumber[]
 ): BigNumber[] {
 
-    invariant(amount <= totalSupply, "Cannot exceed total supply");
+    invariant(amount.lte(totalSupply), "Cannot exceed total supply");
 
     let feeAdjustedAmount = amount.mul(FEE_DENOMINATOR.sub(currentWithdrawFee)).div(
         FEE_DENOMINATOR)
