@@ -1847,7 +1847,7 @@ function _calculateTokenAmount(swapStorage, amounts, deposit, balances, blockTim
     if (deposit) {
       newBalances[i] = newBalances[i].add(amounts[i]);
     } else {
-      newBalances[i] = newBalances[i].add(amounts[i]);
+      newBalances[i] = newBalances[i].sub(amounts[i]);
     }
   }
 
@@ -3225,11 +3225,9 @@ var StablePool = /*#__PURE__*/function () {
   // be inefficient
   ;
 
-  _proto.calculateSwapViaPing = function calculateSwapViaPing(inIndex, outIndex, inAmount, provider) {
+  _proto.calculateSwapViaPing = function calculateSwapViaPing(inIndex, outIndex, inAmount, chainId, provider) {
     try {
-      var _this4 = this;
-
-      return Promise.resolve(new Contract(_this4.liquidityToken.address, new ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount));
+      return Promise.resolve(new Contract(StablePool.getRouterAddress(chainId), new ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount));
     } catch (e) {
       return Promise.reject(e);
     }

@@ -148,10 +148,11 @@ export class StablePool {
   public async calculateSwapViaPing(
     inIndex: number,
     outIndex: number,
-    inAmount: BigintIsh,
+    inAmount: BigNumber | BigintIsh,
+    chainId: number,
     provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh> {
 
-    const outAmount: BigintIsh = await new Contract(this.liquidityToken.address, new ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount)
+    const outAmount: BigintIsh = await new Contract(StablePool.getRouterAddress(chainId), new ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount)
 
     return outAmount
   }

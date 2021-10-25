@@ -16,10 +16,10 @@ import StableSwap from '../src/abis/RequiemStableSwap.json'
 import * as dotenv from 'dotenv';
 import { STABLES_INDEX_MAP } from '../src/entities/stables'
 
-describe('StablePool',  () => {
+describe('StablePool', () => {
   jest.setTimeout(30000);
 
-  describe('fetcher',  () => {
+  describe('fetcher', () => {
     it('constructor test', async () => {
       dotenv.config();
       console.log('start fetchings', dotenv)
@@ -73,7 +73,7 @@ describe('StablePool',  () => {
 
       const swapStorageRaw = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).swapStorage()
       console.log("SS", swapStorageRaw)
-      const manualSS= {
+      const manualSS = {
         "lpToken": '0xDf65aC8079A71f5174A35dE3D29e5458d03D5787',
         "fee": BigNumber.from('0x0f4240'),
         "adminFee": BigNumber.from('0x012a05f200'),
@@ -82,8 +82,8 @@ describe('StablePool',  () => {
         "initialATime": BigNumber.from('0x00'),
         "futureATime": BigNumber.from('0x00'),
         "defaultWithdrawFee": BigNumber.from('0x02faf080'),
-    }
-    console.log("SSComp", manualSS)
+      }
+      console.log("SSComp", manualSS)
       // console.log("swapStorage RAW", swapStorageRaw)
       // console.log("MUltis", Object.values(STABLES_INDEX_MAP[chainId]).map((token) => (BigNumber.from(10)).pow(18 - token.decimals).toString()))
       const swapStorage = new SwapStorage(
@@ -99,6 +99,7 @@ describe('StablePool',  () => {
       const blockNumber = await jsonProv.getBlockNumber()
       // console.log("BN", blockNumber)
       // console.log("Swap Storage Class", swapStorage)
+      console.log("--- withdrawl fee-----")
       const currentWithdrawFee = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateCurrentWithdrawFee('0x10E38dFfFCfdBaaf590D5A9958B01C9cfcF6A63B')
       const stablePool = new StablePool(STABLES_INDEX_MAP[chainId], tokenReserves, _A, swapStorage, blockNumber, lpTotalSupply, currentWithdrawFee)
       // console.log("Balances manual", stablePool.getBalances())
@@ -106,8 +107,9 @@ describe('StablePool',  () => {
       // console.log("NBALS manual", swapStorage.tokenMultipliers.map((_, index) => stablePool.tokenBalances[index].mul(swapStorage.tokenMultipliers[index]).toString()))
       // console.log(stablePool)
       const inIndex = 0
-      const outIndex = 3
-      const swapActual = await stablePool.calculateSwapViaPing(inIndex, outIndex, '100', jsonProv)
+      const outIndex = 1
+      console.log("--- swap via png----")
+      const swapActual = await stablePool.calculateSwapViaPing(inIndex, outIndex, BigNumber.from('10000'), 43113, jsonProv)
 
       console.log("calculate swap", swapActual.toString())
       const inAmount = BigNumber.from('10000')
@@ -125,8 +127,10 @@ describe('StablePool',  () => {
 
       console.log("calculateRemoveLiquidityOne manual", stablePool.calculateRemoveLiquidityOneToken(BigNumber.from('100000'), 3))
 
+
       const b = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateTokenAmount(['100000', '1000000', '100000', '1000000'], true)
       console.log("getLiquidityAmount original", b)
+
 
       console.log("getLiquidityAmount manual", stablePool.getLiquidityAmount([BigNumber.from('100000'), BigNumber.from('1000000'), BigNumber.from('100000'), BigNumber.from('1000000')], true))
 
@@ -139,8 +143,16 @@ describe('StablePool',  () => {
       console.log("input", inputTokenAmount.toFixed())
       console.log("output Token Amount Manual", output.toFixed())
 
-      const valueInUSDC = stablePool.getLiquidityValue(0, ['1000000', '1000000', '1000000000000000000', '1000000000000000000'].map((num)=>BigNumber.from(num)))
-      console.log("USDCVAL",valueInUSDC.toSignificant(6) )
+
+      const amountsIn = ['0', '0', '1000000000000000000', '1000000000000000000'].map((num) => BigNumber.from(num))
+      const bench = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateTokenAmount(amountsIn, 'false')
+      console.log("getLiquidityAmount original FALSE", bench)
+      console.log("getLiquidityAmount manual FALSE", stablePool.getLiquidityAmount(amountsIn, false))
+
+
+
+      const valueInUSDC = stablePool.getLiquidityValue(0, ['1000000', '1000000', '1000000000000000000', '1000000000000000000'].map((num) => BigNumber.from(num)))
+      console.log("USDCVAL", valueInUSDC.toSignificant(6))
       // const amp = _getAPrecise(stablePool.blockTimestamp,
       //   swapStorage)
       // console.log("APREC", amp)

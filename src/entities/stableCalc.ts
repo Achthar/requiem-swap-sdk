@@ -278,7 +278,7 @@ export function _calculateTokenAmount(
         if (deposit) {
             newBalances[i] = newBalances[i].add(amounts[i])
         } else {
-            newBalances[i] = newBalances[i].add(amounts[i])
+            newBalances[i] = newBalances[i].sub(amounts[i])
         }
     }
 
