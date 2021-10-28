@@ -6,6 +6,7 @@ export * from './entities';
 export * from './router';
 export * from './fetcher';
 export * from './stablesFetcher';
+export * from './routerV3';
 export * from './entities/stables';
 export * from './entities/stablePairWrapper';
 export * from './entities/stablePool';

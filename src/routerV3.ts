@@ -29,7 +29,7 @@ export interface TradeV3Options {
   feeOnTransfer?: boolean
 }
 
-export interface TradeOptionsDeadline extends Omit<TradeV3Options, 'ttl'> {
+export interface TradeV3OptionsDeadline extends Omit<TradeV3Options, 'ttl'> {
   /**
    * When the transaction expires.
    * This is an atlernate to specifying the ttl, for when you do not want to use local time.
@@ -40,7 +40,7 @@ export interface TradeOptionsDeadline extends Omit<TradeV3Options, 'ttl'> {
 /**
  * The parameters to use in the call to the Router to execute a trade.
  */
-export interface SwapParameters {
+export interface SwapV3Parameters {
   /**
    * The method to call on the Router.
    */
@@ -74,7 +74,7 @@ export abstract class RouterV3 {
    * @param trade to produce call parameters for
    * @param options options for the call parameters
    */
-  public static swapCallParameters(trade: TradeV3, options: TradeV3Options | TradeOptionsDeadline): SwapParameters {
+  public static swapCallParameters(trade: TradeV3, options: TradeV3Options | TradeV3OptionsDeadline): SwapV3Parameters {
     const etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId]
     const etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]
     // the router does not support both ether in and out

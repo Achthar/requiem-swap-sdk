@@ -3400,6 +3400,99 @@ var StablesFetcher = /*#__PURE__*/function () {
   return StablesFetcher;
 }();
 
+function toHex$1(currencyAmount) {
+  return "0x" + currencyAmount.raw.toString(16);
+}
+
+var ZERO_HEX$1 = '0x0';
+/**
+ * Represents the Router, and has static methods for helping execute trades.
+ */
+
+var RouterV3 = /*#__PURE__*/function () {
+  /**
+   * Cannot be constructed.
+   */
+  function RouterV3() {}
+  /**
+   * Produces the on-chain method name to call and the hex encoded parameters to pass as arguments for a given trade.
+   * @param trade to produce call parameters for
+   * @param options options for the call parameters
+   */
+
+
+  RouterV3.swapCallParameters = function swapCallParameters(trade, options) {
+    var etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId];
+    var etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]; // the router does not support both ether in and out
+
+    !!(etherIn && etherOut) ? process.env.NODE_ENV !== "production" ? invariant(false, 'ETHER_IN_OUT') : invariant(false) : void 0;
+    !(!('ttl' in options) || options.ttl > 0) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TTL') : invariant(false) : void 0;
+    var to = validateAndParseAddress(options.recipient);
+    var amountIn = toHex$1(trade.maximumAmountIn(options.allowedSlippage));
+    var amountOut = toHex$1(trade.minimumAmountOut(options.allowedSlippage));
+    var path = trade.route.path.map(function (token) {
+      return token.address;
+    });
+    var deadline = 'ttl' in options ? "0x" + (Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16) : "0x" + options.deadline.toString(16);
+    var useFeeOnTransfer = Boolean(options.feeOnTransfer);
+    var methodName;
+    var args;
+    var value;
+
+    switch (trade.tradeType) {
+      case TradeType.EXACT_INPUT:
+        if (etherIn) {
+          methodName = useFeeOnTransfer ? 'swapExactETHForTokensSupportingFeeOnTransferTokens' : 'swapExactETHForTokens'; // (uint amountOutMin, address[] calldata path, address to, uint deadline)
+
+          args = [amountOut, path, to, deadline];
+          value = amountIn;
+        } else if (etherOut) {
+          methodName = useFeeOnTransfer ? 'swapExactTokensForETHSupportingFeeOnTransferTokens' : 'swapExactTokensForETH'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+
+          args = [amountIn, amountOut, path, to, deadline];
+          value = ZERO_HEX$1;
+        } else {
+          methodName = useFeeOnTransfer ? 'swapExactTokensForTokensSupportingFeeOnTransferTokens' : 'swapExactTokensForTokens'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+
+          args = [amountIn, amountOut, path, to, deadline];
+          value = ZERO_HEX$1;
+        }
+
+        break;
+
+      case TradeType.EXACT_OUTPUT:
+        !!useFeeOnTransfer ? process.env.NODE_ENV !== "production" ? invariant(false, 'EXACT_OUT_FOT') : invariant(false) : void 0;
+
+        if (etherIn) {
+          methodName = 'swapETHForExactTokens'; // (uint amountOut, address[] calldata path, address to, uint deadline)
+
+          args = [amountOut, path, to, deadline];
+          value = amountIn;
+        } else if (etherOut) {
+          methodName = 'swapTokensForExactETH'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+
+          args = [amountOut, amountIn, path, to, deadline];
+          value = ZERO_HEX$1;
+        } else {
+          methodName = 'swapTokensForExactTokens'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+
+          args = [amountOut, amountIn, path, to, deadline];
+          value = ZERO_HEX$1;
+        }
+
+        break;
+    }
+
+    return {
+      methodName: methodName,
+      args: args,
+      value: value
+    };
+  };
+
+  return RouterV3;
+}();
+
 var STABLECOINS = {
   43113: [/*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xca9ec7085ed564154a9233e1e7d8fef460438eea', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xffb3ed4960cac85372e6838fbc9ce47bcf2d073e', 6, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xaea51e4fee50a980928b4353e852797b54deacd8', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xccf7ed44c5a0f3cb5c9a9b9f765f8d836fb93ba1', 18, 'TUSD', 'True USD')],
   0: [/*#__PURE__*/new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin')]
@@ -3940,5 +4033,5 @@ var TradeV3 = /*#__PURE__*/function () {
   return TradeV3;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, Price, Rounding, Route, RouteV3, Router, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, WETH, WRAPPED_NETWORK_TOKENS, currencyEquals, inputOutputComparator, inputOutputComparatorV3, tradeComparator, tradeComparatorV3 };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, Price, Rounding, Route, RouteV3, Router, RouterV3, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, WETH, WRAPPED_NETWORK_TOKENS, currencyEquals, inputOutputComparator, inputOutputComparatorV3, tradeComparator, tradeComparatorV3 };
 //# sourceMappingURL=sdk.esm.js.map
