@@ -20,7 +20,7 @@ export class StablePairWrapper implements Source {
     // they follow the stableSwap logic for pricing
     public readonly pricingBasesIn: TokenAmount[]
     public readonly pricingBasesOut: TokenAmount[]
-    public readonly type:string
+    public readonly type: string
     public readonly referenceMidPrices: Price[]
     // public readonly inputReserve: TokenAmount
     // public readonly outputReserve: TokenAmount
@@ -112,14 +112,13 @@ export class StablePairWrapper implements Source {
         const outputReserve = this.reserveOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0)
 
 
-        // set the balance values to the expected values
+        // set the balance values to the expected valuses
         stablePool.setBalanceValue(this.tokenAmounts[0])
         stablePool.setBalanceValue(this.tokenAmounts[1])
 
         const output = stablePool.getOutputAmount(
             inputAmount,
             this.token0.equals(inputAmount.token) ? this.stableIndexes[1] : this.stableIndexes[0])
-
 
         // adjust the values based on the supposdly executed trade
         stablePool.setBalanceValue(inputReserve.add(inputAmount))

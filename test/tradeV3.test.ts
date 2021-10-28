@@ -47,10 +47,11 @@ describe('TradeV3', () => {
   // const pair_t0_s0 = new Pair(new TokenAmount(token0, JSBI.BigInt(1000)), new TokenAmount(stable0, JSBI.BigInt(1000)))
   const pair_t0_s1 = new Pair(new TokenAmount(token0, JSBI.BigInt(1000)), new TokenAmount(stable1, JSBI.BigInt(1100)))
   // const pair_s0_s1 = new StablePairWrapper(new TokenAmount(stable0, JSBI.BigInt(1000)), new TokenAmount(stable1, JSBI.BigInt(900)), 0, 1)
-  const pair_s1_t2 = new Pair(new TokenAmount(stable1, JSBI.BigInt(1200)), new TokenAmount(token2, JSBI.BigInt(1000)))
+  // const pair_s1_t2 = new Pair(new TokenAmount(stable1, JSBI.BigInt(1200)), new TokenAmount(token2, JSBI.BigInt(1000)))
   // const pair_t2_t3 = new Pair(new TokenAmount(token2, JSBI.BigInt(1200)), new TokenAmount(token3, JSBI.BigInt(1300)))
   // const pair_s1_s3 = new StablePairWrapper(new TokenAmount(stable1, JSBI.BigInt(1000)), new TokenAmount(stable3, JSBI.BigInt(900)), 1, 3)
-  const pair_s1_s2 = new StablePairWrapper(new TokenAmount(stable1, JSBI.BigInt(1000)), new TokenAmount(stable2, JSBI.BigInt(900)), 1, 3)
+  const pair_s1_s2 = new StablePairWrapper(new TokenAmount(stable1, JSBI.BigInt(1000)), new TokenAmount(stable2, JSBI.BigInt(900)), 1, 2)
+  const pair_s2_t2 = new Pair(new TokenAmount(stable2, JSBI.BigInt(1000)), new TokenAmount(token2, JSBI.BigInt(1100)))
 
   const manualSS = {
     "lpToken": '0xDf65aC8079A71f5174A35dE3D29e5458d03D5787',
@@ -66,7 +67,7 @@ describe('TradeV3', () => {
     0: stable0, 1: stable1, 2: stable2, 3: stable3
   }
 
-  const balances = [BigNumber.from('10000'), BigNumber.from('10000'), BigNumber.from('10000'), BigNumber.from('10000')]
+  const balances = [BigNumber.from('1000'), BigNumber.from('1000'), BigNumber.from('1000'), BigNumber.from('1000')]
 
   const swapStorage = new SwapStorage(
     Object.values([stable0, stable1, stable2, stable3]).map((token) => (BigNumber.from(10)).pow(18 - token.decimals)),
@@ -96,7 +97,7 @@ describe('TradeV3', () => {
       CurrencyAmount.networkCCYAmount(chainId, JSBI.BigInt(100)),
       TradeType.EXACT_INPUT
     )
-    
+
     expect(trade.inputAmount.currency).toEqual(NETWORK_CCY[chainId])
     expect(trade.outputAmount.currency).toEqual(token0)
   })
@@ -143,19 +144,24 @@ describe('TradeV3', () => {
     it('provides best route', () => {
       const result = TradeV3.bestTradeExactIn(
         stablePool,
-        [pair_t0_s1, pair_s1_s2, pair_t1_t2],
+        [pair_t0_s1, pair_s1_s2, pair_s2_t2, pair_t0_t2],
         new TokenAmount(token0, JSBI.BigInt(100)),
         token2
       )
+      const [s1Amount,] = pair_t0_s1.getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
+      const s2Amount = stablePool.getOutputAmount(s1Amount, 2)
+
+      const [t3Amount,] = pair_s2_t2.getOutputAmount(s2Amount)
+      console.log("manualT2 n", t3Amount) // should be 98
       expect(result).toHaveLength(2)
       expect(result[0].route.sources).toHaveLength(1) // 0 -> 2 at 10:11
       expect(result[0].route.path).toEqual([token0, token2])
       expect(result[0].inputAmount).toEqual(new TokenAmount(token0, JSBI.BigInt(100)))
       expect(result[0].outputAmount).toEqual(new TokenAmount(token2, JSBI.BigInt(99)))
-      expect(result[1].route.sources).toHaveLength(2) // 0 -> 1 -> 2 at 12:12:10
-      expect(result[1].route.path).toEqual([token0, token1, token2])
+      expect(result[1].route.sources).toHaveLength(3) // 0 -> 1 -> 2 at 12:12:10
+      expect(result[1].route.path).toEqual([token0, stable1, stable2, token2])
       expect(result[1].inputAmount).toEqual(new TokenAmount(token0, JSBI.BigInt(100)))
-      expect(result[1].outputAmount).toEqual(new TokenAmount(token2, JSBI.BigInt(69)))
+      expect(result[1].outputAmount).toEqual(new TokenAmount(token2, t3Amount.raw))
     })
 
     it('doesnt throw for zero liquidity sources', () => {
@@ -167,7 +173,7 @@ describe('TradeV3', () => {
     it('respects maxHops', () => {
       const result = TradeV3.bestTradeExactIn(
         stablePool,
-        [pair_t0_s1, pair_s1_s2, pair_s1_t2],
+        [pair_t0_s1, pair_s1_s2, pair_s2_t2, pair_t0_t2],
         new TokenAmount(token0, JSBI.BigInt(10)),
         token2,
         { maxHops: 1 }
