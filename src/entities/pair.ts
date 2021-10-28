@@ -20,12 +20,14 @@ import {
 import { sqrt, parseBigintIsh } from '../utils'
 import { InsufficientReservesError, InsufficientInputAmountError } from '../errors'
 import { Token } from './token'
+import {Source} from './source'
 
 let PAIR_ADDRESS_CACHE: { [token0Address: string]: { [token1Address: string]: string } } = {}
 
-export class Pair {
+export class Pair implements Source{
   public readonly liquidityToken: Token
   private readonly tokenAmounts: [TokenAmount, TokenAmount]
+  public readonly type:string
 
   public static getAddress(tokenA: Token, tokenB: Token): string {
     invariant(tokenA.chainId === tokenB.chainId, 'CHAIN_ID')
@@ -60,6 +62,7 @@ export class Pair {
       tokenAmounts[0].token.chainId === 56 ? 'Cake-LP' : 'Requiem-LP',
       tokenAmounts[0].token.chainId === 56 ? 'Pancake LPs' : 'Requiem LPs'
     )
+    this.type = 'Pair'
     this.tokenAmounts = tokenAmounts as [TokenAmount, TokenAmount]
   }
 

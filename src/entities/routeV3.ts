@@ -6,56 +6,52 @@ import { Token, WRAPPED_NETWORK_TOKENS } from './token'
 import { Pair } from './pair'
 import { Price } from './fractions/price'
 import { StablePool } from './stablePool'
+import { StablePairWrapper } from './stablePairWrapper'
 
 // new version of the route 
 // the first verion to include the stable pool for less friction
 export class RouteV3 {
   public readonly stablePool: StablePool
-  public readonly pairs: Pair[]
+  public readonly sources: (Pair|StablePairWrapper)[]
   public readonly path: Token[]
   public readonly input: Currency
   public readonly output: Currency
   public readonly midPrice: Price
 
-  public constructor(pairs: Pair[], input: Currency, output?: Currency, stablePool?: StablePool) {
-    invariant(pairs.length > 0, 'PAIRS')
+  public constructor(sources: (Pair|StablePairWrapper)[], stablePool: StablePool, input: Currency, output?: Currency) {
+    invariant(sources.length > 0, 'PAIRS')
     invariant(
-      pairs.every(pair => pair.chainId === pairs[0].chainId),
+      sources.every(source => source.chainId === sources[0].chainId),
       'CHAIN_IDS'
     )
     invariant(
-      (input instanceof Token && pairs[0].involvesToken(input)) ||
-      (input === NETWORK_CCY[pairs[0].chainId] && pairs[0].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])),
+      (input instanceof Token && sources[0].involvesToken(input)) ||
+      (input === NETWORK_CCY[sources[0].chainId] && sources[0].involvesToken(WRAPPED_NETWORK_TOKENS[sources[0].chainId])),
       'INPUT'
     )
     invariant(
       typeof output === 'undefined' ||
-      (output instanceof Token && pairs[pairs.length - 1].involvesToken(output)) ||
-      (output === NETWORK_CCY[pairs[0].chainId] && pairs[pairs.length - 1].involvesToken(WRAPPED_NETWORK_TOKENS[pairs[0].chainId])),
+      (output instanceof Token && sources[sources.length - 1].involvesToken(output)) ||
+      (output === NETWORK_CCY[sources[0].chainId] && sources[sources.length - 1].involvesToken(WRAPPED_NETWORK_TOKENS[sources[0].chainId])),
       'OUTPUT'
     )
 
-    const path: Token[] = [input instanceof Token ? input : WRAPPED_NETWORK_TOKENS[pairs[0].chainId]]
-    for (const [i, pair] of pairs.entries()) {
+    const path: Token[] = [input instanceof Token ? input : WRAPPED_NETWORK_TOKENS[sources[0].chainId]]
+    for (const [i, source] of sources.entries()) {
       const currentInput = path[i]
-      invariant(currentInput.equals(pair.token0) || currentInput.equals(pair.token1), 'PATH')
-      const output = currentInput.equals(pair.token0) ? pair.token1 : pair.token0
+      invariant(currentInput.equals(source.token0) || currentInput.equals(source.token1), 'PATH')
+      const output = currentInput.equals(source.token0) ? source.token1 : source.token0
       path.push(output)
     }
-    this.stablePool = stablePool ?? StablePool.mock()
-    this.pairs = pairs
+    this.stablePool = stablePool
+    this.sources = sources
     this.path = path
-    this.midPrice = Price.fromRoute(this)
+    this.midPrice = Price.fromRouteV3(this)
     this.input = input
     this.output = output ?? path[path.length - 1]
   }
 
-
-  public connectPairs(){
-    
-  }
-
   public get chainId(): ChainId {
-    return this.pairs[0].chainId
+    return this.sources[0].chainId
   }
 }

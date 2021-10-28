@@ -83,6 +83,7 @@ describe('StablePool', () => {
         "futureATime": BigNumber.from('0x00'),
         "defaultWithdrawFee": BigNumber.from('0x02faf080'),
       }
+      
       console.log("SSComp", manualSS)
       // console.log("swapStorage RAW", swapStorageRaw)
       // console.log("MUltis", Object.values(STABLES_INDEX_MAP[chainId]).map((token) => (BigNumber.from(10)).pow(18 - token.decimals).toString()))
@@ -153,6 +154,39 @@ describe('StablePool', () => {
 
       const valueInUSDC = stablePool.getLiquidityValue(0, ['1000000', '1000000', '1000000000000000000', '1000000000000000000'].map((num) => BigNumber.from(num)))
       console.log("USDCVAL", valueInUSDC.toSignificant(6))
+
+
+      const testmounts1 = [
+        BigNumber.from('1000000'),
+        BigNumber.from('1000000'),
+        BigNumber.from('1000000000000000000'),
+        BigNumber.from('1000000000000000000')
+      ]
+      console.log('[1000000,1000000,1000000000000000000,1000000000000000000]')
+      const bench4 = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateTokenAmount(testmounts1, 'false')
+
+      console.log("real Benchmark from chain", bench4.toString())
+      console.log(" manual", stablePool.getLiquidityAmount(testmounts1, false))
+
+
+      const testmounts = [
+        BigNumber.from('4271223161'),
+        BigNumber.from('4873535604'),
+        BigNumber.from('4832883727052462339141'),
+        BigNumber.from('1391067960274494353613')
+      ]
+
+      const bench1 = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateTokenAmount(testmounts, 'false')
+
+      console.log("real Benchmark from chain", bench1.toString())
+
+
+
+      // const bench2 = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv)
+      // .removeLiquidityImbalance(testmounts,
+      //    BigNumber.from('471156368702411645588335'), BigNumber.from('99999999999999999999999999999999999999'))
+
+      // console.log("real Benchmark from chain remimb", bench2.toString())
       // const amp = _getAPrecise(stablePool.blockTimestamp,
       //   swapStorage)
       // console.log("APREC", amp)

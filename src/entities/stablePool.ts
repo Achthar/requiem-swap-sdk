@@ -18,7 +18,7 @@ import {
 } from '../constants'
 import StableSwap from '../abis/RequiemStableSwap.json'
 import { Token } from './token'
-import { TokenAmount } from '../entities/fractions/tokenAmount'
+import { TokenAmount } from './fractions/tokenAmount'
 import { Pair } from './pair'
 /**
   * A class that contains relevant stablePool information
@@ -66,7 +66,7 @@ export class StablePool {
     this._A = _A
     this.liquidityToken = new Token(
       tokens[0].chainId,
-      STABLE_POOL_LP_ADDRESS[tokens[0].chainId],
+      STABLE_POOL_LP_ADDRESS[tokens[0].chainId] ?? '0x0000000000000000000000000000000000000001',
       18,
       'RequiemStable-LP',
       'Requiem StableSwap LPs'
@@ -81,7 +81,7 @@ export class StablePool {
 
   public static mock() {
     const dummy = BigNumber.from(0)
-    return new StablePool({ 0: new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'Mock USDC', 'MUSDC') }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy)
+    return new StablePool({ 0: new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC') }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy)
   }
 
   /**
@@ -180,6 +180,11 @@ export class StablePool {
     const swap = this.calculateSwap(this.indexFromToken(inputAmount.token), outIndex, inputAmount.toBigNumber())
     return new TokenAmount(this.tokenFromIndex(outIndex), swap.toBigInt())
   }
+
+  public getInputAmount(outputAmount: TokenAmount, inIndex: number): TokenAmount {
+    const swap = this.calculateSwap(inIndex, this.indexFromToken(outputAmount.token), outputAmount.toBigNumber())
+    return new TokenAmount(this.tokenFromIndex(inIndex), swap.toBigInt())
+  }
   /**
    * Returns the chain ID of the tokens in the pair.
    */
@@ -255,7 +260,18 @@ export class StablePool {
     this.blockTimestamp = blockTimestamp
   }
 
-  public setLpTotalSupply(totalSupply: BigNumber) { this.lpTotalSupply = totalSupply }
+  public setLpTotalSupply(totalSupply: BigNumber) {
+    this.lpTotalSupply = totalSupply
+  }
+
+  public setBalanceValueByIndex(index: number, newBalance: BigNumber) {
+    this.tokenBalances[index] = newBalance
+  }
+
+  public setBalanceValue(tokenAmount: TokenAmount) {
+    this.tokenBalances[this.indexFromToken(tokenAmount.token)] = tokenAmount.toBigNumber()
+  }
+
 
   /*
     public getOutputAmount(inputAmount: TokenAmount): [TokenAmount, StablePool] {

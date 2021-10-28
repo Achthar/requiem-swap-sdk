@@ -10,6 +10,8 @@ import { Price } from './fractions/price'
 import { TokenAmount, InputOutput } from './fractions/tokenAmount'
 import { Pair } from './pair'
 import { RouteV3 } from './routeV3'
+import { StablePairWrapper } from './stablePairWrapper'
+import { StablePool } from './stablePool'
 import { currencyEquals, Token, WRAPPED_NETWORK_TOKENS } from './token'
 
 /**
@@ -147,24 +149,28 @@ export class TradeV3 {
 
   public constructor(route: RouteV3, amount: CurrencyAmount, tradeType: TradeType) {
     const amounts: TokenAmount[] = new Array(route.path.length)
-    const nextPairs: Pair[] = new Array(route.pairs.length)
+    const nextSources: (Pair | StablePairWrapper)[] = new Array(route.sources.length)
     if (tradeType === TradeType.EXACT_INPUT) {
       invariant(currencyEquals(amount.currency, route.input), 'INPUT')
       amounts[0] = wrappedAmount(amount, route.chainId)
       for (let i = 0; i < route.path.length - 1; i++) {
-        const pair = route.pairs[i]
-        const [outputAmount, nextPair] = pair.getOutputAmount(amounts[i])
+        const source = route.sources[i]
+        const [outputAmount, nextSource] = source instanceof Pair ?
+          source.getOutputAmount(amounts[i]) :
+          source.getOutputAmount(amounts[i], route.stablePool)
         amounts[i + 1] = outputAmount
-        nextPairs[i] = nextPair
+        nextSources[i] = nextSource
       }
     } else {
       invariant(currencyEquals(amount.currency, route.output), 'OUTPUT')
       amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId)
       for (let i = route.path.length - 1; i > 0; i--) {
-        const pair = route.pairs[i - 1]
-        const [inputAmount, nextPair] = pair.getInputAmount(amounts[i])
+        const source = route.sources[i - 1]
+        const [inputAmount, nextSource] = source instanceof Pair ?
+          source.getInputAmount(amounts[i]) :
+          source.getInputAmount(amounts[i], route.stablePool)
         amounts[i - 1] = inputAmount
-        nextPairs[i - 1] = nextPair
+        nextSources[i - 1] = nextSource
       }
     }
 
@@ -174,13 +180,13 @@ export class TradeV3 {
       tradeType === TradeType.EXACT_INPUT
         ? amount
         : route.input === NETWORK_CCY[route.chainId]
-          ? CurrencyAmount.networkCCYAmount(route.chainId,amounts[0].raw)
+          ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw)
           : amounts[0]
     this.outputAmount =
       tradeType === TradeType.EXACT_OUTPUT
         ? amount
         : route.output === NETWORK_CCY[route.chainId]
-          ? CurrencyAmount.networkCCYAmount(route.chainId,amounts[amounts.length - 1].raw)
+          ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw)
           : amounts[amounts.length - 1]
     this.executionPrice = new Price(
       this.inputAmount.currency,
@@ -188,7 +194,7 @@ export class TradeV3 {
       this.inputAmount.raw,
       this.outputAmount.raw
     )
-    this.nextMidPrice = Price.fromRoute(new RouteV3(nextPairs, route.input))
+    this.nextMidPrice = Price.fromRouteV3(new RouteV3(nextSources, route.stablePool, route.input))
     this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount)
   }
 
@@ -223,7 +229,7 @@ export class TradeV3 {
       const slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient
       return this.inputAmount instanceof TokenAmount
         ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn)
-        : CurrencyAmount.networkCCYAmount(this.route.chainId,slippageAdjustedAmountIn)
+        : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn)
     }
   }
 
@@ -242,18 +248,19 @@ export class TradeV3 {
    * @param bestTrades used in recursion; the current list of best trades
    */
   public static bestTradeExactIn(
-    pairs: Pair[],
+    stablePool: StablePool,
+    sources: (Pair | StablePairWrapper)[],
     currencyAmountIn: CurrencyAmount,
     currencyOut: Currency,
     { maxNumResults = 3, maxHops = 3 }: BestTradeOptionsV3 = {},
     // used in recursion.
-    currentPairs: Pair[] = [],
+    currentSources: (Pair | StablePairWrapper)[] = [],
     originalAmountIn: CurrencyAmount = currencyAmountIn,
     bestTrades: TradeV3[] = []
   ): TradeV3[] {
-    invariant(pairs.length > 0, 'PAIRS')
+    invariant(sources.length > 0, 'PAIRS')
     invariant(maxHops > 0, 'MAX_HOPS')
-    invariant(originalAmountIn === currencyAmountIn || currentPairs.length > 0, 'INVALID_RECURSION')
+    invariant(originalAmountIn === currencyAmountIn || currentSources.length > 0, 'INVALID_RECURSION')
     const chainId: ChainId | undefined =
       currencyAmountIn instanceof TokenAmount
         ? currencyAmountIn.token.chainId
@@ -264,15 +271,16 @@ export class TradeV3 {
 
     const amountIn = wrappedAmount(currencyAmountIn, chainId)
     const tokenOut = wrappedCurrency(currencyOut, chainId)
-    for (let i = 0; i < pairs.length; i++) {
-      const pair = pairs[i]
-      // pair irrelevant
-      if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue
-      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue
+    for (let i = 0; i < sources.length; i++) {
+      let source = sources[i]
+
+
+      if (!source.token0.equals(amountIn.token) && !source.token1.equals(amountIn.token)) continue
+      if (source.reserve0.equalTo(ZERO) || source.reserve1.equalTo(ZERO)) continue
 
       let amountOut: TokenAmount
       try {
-        ;[amountOut] = pair.getOutputAmount(amountIn)
+        ;[amountOut] = source instanceof Pair ? source.getOutputAmount(amountIn) : source.getOutputAmount(amountIn, stablePool)
       } catch (error) {
         // input too low
         if ((error as any).isInsufficientInputAmountError) {
@@ -285,30 +293,32 @@ export class TradeV3 {
         sortedInsert(
           bestTrades,
           new TradeV3(
-            new RouteV3([...currentPairs, pair], originalAmountIn.currency, currencyOut),
+            new RouteV3([...currentSources, source], stablePool, originalAmountIn.currency, currencyOut),
             originalAmountIn,
             TradeType.EXACT_INPUT
           ),
           maxNumResults,
           tradeComparatorV3
         )
-      } else if (maxHops > 1 && pairs.length > 1) {
-        const pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length))
+      } else if (maxHops > 1 && sources.length > 1) {
+        const sourcesExcludingThisSource = sources.slice(0, i).concat(sources.slice(i + 1, sources.length))
 
         // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
         TradeV3.bestTradeExactIn(
-          pairsExcludingThisPair,
+          stablePool,
+          sourcesExcludingThisSource,
           amountOut,
           currencyOut,
           {
             maxNumResults,
             maxHops: maxHops - 1
           },
-          [...currentPairs, pair],
+          [...currentSources, source],
           originalAmountIn,
           bestTrades
         )
       }
+
     }
 
     return bestTrades
@@ -320,28 +330,30 @@ export class TradeV3 {
    * to an output token amount, making at most `maxHops` hops
    * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
    * the amount in among multiple routes.
-   * @param pairs the pairs to consider in finding the best trade
+   * @param stablePool the stalePool used for the iteration - it will undergo changes
+   * @param sources the pairs / wrapped pairs to consider in finding the best trade
    * @param currencyIn the currency to spend
    * @param currencyAmountOut the exact amount of currency out
    * @param maxNumResults maximum number of results to return
    * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
-   * @param currentPairs used in recursion; the current list of pairs
+   * @param currentSources used in recursion; the current list of pairs
    * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
    * @param bestTrades used in recursion; the current list of best trades
    */
   public static bestTradeExactOut(
-    pairs: Pair[],
+    stablePool: StablePool,
+    sources: (Pair | StablePairWrapper)[],
     currencyIn: Currency,
     currencyAmountOut: CurrencyAmount,
     { maxNumResults = 3, maxHops = 3 }: BestTradeOptionsV3 = {},
     // used in recursion.
-    currentPairs: Pair[] = [],
+    currentSources: (Pair | StablePairWrapper)[] = [],
     originalAmountOut: CurrencyAmount = currencyAmountOut,
     bestTrades: TradeV3[] = []
   ): TradeV3[] {
-    invariant(pairs.length > 0, 'PAIRS')
+    invariant(sources.length > 0, 'PAIRS')
     invariant(maxHops > 0, 'MAX_HOPS')
-    invariant(originalAmountOut === currencyAmountOut || currentPairs.length > 0, 'INVALID_RECURSION')
+    invariant(originalAmountOut === currencyAmountOut || currentSources.length > 0, 'INVALID_RECURSION')
     const chainId: ChainId | undefined =
       currencyAmountOut instanceof TokenAmount
         ? currencyAmountOut.token.chainId
@@ -352,17 +364,17 @@ export class TradeV3 {
 
     const amountOut = wrappedAmount(currencyAmountOut, chainId)
     const tokenIn = wrappedCurrency(currencyIn, chainId)
-    for (let i = 0; i < pairs.length; i++) {
-      const pair = pairs[i]
-      // pair irrelevant
-      if (!pair.token0.equals(amountOut.token) && !pair.token1.equals(amountOut.token)) continue
-      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue
+    for (let i = 0; i < sources.length; i++) {
+      const source = sources[i]
+      // source irrelevant
+      if (!source.token0.equals(amountOut.token) && !source.token1.equals(amountOut.token)) continue
+      if (source.reserve0.equalTo(ZERO) || source.reserve1.equalTo(ZERO)) continue
 
       let amountIn: TokenAmount
       try {
-        ;[amountIn] = pair.getInputAmount(amountOut)
+        ;[amountIn] = source instanceof Pair ? source.getInputAmount(amountOut) : source.getInputAmount(amountOut, stablePool)
       } catch (error) {
-        // not enough liquidity in this pair
+        // not enough liquidity in this source
         if ((error as any).isInsufficientReservesError) {
           continue
         }
@@ -373,26 +385,27 @@ export class TradeV3 {
         sortedInsert(
           bestTrades,
           new TradeV3(
-            new RouteV3([pair, ...currentPairs], currencyIn, originalAmountOut.currency),
+            new RouteV3([source, ...currentSources], stablePool, currencyIn, originalAmountOut.currency),
             originalAmountOut,
             TradeType.EXACT_OUTPUT
           ),
           maxNumResults,
           tradeComparatorV3
         )
-      } else if (maxHops > 1 && pairs.length > 1) {
-        const pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length))
+      } else if (maxHops > 1 && sources.length > 1) {
+        const sourcesExcludingThisSource = sources.slice(0, i).concat(sources.slice(i + 1, sources.length))
 
         // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
         TradeV3.bestTradeExactOut(
-          pairsExcludingThisPair,
+          stablePool,
+          sourcesExcludingThisSource,
           currencyIn,
           amountIn,
           {
             maxNumResults,
             maxHops: maxHops - 1
           },
-          [pair, ...currentPairs],
+          [source, ...currentSources],
           originalAmountOut,
           bestTrades
         )

@@ -7,8 +7,11 @@ import JSBI from 'jsbi'
 import { BigintIsh, Rounding, TEN } from '../../constants'
 import { Currency } from '../currency'
 import { Route } from '../route'
+import { RouteV3 } from 'entities/routeV3'
 import { Fraction } from './fraction'
 import { CurrencyAmount } from './currencyAmount'
+// import { Pair } from 'entities'
+import { StablePairWrapper } from 'entities/stablePairWrapper'
 
 export class Price extends Fraction {
   public readonly baseCurrency: Currency // input i.e. denominator
@@ -22,6 +25,25 @@ export class Price extends Fraction {
         route.path[i].equals(pair.token0)
           ? new Price(pair.reserve0.currency, pair.reserve1.currency, pair.reserve0.raw, pair.reserve1.raw)
           : new Price(pair.reserve1.currency, pair.reserve0.currency, pair.reserve1.raw, pair.reserve0.raw)
+      )
+    }
+    return prices.slice(1).reduce((accumulator, currentValue) => accumulator.multiply(currentValue), prices[0])
+  }
+
+  // upgraded version to include StablePairWrappers in a Route
+  public static fromRouteV3(route: RouteV3): Price {
+    const prices: Price[] = []
+    for (const [i, source] of route.sources.entries()) {
+      prices.push(
+        route.path[i].equals(source.token0)
+          ? (source.type === 'Pair'
+            ? new Price(source.reserve0.currency, source.reserve1.currency, source.reserve0.raw, source.reserve1.raw)
+            // here we need the recorded prcing bases
+            : new Price(source.reserve0.currency, source.reserve1.currency, (source as StablePairWrapper).pricingBasesIn[0].raw, (source as StablePairWrapper).pricingBasesOut[1].raw))
+          : (source.type === 'Pair' ?
+            new Price(source.reserve1.currency, source.reserve0.currency, source.reserve1.raw, source.reserve0.raw)
+            // pricing base for stablePriceWrapper
+            : new Price(source.reserve0.currency, source.reserve1.currency, (source as StablePairWrapper).pricingBasesIn[1].raw, (source as StablePairWrapper).pricingBasesOut[0].raw))
       )
     }
     return prices.slice(1).reduce((accumulator, currentValue) => accumulator.multiply(currentValue), prices[0])
