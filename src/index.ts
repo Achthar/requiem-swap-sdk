@@ -18,3 +18,11 @@ export * from './entities'
 export * from './router'
 export * from './fetcher'
 export * from  './stablesFetcher'
+
+
+export * from './entities/stables'
+export * from './entities/stablePairWrapper'
+export * from './entities/stablePool'
+export * from './entities/swapStorage'
+export * from './entities/tradeV3'
+export * from './entities/routeV3'
