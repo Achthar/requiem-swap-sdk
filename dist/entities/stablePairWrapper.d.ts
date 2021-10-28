@@ -12,6 +12,7 @@ export declare class StablePairWrapper implements Source {
     readonly pricingBasesOut: TokenAmount[];
     readonly type: string;
     readonly referenceMidPrices: Price[];
+    readonly liquidityToken: Token;
     constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount, indexA: number, indexB: number);
     /**
      * Returns the chain ID of the tokens in the pair.

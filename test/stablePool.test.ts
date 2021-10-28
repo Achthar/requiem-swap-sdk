@@ -1,4 +1,4 @@
-import { ethers } from 'ethers'
+import { ethers, BigNumber } from 'ethers'
 import { SwapStorage } from '../src/entities/swapStorage'
 import { _getAPrecise, _xp, _distance, _getD, _sumOf, _getY } from '../src/entities/stableCalc'
 // import HDWalletProvider from '@truffle/hdwallet-provider'
@@ -8,12 +8,11 @@ import { _getAPrecise, _xp, _distance, _getD, _sumOf, _getY } from '../src/entit
 import { TokenAmount } from '../src/entities/fractions/tokenAmount'
 // import { Pair } from './entities/pair'
 import { StablePool } from '../src/entities/stablePool'
-import { BigNumber } from 'ethers'
 // import IPancakePair from '@pancakeswap-libs/pancake-swap-core/build/IPancakePair.json'
 // import invariant from 'tiny-invariant'
 import IERC20 from '../src/abis/IERC20.json'
 import StableSwap from '../src/abis/RequiemStableSwap.json'
-import * as dotenv from 'dotenv';
+// import * as dotenv from 'dotenv';
 import { STABLES_INDEX_MAP } from '../src/entities/stables'
 
 describe('StablePool', () => {
@@ -21,8 +20,8 @@ describe('StablePool', () => {
 
   describe('fetcher', () => {
     it('constructor test', async () => {
-      dotenv.config();
-      console.log('start fetchings', dotenv)
+      // dotenv.config();
+      // console.log('start fetchings', dotenv)
       // start set up
       const chainId = 43113
       // const pk: string = '0x' + process.env.PK_1 || '';
@@ -83,7 +82,7 @@ describe('StablePool', () => {
         "futureATime": BigNumber.from('0x00'),
         "defaultWithdrawFee": BigNumber.from('0x02faf080'),
       }
-      
+
       console.log("SSComp", manualSS)
       // console.log("swapStorage RAW", swapStorageRaw)
       // console.log("MUltis", Object.values(STABLES_INDEX_MAP[chainId]).map((token) => (BigNumber.from(10)).pow(18 - token.decimals).toString()))

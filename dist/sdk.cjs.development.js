@@ -3425,7 +3425,10 @@ var StablePairWrapper = /*#__PURE__*/function () {
   // public readonly inputReserve: TokenAmount
   // public readonly outputReserve: TokenAmount
   function StablePairWrapper(tokenAmountA, tokenAmountB, indexA, indexB) {
+    var _STABLE_POOL_LP_ADDRE;
+
     !(tokenAmountA.token.chainId === tokenAmountB.token.chainId) ?  invariant(false, 'CHAIN_IDS')  : void 0;
+    this.liquidityToken = new Token(tokenAmountA.token.chainId, (_STABLE_POOL_LP_ADDRE = STABLE_POOL_LP_ADDRESS[tokenAmountA.token.chainId]) !== null && _STABLE_POOL_LP_ADDRE !== void 0 ? _STABLE_POOL_LP_ADDRE : '0x0000000000000000000000000000000000000001', 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
     this.tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
     this.stableIndexes = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [indexA, indexB] : [indexB, indexA];
     this.pricingBasesIn = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];

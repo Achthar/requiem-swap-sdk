@@ -5,7 +5,7 @@ import { TokenAmount } from "./fractions/tokenAmount";
 import invariant from "tiny-invariant";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Source } from './source';
-import { ChainId } from "./../constants";
+import { ChainId, STABLE_POOL_LP_ADDRESS } from "./../constants";
 
 // A class that wraps a stablePool to a pair-like structure
 export class StablePairWrapper implements Source {
@@ -22,12 +22,22 @@ export class StablePairWrapper implements Source {
     public readonly pricingBasesOut: TokenAmount[]
     public readonly type: string
     public readonly referenceMidPrices: Price[]
+    public readonly liquidityToken: Token
     // public readonly inputReserve: TokenAmount
     // public readonly outputReserve: TokenAmount
 
     constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount, indexA: number, indexB: number) {
 
         invariant(tokenAmountA.token.chainId === tokenAmountB.token.chainId, 'CHAIN_IDS')
+        
+        this.liquidityToken = new Token(
+            tokenAmountA.token.chainId,
+            STABLE_POOL_LP_ADDRESS[tokenAmountA.token.chainId] ?? '0x0000000000000000000000000000000000000001',
+            18,
+            'RequiemStable-LP',
+            'Requiem StableSwap LPs'
+        )
+
         this.tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]
         this.stableIndexes = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [indexA, indexB] : [indexB, indexA]
 
