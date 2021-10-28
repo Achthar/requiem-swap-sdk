@@ -2,9 +2,11 @@ import { Price } from './fractions/price';
 import { TokenAmount } from './fractions/tokenAmount';
 import { BigintIsh, ChainId } from '../constants';
 import { Token } from './token';
-export declare class Pair {
+import { Source } from './source';
+export declare class Pair implements Source {
     readonly liquidityToken: Token;
     private readonly tokenAmounts;
+    readonly type: string;
     static getAddress(tokenA: Token, tokenB: Token): string;
     constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount);
     /**

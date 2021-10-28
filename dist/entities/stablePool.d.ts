@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { SwapStorage } from './swapStorage';
 import { BigintIsh, ChainId } from '../constants';
 import { Token } from './token';
-import { TokenAmount } from '../entities/fractions/tokenAmount';
+import { TokenAmount } from './fractions/tokenAmount';
 import { Pair } from './pair';
 /**
   * A class that contains relevant stablePool information
@@ -41,6 +41,7 @@ export declare class StablePool {
     calculateSwapViaPing(inIndex: number, outIndex: number, inAmount: BigNumber | BigintIsh, chainId: number, provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh>;
     calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber): BigNumber;
     getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount;
+    getInputAmount(outputAmount: TokenAmount, inIndex: number): TokenAmount;
     /**
      * Returns the chain ID of the tokens in the pair.
      */
@@ -57,4 +58,6 @@ export declare class StablePool {
     setTokenBalances(tokenBalances: BigNumber[]): void;
     setBlockTimestamp(blockTimestamp: BigNumber): void;
     setLpTotalSupply(totalSupply: BigNumber): void;
+    setBalanceValueByIndex(index: number, newBalance: BigNumber): void;
+    setBalanceValue(tokenAmount: TokenAmount): void;
 }

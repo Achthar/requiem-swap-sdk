@@ -4,14 +4,14 @@ import { Token } from './token';
 import { Pair } from './pair';
 import { Price } from './fractions/price';
 import { StablePool } from './stablePool';
+import { StablePairWrapper } from './stablePairWrapper';
 export declare class RouteV3 {
     readonly stablePool: StablePool;
-    readonly pairs: Pair[];
+    readonly sources: (Pair | StablePairWrapper)[];
     readonly path: Token[];
     readonly input: Currency;
     readonly output: Currency;
     readonly midPrice: Price;
-    constructor(pairs: Pair[], input: Currency, output?: Currency, stablePool?: StablePool);
-    connectPairs(): void;
+    constructor(sources: (Pair | StablePairWrapper)[], stablePool: StablePool, input: Currency, output?: Currency);
     get chainId(): ChainId;
 }

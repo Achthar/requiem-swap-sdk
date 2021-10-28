@@ -1,12 +1,13 @@
 import { TradeType } from './constants'
 import invariant from 'tiny-invariant'
 import { validateAndParseAddress } from './utils'
-import { CurrencyAmount, NETWORK_CCY, Percent, Trade } from './entities'
+import { CurrencyAmount, NETWORK_CCY, Percent } from './entities'
+import { TradeV3 } from './entities/tradeV3'
 
 /**
  * Options for producing the arguments to send call to the router.
  */
-export interface TradeOptions {
+export interface TradeV3Options {
   /**
    * How much the execution price is allowed to move unfavorably from the trade execution price.
    */
@@ -28,7 +29,7 @@ export interface TradeOptions {
   feeOnTransfer?: boolean
 }
 
-export interface TradeOptionsDeadline extends Omit<TradeOptions, 'ttl'> {
+export interface TradeOptionsDeadline extends Omit<TradeV3Options, 'ttl'> {
   /**
    * When the transaction expires.
    * This is an atlernate to specifying the ttl, for when you do not want to use local time.
@@ -63,7 +64,7 @@ const ZERO_HEX = '0x0'
 /**
  * Represents the Router, and has static methods for helping execute trades.
  */
-export abstract class Router {
+export abstract class RouterV3 {
   /**
    * Cannot be constructed.
    */
@@ -73,7 +74,7 @@ export abstract class Router {
    * @param trade to produce call parameters for
    * @param options options for the call parameters
    */
-  public static swapCallParameters(trade: Trade, options: TradeOptions | TradeOptionsDeadline): SwapParameters {
+  public static swapCallParameters(trade: TradeV3, options: TradeV3Options | TradeOptionsDeadline): SwapParameters {
     const etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId]
     const etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]
     // the router does not support both ether in and out

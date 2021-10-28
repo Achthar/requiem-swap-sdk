@@ -1,8 +1,9 @@
-import { Percent, Trade } from './entities';
+import { Percent } from './entities';
+import { TradeV3 } from './entities/tradeV3';
 /**
  * Options for producing the arguments to send call to the router.
  */
-export interface TradeOptions {
+export interface TradeV3Options {
     /**
      * How much the execution price is allowed to move unfavorably from the trade execution price.
      */
@@ -22,7 +23,7 @@ export interface TradeOptions {
      */
     feeOnTransfer?: boolean;
 }
-export interface TradeOptionsDeadline extends Omit<TradeOptions, 'ttl'> {
+export interface TradeOptionsDeadline extends Omit<TradeV3Options, 'ttl'> {
     /**
      * When the transaction expires.
      * This is an atlernate to specifying the ttl, for when you do not want to use local time.
@@ -49,7 +50,7 @@ export interface SwapParameters {
 /**
  * Represents the Router, and has static methods for helping execute trades.
  */
-export declare abstract class Router {
+export declare abstract class RouterV3 {
     /**
      * Cannot be constructed.
      */
@@ -59,5 +60,5 @@ export declare abstract class Router {
      * @param trade to produce call parameters for
      * @param options options for the call parameters
      */
-    static swapCallParameters(trade: Trade, options: TradeOptions | TradeOptionsDeadline): SwapParameters;
+    static swapCallParameters(trade: TradeV3, options: TradeV3Options | TradeOptionsDeadline): SwapParameters;
 }

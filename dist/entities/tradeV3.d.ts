@@ -6,6 +6,8 @@ import { Price } from './fractions/price';
 import { InputOutput } from './fractions/tokenAmount';
 import { Pair } from './pair';
 import { RouteV3 } from './routeV3';
+import { StablePairWrapper } from './stablePairWrapper';
+import { StablePool } from './stablePool';
 export declare function inputOutputComparatorV3(a: InputOutput, b: InputOutput): number;
 export declare function tradeComparatorV3(a: TradeV3, b: TradeV3): number;
 export interface BestTradeOptionsV3 {
@@ -82,21 +84,22 @@ export declare class TradeV3 {
      * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
      * @param bestTrades used in recursion; the current list of best trades
      */
-    static bestTradeExactIn(pairs: Pair[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentPairs?: Pair[], originalAmountIn?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
+    static bestTradeExactIn(stablePool: StablePool, sources: (Pair | StablePairWrapper)[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentSources?: (Pair | StablePairWrapper)[], originalAmountIn?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
     /**
      * similar to the above method but instead targets a fixed output amount
      * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
      * to an output token amount, making at most `maxHops` hops
      * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
      * the amount in among multiple routes.
-     * @param pairs the pairs to consider in finding the best trade
+     * @param stablePool the stalePool used for the iteration - it will undergo changes
+     * @param sources the pairs / wrapped pairs to consider in finding the best trade
      * @param currencyIn the currency to spend
      * @param currencyAmountOut the exact amount of currency out
      * @param maxNumResults maximum number of results to return
      * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
-     * @param currentPairs used in recursion; the current list of pairs
+     * @param currentSources used in recursion; the current list of pairs
      * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
      * @param bestTrades used in recursion; the current list of best trades
      */
-    static bestTradeExactOut(pairs: Pair[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentPairs?: Pair[], originalAmountOut?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
+    static bestTradeExactOut(stablePool: StablePool, sources: (Pair | StablePairWrapper)[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentSources?: (Pair | StablePairWrapper)[], originalAmountOut?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
 }
