@@ -3334,7 +3334,9 @@ var StablePool = /*#__PURE__*/function () {
   };
 
   _proto.setBalanceValue = function setBalanceValue(tokenAmount) {
-    this.tokenBalances[this.indexFromToken(tokenAmount.token)] = tokenAmount.toBigNumber();
+    var newBalances = this.tokenBalances;
+    newBalances[this.indexFromToken(tokenAmount.token)] = tokenAmount.toBigNumber();
+    this.setTokenBalances(newBalances);
   };
 
   _createClass(StablePool, [{
