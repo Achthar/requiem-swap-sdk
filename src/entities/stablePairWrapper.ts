@@ -18,11 +18,12 @@ export class StablePairWrapper implements Source {
     // the tokenAmount for calculating the price
     // these cannot be derived from the tokenAmounts since
     // they follow the stableSwap logic for pricing
-    public readonly pricingBasesIn: TokenAmount[]
-    public readonly pricingBasesOut: TokenAmount[]
+    public pricingBasesIn: TokenAmount[]
+    public pricingBasesOut: TokenAmount[]
     public readonly type: string
     public readonly referenceMidPrices: Price[]
     public readonly liquidityToken: Token
+
     // public readonly inputReserve: TokenAmount
     // public readonly outputReserve: TokenAmount
 
@@ -43,6 +44,7 @@ export class StablePairWrapper implements Source {
 
         this.pricingBasesIn = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]
         this.pricingBasesOut = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]
+
         this.referenceMidPrices = []
         this.type = 'StablePairWrapper'
     }

@@ -8,8 +8,8 @@ import { ChainId } from "./../constants";
 export declare class StablePairWrapper implements Source {
     readonly tokenAmounts: TokenAmount[];
     readonly stableIndexes: number[];
-    readonly pricingBasesIn: TokenAmount[];
-    readonly pricingBasesOut: TokenAmount[];
+    pricingBasesIn: TokenAmount[];
+    pricingBasesOut: TokenAmount[];
     readonly type: string;
     readonly referenceMidPrices: Price[];
     readonly liquidityToken: Token;
