@@ -3334,8 +3334,12 @@ var StablePool = /*#__PURE__*/function () {
   };
 
   _proto.setBalanceValue = function setBalanceValue(tokenAmount) {
-    var newBalances = this.tokenBalances;
-    newBalances[this.indexFromToken(tokenAmount.token)] = tokenAmount.toBigNumber();
+    var newBalances = []; // safe way for replacement
+
+    for (var i = 0; i < this.tokenBalances.length; i++) {
+      newBalances.push(this.indexFromToken(tokenAmount.token) === i ? tokenAmount.toBigNumber() : this.tokenBalances[i]);
+    }
+
     this.setTokenBalances(newBalances);
   };
 

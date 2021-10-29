@@ -269,11 +269,12 @@ export class StablePool {
   }
 
   public setBalanceValue(tokenAmount: TokenAmount) {
-    let newBalances = this.tokenBalances
-    newBalances[this.indexFromToken(tokenAmount.token)] = tokenAmount.toBigNumber()
+    let newBalances = [] // safe way for replacement
+    for (let i = 0; i < this.tokenBalances.length; i++) {
+      newBalances.push(this.indexFromToken(tokenAmount.token) === i ? tokenAmount.toBigNumber() : this.tokenBalances[i])
+    }
     this.setTokenBalances(newBalances)
   }
-
 
   /*
     public getOutputAmount(inputAmount: TokenAmount): [TokenAmount, StablePool] {

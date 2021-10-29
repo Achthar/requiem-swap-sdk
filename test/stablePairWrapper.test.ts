@@ -101,6 +101,18 @@ describe('StablePairWrapper', () => {
     })
   })
 
+  describe('#check if balances can be changed', () => {
+    const newBalance = new TokenAmount(stables[0], BigNumber.from(0).toBigInt())
+    stablePool.setBalanceValue(newBalance)
+    it('balance has been changed', () => {
+      console.log(stablePool.tokenBalances[stablePool.indexFromToken(newBalance.token)])
+      expect(stablePool.tokenBalances[stablePool.indexFromToken(newBalance.token)]).toEqual(
+        BigNumber.from(0)
+      )
+
+    })
+  })
+
   describe('#token0Price', () => {
     it('returns price of token0 in terms of token1', () => {
       expect(new Pair(new TokenAmount(USDC, '101'), new TokenAmount(DAI, '100')).token0Price).toEqual(
