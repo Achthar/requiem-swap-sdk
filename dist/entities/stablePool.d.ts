@@ -60,4 +60,7 @@ export declare class StablePool {
     setLpTotalSupply(totalSupply: BigNumber): void;
     setBalanceValueByIndex(index: number, newBalance: BigNumber): void;
     setBalanceValue(tokenAmount: TokenAmount): void;
+    addBalanceValue(tokenAmount: TokenAmount): void;
+    subtractBalanceValue(tokenAmount: TokenAmount): void;
+    clone(): StablePool;
 }

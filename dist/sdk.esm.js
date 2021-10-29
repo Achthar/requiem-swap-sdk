@@ -749,9 +749,13 @@ var Price = /*#__PURE__*/function (_Fraction) {
       var _step2$value = _step2.value,
           i = _step2$value[0],
           source = _step2$value[1];
+      // if (source.type !== 'Pair') {
+      //   console.log("invariant", (source as StablePairWrapper).status)
+      //   invariant((source as StablePairWrapper).status === 'PRICED', 'NOT PRICED')
+      // }
       prices.push(route.path[i].equals(source.token0) ? source.type === 'Pair' ? new Price(source.reserve0.currency, source.reserve1.currency, source.reserve0.raw, source.reserve1.raw) // here we need the recorded prcing bases
       : new Price(source.reserve0.currency, source.reserve1.currency, source.pricingBasesIn[0].raw, source.pricingBasesOut[1].raw) : source.type === 'Pair' ? new Price(source.reserve1.currency, source.reserve0.currency, source.reserve1.raw, source.reserve0.raw) // pricing base for stablePriceWrapper
-      : new Price(source.reserve0.currency, source.reserve1.currency, source.pricingBasesIn[1].raw, source.pricingBasesOut[0].raw));
+      : new Price(source.reserve1.currency, source.reserve0.currency, source.pricingBasesIn[1].raw, source.pricingBasesOut[0].raw));
     }
 
     return prices.slice(1).reduce(function (accumulator, currentValue) {
@@ -3343,6 +3347,30 @@ var StablePool = /*#__PURE__*/function () {
     this.setTokenBalances(newBalances);
   };
 
+  _proto.addBalanceValue = function addBalanceValue(tokenAmount) {
+    var newBalances = []; // safe way for replacement
+
+    for (var i = 0; i < this.tokenBalances.length; i++) {
+      newBalances.push(this.indexFromToken(tokenAmount.token) === i ? this.tokenBalances[i].add(tokenAmount.toBigNumber()) : this.tokenBalances[i]);
+    }
+
+    this.setTokenBalances(newBalances);
+  };
+
+  _proto.subtractBalanceValue = function subtractBalanceValue(tokenAmount) {
+    var newBalances = []; // safe way for replacement
+
+    for (var i = 0; i < this.tokenBalances.length; i++) {
+      newBalances.push(this.indexFromToken(tokenAmount.token) === i ? this.tokenBalances[i].sub(tokenAmount.toBigNumber()) : this.tokenBalances[i]);
+    }
+
+    this.setTokenBalances(newBalances);
+  };
+
+  _proto.clone = function clone() {
+    return new StablePool(this.tokens, this.tokenBalances, this._A, this.swapStorage, this.blockTimestamp.toNumber(), this.lpTotalSupply, this.currentWithdrawFee);
+  };
+
   _createClass(StablePool, [{
     key: "setCurrentWithdrawFee",
     set: function set(feeToSet) {
@@ -3521,6 +3549,7 @@ var STABLES_LP_TOKEN = {
 };
 
 var StablePairWrapper = /*#__PURE__*/function () {
+  // public executionPrice: Price
   // public readonly inputReserve: TokenAmount
   // public readonly outputReserve: TokenAmount
   function StablePairWrapper(tokenAmountA, tokenAmountB, indexA, indexB) {
@@ -3531,9 +3560,11 @@ var StablePairWrapper = /*#__PURE__*/function () {
     this.tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
     this.stableIndexes = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [indexA, indexB] : [indexB, indexA];
     this.pricingBasesIn = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
-    this.pricingBasesOut = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
+    this.pricingBasesOut = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]; // this.executionPrice = new Price(tokenAmountA.token, tokenAmountB.token, tokenAmountA.raw, tokenAmountB.raw)
+
     this.referenceMidPrices = [];
     this.type = 'StablePairWrapper';
+    this.status = 'NOT PRICED';
   }
   /**
    * Returns the chain ID of the tokens in the pair.
@@ -3579,44 +3610,59 @@ var StablePairWrapper = /*#__PURE__*/function () {
     var outIndex = outToken.equals(this.token0) ? 0 : 1;
     var inIndex = outToken.equals(this.token1) ? 0 : 1;
     return new Price(this.pricingBasesIn[inIndex].token, this.pricingBasesOut[outIndex].token, this.pricingBasesIn[inIndex].raw, this.pricingBasesOut[outIndex].raw);
-  } // function that wraps the output calculation based on a stablePool
+  }
+  /**
+   * function that wraps the output calculation based on a stablePool
+   * @param inputAmount input amount that is used for calculating the output amount
+   * @param stablePool input stablePool: IMPORTANT NOTE: the balances of that object change according to the trade logic
+   * this is required as multiple trades will lead to adjusted balances in case it is routed twice or more through the pool
+   * @returns the output amount as TokenAmount and the StableWrappedPair with the adjusted balances
+   */
   ;
 
   _proto.getOutputAmount = function getOutputAmount(inputAmount, stablePool) {
     !this.involvesToken(inputAmount.token) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
     var inputReserve = this.reserveOf(inputAmount.token);
-    var outputReserve = this.reserveOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0); // set the balance values to the expected valuses
-
-    stablePool.setBalanceValue(this.tokenAmounts[0]);
-    stablePool.setBalanceValue(this.tokenAmounts[1]);
+    var outputReserve = this.reserveOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0);
     var output = stablePool.getOutputAmount(inputAmount, this.token0.equals(inputAmount.token) ? this.stableIndexes[1] : this.stableIndexes[0]); // adjust the values based on the supposdly executed trade
 
-    stablePool.setBalanceValue(inputReserve.add(inputAmount));
-    stablePool.setBalanceValue(outputReserve.subtract(output)); // here we save the pricing results if it is called
+    stablePool.addBalanceValue(inputAmount);
+    stablePool.subtractBalanceValue(output); // here we save the pricing results if it is called
 
     var inIndex = inputAmount.token.equals(this.token0) ? 0 : 1;
     var outIndex = output.token.equals(this.token0) ? 0 : 1;
     this.pricingBasesIn[inIndex] = inputAmount;
     this.pricingBasesOut[outIndex] = output;
-    return [output, new StablePairWrapper(inputReserve.add(inputAmount), outputReserve.subtract(output), stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))];
-  } // function that wraps the input calculation based on a stablePool
+    this.status = 'PRICED';
+    console.log("get " + output.raw.toString() + output.token.symbol + " for " + inputAmount.raw.toString() + inputAmount.token.symbol); // this.executionPrice = new Price(inputAmount.token, output.token, inputAmount.raw, output.raw)
+
+    return [output, new StablePairWrapper(inputAmount, output, stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))];
+  }
+  /**
+   * function that wraps the input calculation based on a stablePool
+   * @param outputAmount output amount to calculate the input with
+   * @param stablePool  input stablePool: IMPORTANT NOTE: the balances of that object change according to the trade logic
+   * this is required as multiple trades will lead to adjusted balances in case it is routed twice or more through the pool
+   * @returns the input TokenAmount required to obtain the target output
+   */
   ;
 
   _proto.getInputAmount = function getInputAmount(outputAmount, stablePool) {
     !this.involvesToken(outputAmount.token) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
     var outputReserve = this.reserveOf(outputAmount.token);
     var inputReserve = this.reserveOf(outputAmount.token.equals(this.token0) ? this.token1 : this.token0);
-    stablePool.setBalanceValue(this.tokenAmounts[0]);
-    stablePool.setBalanceValue(this.tokenAmounts[1]);
     var input = stablePool.getInputAmount(outputAmount, this.token0.equals(outputAmount.token) ? this.stableIndexes[1] : this.stableIndexes[0]); // here we save the pricing results if it is called
 
     var inIndex = input.token.equals(this.token0) ? 0 : 1;
     var outIndex = outputAmount.token.equals(this.token0) ? 0 : 1;
     this.pricingBasesIn[inIndex] = input;
     this.pricingBasesOut[outIndex] = outputAmount;
-    stablePool.setBalanceValue(inputReserve.add(input));
-    stablePool.setBalanceValue(outputReserve.subtract(outputAmount));
-    return [input, new StablePairWrapper(inputReserve.add(input), outputReserve.subtract(outputAmount), stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))];
+    this.status = 'PRICED'; // adjust the values based on the supposdly executed trade
+
+    stablePool.addBalanceValue(input);
+    stablePool.subtractBalanceValue(outputAmount);
+    console.log("get " + outputAmount.raw.toString() + outputAmount.token.symbol + " for " + input.raw.toString() + input.token.symbol);
+    return [input, new StablePairWrapper(input, outputAmount, stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))];
   } // generates the n^2-n combinations for wrappedStablePairs
   ;
 
@@ -3630,6 +3676,12 @@ var StablePairWrapper = /*#__PURE__*/function () {
     }
 
     return wrapperList;
+  };
+
+  StablePairWrapper.wrapSinglePairFromPool = function wrapSinglePairFromPool(stablePool, i, j) {
+    !(i !== j) ? process.env.NODE_ENV !== "production" ? invariant(false, 'SAME INDEX') : invariant(false) : void 0;
+    !(i < stablePool.tokenBalances.length || j < stablePool.tokenBalances.length) ? process.env.NODE_ENV !== "production" ? invariant(false, 'INDEX OUT OF RANGE') : invariant(false) : void 0;
+    return new StablePairWrapper(new TokenAmount(stablePool.tokens[i], stablePool.tokenBalances[i].toBigInt()), new TokenAmount(stablePool.tokens[j], stablePool.tokenBalances[j].toBigInt()), i, j);
   };
 
   _createClass(StablePairWrapper, [{
@@ -3668,7 +3720,7 @@ var StablePairWrapper = /*#__PURE__*/function () {
 
 var RouteV3 = /*#__PURE__*/function () {
   function RouteV3(sources, stablePool, input, output) {
-    !(sources.length > 0) ? process.env.NODE_ENV !== "production" ? invariant(false, 'PAIRS') : invariant(false) : void 0;
+    !(sources.length > 0) ? process.env.NODE_ENV !== "production" ? invariant(false, 'SOURCES') : invariant(false) : void 0;
     !sources.every(function (source) {
       return source.chainId === sources[0].chainId;
     }) ? process.env.NODE_ENV !== "production" ? invariant(false, 'CHAIN_IDS') : invariant(false) : void 0;
@@ -3792,6 +3844,7 @@ var TradeV3 = /*#__PURE__*/function () {
   function TradeV3(route, amount, tradeType) {
     var amounts = new Array(route.path.length);
     var nextSources = new Array(route.sources.length);
+    var stablePool = route.stablePool.clone();
 
     if (tradeType === TradeType.EXACT_INPUT) {
       !currencyEquals(amount.currency, route.input) ? process.env.NODE_ENV !== "production" ? invariant(false, 'INPUT') : invariant(false) : void 0;
@@ -3800,7 +3853,7 @@ var TradeV3 = /*#__PURE__*/function () {
       for (var i = 0; i < route.path.length - 1; i++) {
         var source = route.sources[i];
 
-        var _ref = source instanceof Pair ? source.getOutputAmount(amounts[i]) : source.getOutputAmount(amounts[i], route.stablePool),
+        var _ref = source instanceof Pair ? source.getOutputAmount(amounts[i]) : source.getOutputAmount(amounts[i], stablePool),
             outputAmount = _ref[0],
             nextSource = _ref[1];
 
@@ -3814,7 +3867,7 @@ var TradeV3 = /*#__PURE__*/function () {
       for (var _i = route.path.length - 1; _i > 0; _i--) {
         var _source = route.sources[_i - 1];
 
-        var _ref2 = _source instanceof Pair ? _source.getInputAmount(amounts[_i]) : _source.getInputAmount(amounts[_i], route.stablePool),
+        var _ref2 = _source instanceof Pair ? _source.getInputAmount(amounts[_i]) : _source.getInputAmount(amounts[_i], stablePool),
             inputAmount = _ref2[0],
             _nextSource = _ref2[1];
 
@@ -3828,7 +3881,7 @@ var TradeV3 = /*#__PURE__*/function () {
     this.inputAmount = tradeType === TradeType.EXACT_INPUT ? amount : route.input === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw) : amounts[0];
     this.outputAmount = tradeType === TradeType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
     this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
-    this.nextMidPrice = Price.fromRouteV3(new RouteV3(nextSources, route.stablePool, route.input));
+    this.nextMidPrice = Price.fromRouteV3(new RouteV3(nextSources, stablePool.clone(), route.input));
     this.priceImpact = computePriceImpact$1(route.midPrice, this.inputAmount, this.outputAmount);
   }
   /**
@@ -3901,7 +3954,7 @@ var TradeV3 = /*#__PURE__*/function () {
    */
   ;
 
-  TradeV3.bestTradeExactIn = function bestTradeExactIn(stablePool, sources, currencyAmountIn, currencyOut, _temp, // used in recursion.
+  TradeV3.bestTradeExactInIteration = function bestTradeExactInIteration(originalStablePool, stablePool, sources, currencyAmountIn, currencyOut, _temp, // used in recursion.
   currentSources, originalAmountIn, bestTrades) {
     var _ref3 = _temp === void 0 ? {} : _temp,
         _ref3$maxNumResults = _ref3.maxNumResults,
@@ -3925,20 +3978,31 @@ var TradeV3 = /*#__PURE__*/function () {
     !(maxHops > 0) ? process.env.NODE_ENV !== "production" ? invariant(false, 'MAX_HOPS') : invariant(false) : void 0;
     !(originalAmountIn === currencyAmountIn || currentSources.length > 0) ? process.env.NODE_ENV !== "production" ? invariant(false, 'INVALID_RECURSION') : invariant(false) : void 0;
     var chainId = currencyAmountIn instanceof TokenAmount ? currencyAmountIn.token.chainId : currencyOut instanceof Token ? currencyOut.chainId : undefined;
-    !(chainId !== undefined) ? process.env.NODE_ENV !== "production" ? invariant(false, 'CHAIN_ID') : invariant(false) : void 0;
+    !(chainId !== undefined) ? process.env.NODE_ENV !== "production" ? invariant(false, 'CHAIN_ID') : invariant(false) : void 0; // create copy of stablePool object no not change the original one
+    // const stablePoolForIteration = stablePool.clone()
+
     var amountIn = wrappedAmount$1(currencyAmountIn, chainId);
     var tokenOut = wrappedCurrency$1(currencyOut, chainId);
 
+    if ( // check if it can be only a single stable swap trade
+    currencyAmountIn instanceof TokenAmount && currencyOut instanceof Token && Object.values(stablePool.tokens).includes(currencyAmountIn.token) && Object.values(stablePool.tokens).includes(currencyOut)) {
+      var source = StablePairWrapper.wrapSinglePairFromPool(stablePool, stablePool.indexFromToken(currencyAmountIn.token), stablePool.indexFromToken(currencyOut)); // write pricings into the pool
+
+      source.getOutputAmount(currencyAmountIn, stablePool);
+      var stableTrade = new TradeV3(new RouteV3([source], originalStablePool, currencyAmountIn.token, currencyOut), currencyAmountIn, TradeType.EXACT_INPUT);
+      return [stableTrade];
+    }
+
     for (var i = 0; i < sources.length; i++) {
-      var source = sources[i];
-      if (!source.token0.equals(amountIn.token) && !source.token1.equals(amountIn.token)) continue;
-      if (source.reserve0.equalTo(ZERO) || source.reserve1.equalTo(ZERO)) continue;
+      var _source2 = sources[i];
+      if (!_source2.token0.equals(amountIn.token) && !_source2.token1.equals(amountIn.token)) continue;
+      if (_source2.reserve0.equalTo(ZERO) || _source2.reserve1.equalTo(ZERO)) continue;
       var amountOut = void 0;
 
       try {
         ;
 
-        var _ref4 = source instanceof Pair ? source.getOutputAmount(amountIn) : source.getOutputAmount(amountIn, stablePool);
+        var _ref4 = _source2 instanceof Pair ? _source2.getOutputAmount(amountIn) : _source2.getOutputAmount(amountIn, stablePool);
 
         amountOut = _ref4[0];
       } catch (error) {
@@ -3952,14 +4016,14 @@ var TradeV3 = /*#__PURE__*/function () {
 
 
       if (amountOut.token.equals(tokenOut)) {
-        sortedInsert(bestTrades, new TradeV3(new RouteV3([].concat(currentSources, [source]), stablePool, originalAmountIn.currency, currencyOut), originalAmountIn, TradeType.EXACT_INPUT), maxNumResults, tradeComparatorV3);
+        sortedInsert(bestTrades, new TradeV3(new RouteV3([].concat(currentSources, [_source2]), originalStablePool, originalAmountIn.currency, currencyOut), originalAmountIn, TradeType.EXACT_INPUT), maxNumResults, tradeComparatorV3);
       } else if (maxHops > 1 && sources.length > 1) {
         var sourcesExcludingThisSource = sources.slice(0, i).concat(sources.slice(i + 1, sources.length)); // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
 
-        TradeV3.bestTradeExactIn(stablePool, sourcesExcludingThisSource, amountOut, currencyOut, {
+        TradeV3.bestTradeExactInIteration(originalStablePool, stablePool, sourcesExcludingThisSource, amountOut, currencyOut, {
           maxNumResults: maxNumResults,
           maxHops: maxHops - 1
-        }, [].concat(currentSources, [source]), originalAmountIn, bestTrades);
+        }, [].concat(currentSources, [_source2]), originalAmountIn, bestTrades);
       }
     }
 
@@ -3983,7 +4047,7 @@ var TradeV3 = /*#__PURE__*/function () {
    */
   ;
 
-  TradeV3.bestTradeExactOut = function bestTradeExactOut(stablePool, sources, currencyIn, currencyAmountOut, _temp2, // used in recursion.
+  TradeV3.bestTradeExactOutIteration = function bestTradeExactOutIteration(originalStablePool, stablePool, sources, currencyIn, currencyAmountOut, _temp2, // used in recursion.
   currentSources, originalAmountOut, bestTrades) {
     var _ref5 = _temp2 === void 0 ? {} : _temp2,
         _ref5$maxNumResults = _ref5.maxNumResults,
@@ -4007,21 +4071,32 @@ var TradeV3 = /*#__PURE__*/function () {
     !(maxHops > 0) ? process.env.NODE_ENV !== "production" ? invariant(false, 'MAX_HOPS') : invariant(false) : void 0;
     !(originalAmountOut === currencyAmountOut || currentSources.length > 0) ? process.env.NODE_ENV !== "production" ? invariant(false, 'INVALID_RECURSION') : invariant(false) : void 0;
     var chainId = currencyAmountOut instanceof TokenAmount ? currencyAmountOut.token.chainId : currencyIn instanceof Token ? currencyIn.chainId : undefined;
-    !(chainId !== undefined) ? process.env.NODE_ENV !== "production" ? invariant(false, 'CHAIN_ID') : invariant(false) : void 0;
+    !(chainId !== undefined) ? process.env.NODE_ENV !== "production" ? invariant(false, 'CHAIN_ID') : invariant(false) : void 0; // create copy of stablePool object
+    // const stablePoolForIteration = stablePool.clone()
+
     var amountOut = wrappedAmount$1(currencyAmountOut, chainId);
     var tokenIn = wrappedCurrency$1(currencyIn, chainId);
 
-    for (var i = 0; i < sources.length; i++) {
-      var source = sources[i]; // source irrelevant
+    if ( // check ifit can be only a single stable swap trade
+    currencyAmountOut instanceof TokenAmount && currencyIn instanceof Token && Object.values(stablePool.tokens).includes(currencyAmountOut.token) && Object.values(stablePool.tokens).includes(currencyIn)) {
+      var source = StablePairWrapper.wrapSinglePairFromPool(stablePool, stablePool.indexFromToken(currencyAmountOut.token), stablePool.indexFromToken(currencyIn)); // return value does not matter, we just need the stablePool pricing to be stored in the pair
 
-      if (!source.token0.equals(amountOut.token) && !source.token1.equals(amountOut.token)) continue;
-      if (source.reserve0.equalTo(ZERO) || source.reserve1.equalTo(ZERO)) continue;
+      source.getInputAmount(amountOut, stablePool);
+      var stableTrade = new TradeV3(new RouteV3([source], originalStablePool, currencyIn, currencyAmountOut.token), currencyAmountOut, TradeType.EXACT_OUTPUT);
+      return [stableTrade];
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var _source3 = sources[i]; // source irrelevant
+
+      if (!_source3.token0.equals(amountOut.token) && !_source3.token1.equals(amountOut.token)) continue;
+      if (_source3.reserve0.equalTo(ZERO) || _source3.reserve1.equalTo(ZERO)) continue;
       var amountIn = void 0;
 
       try {
         ;
 
-        var _ref6 = source instanceof Pair ? source.getInputAmount(amountOut) : source.getInputAmount(amountOut, stablePool);
+        var _ref6 = _source3 instanceof Pair ? _source3.getInputAmount(amountOut) : _source3.getInputAmount(amountOut, stablePool);
 
         amountIn = _ref6[0];
       } catch (error) {
@@ -4035,18 +4110,44 @@ var TradeV3 = /*#__PURE__*/function () {
 
 
       if (amountIn.token.equals(tokenIn)) {
-        sortedInsert(bestTrades, new TradeV3(new RouteV3([source].concat(currentSources), stablePool, currencyIn, originalAmountOut.currency), originalAmountOut, TradeType.EXACT_OUTPUT), maxNumResults, tradeComparatorV3);
+        sortedInsert(bestTrades, new TradeV3(new RouteV3([_source3].concat(currentSources), originalStablePool, currencyIn, originalAmountOut.currency), originalAmountOut, TradeType.EXACT_OUTPUT), maxNumResults, tradeComparatorV3);
       } else if (maxHops > 1 && sources.length > 1) {
         var sourcesExcludingThisSource = sources.slice(0, i).concat(sources.slice(i + 1, sources.length)); // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
 
-        TradeV3.bestTradeExactOut(stablePool, sourcesExcludingThisSource, currencyIn, amountIn, {
+        TradeV3.bestTradeExactOutIteration(originalStablePool, stablePool, sourcesExcludingThisSource, currencyIn, amountIn, {
           maxNumResults: maxNumResults,
           maxHops: maxHops - 1
-        }, [source].concat(currentSources), originalAmountOut, bestTrades);
+        }, [_source3].concat(currentSources), originalAmountOut, bestTrades);
       }
     }
 
     return bestTrades;
+  };
+
+  TradeV3.bestTradeExactOut = function bestTradeExactOut(stablePool, sources, currencyIn, currencyAmountOut, _temp3) {
+    var _ref7 = _temp3 === void 0 ? {} : _temp3,
+        _ref7$maxNumResults = _ref7.maxNumResults,
+        maxNumResults = _ref7$maxNumResults === void 0 ? 3 : _ref7$maxNumResults,
+        _ref7$maxHops = _ref7.maxHops,
+        maxHops = _ref7$maxHops === void 0 ? 3 : _ref7$maxHops;
+
+    return this.bestTradeExactOutIteration(stablePool, stablePool.clone(), sources, currencyIn, currencyAmountOut, {
+      maxNumResults: maxNumResults,
+      maxHops: maxHops
+    }, [], currencyAmountOut, []);
+  };
+
+  TradeV3.bestTradeExactIn = function bestTradeExactIn(stablePool, sources, currencyAmountIn, currencyOut, _temp4) {
+    var _ref8 = _temp4 === void 0 ? {} : _temp4,
+        _ref8$maxNumResults = _ref8.maxNumResults,
+        maxNumResults = _ref8$maxNumResults === void 0 ? 3 : _ref8$maxNumResults,
+        _ref8$maxHops = _ref8.maxHops,
+        maxHops = _ref8$maxHops === void 0 ? 3 : _ref8$maxHops;
+
+    return this.bestTradeExactInIteration(stablePool, stablePool.clone(), sources, currencyAmountIn, currencyOut, {
+      maxNumResults: maxNumResults,
+      maxHops: maxHops
+    }, [], currencyAmountIn, []);
   };
 
   return TradeV3;

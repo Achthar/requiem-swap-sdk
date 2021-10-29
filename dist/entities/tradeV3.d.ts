@@ -84,7 +84,7 @@ export declare class TradeV3 {
      * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
      * @param bestTrades used in recursion; the current list of best trades
      */
-    static bestTradeExactIn(stablePool: StablePool, sources: (Pair | StablePairWrapper)[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentSources?: (Pair | StablePairWrapper)[], originalAmountIn?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
+    static bestTradeExactInIteration(originalStablePool: StablePool, stablePool: StablePool, sources: (Pair | StablePairWrapper)[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentSources?: (Pair | StablePairWrapper)[], originalAmountIn?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
     /**
      * similar to the above method but instead targets a fixed output amount
      * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
@@ -101,5 +101,7 @@ export declare class TradeV3 {
      * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
      * @param bestTrades used in recursion; the current list of best trades
      */
-    static bestTradeExactOut(stablePool: StablePool, sources: (Pair | StablePairWrapper)[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentSources?: (Pair | StablePairWrapper)[], originalAmountOut?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
+    static bestTradeExactOutIteration(originalStablePool: StablePool, stablePool: StablePool, sources: (Pair | StablePairWrapper)[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, { maxNumResults, maxHops }?: BestTradeOptionsV3, currentSources?: (Pair | StablePairWrapper)[], originalAmountOut?: CurrencyAmount, bestTrades?: TradeV3[]): TradeV3[];
+    static bestTradeExactOut(stablePool: StablePool, sources: (Pair | StablePairWrapper)[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, { maxNumResults, maxHops }?: BestTradeOptionsV3): TradeV3[];
+    static bestTradeExactIn(stablePool: StablePool, sources: (Pair | StablePairWrapper)[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, { maxNumResults, maxHops }?: BestTradeOptionsV3): TradeV3[];
 }
