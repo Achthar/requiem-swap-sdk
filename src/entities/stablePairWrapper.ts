@@ -23,6 +23,7 @@ export class StablePairWrapper implements Source {
     public readonly type: string
     public readonly referenceMidPrices: Price[]
     public readonly liquidityToken: Token
+    public status: string
     // public executionPrice: Price
     // public readonly inputReserve: TokenAmount
     // public readonly outputReserve: TokenAmount
@@ -47,6 +48,7 @@ export class StablePairWrapper implements Source {
         // this.executionPrice = new Price(tokenAmountA.token, tokenAmountB.token, tokenAmountA.raw, tokenAmountB.raw)
         this.referenceMidPrices = []
         this.type = 'StablePairWrapper'
+        this.status = 'NOT PRICED'
     }
 
     /**
@@ -142,13 +144,14 @@ export class StablePairWrapper implements Source {
         const outIndex = output.token.equals(this.token0) ? 0 : 1
         this.pricingBasesIn[inIndex] = inputAmount
         this.pricingBasesOut[outIndex] = output
-
+        this.status = 'PRICED'
+        console.log("get " + output.raw.toString() + output.token.symbol + " for " + inputAmount.raw.toString() + inputAmount.token.symbol)
         // this.executionPrice = new Price(inputAmount.token, output.token, inputAmount.raw, output.raw)
         return [
             output,
             new StablePairWrapper(
-                inputReserve.add(inputAmount),
-                outputReserve.subtract(output), stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))
+                inputAmount,
+                output, stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))
         ]
     }
 
@@ -175,16 +178,17 @@ export class StablePairWrapper implements Source {
         const outIndex = outputAmount.token.equals(this.token0) ? 0 : 1
         this.pricingBasesIn[inIndex] = input
         this.pricingBasesOut[outIndex] = outputAmount
-
+        this.status = 'PRICED'
         // adjust the values based on the supposdly executed trade
         stablePool.addBalanceValue(input)
         stablePool.subtractBalanceValue(outputAmount)
 
+        console.log("get " + outputAmount.raw.toString() + outputAmount.token.symbol + " for " + input.raw.toString() + input.token.symbol)
 
         return [input,
             new StablePairWrapper(
-                inputReserve.add(input),
-                outputReserve.subtract(outputAmount), stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))]
+                input,
+                outputAmount, stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))]
     }
 
     // generates the n^2-n combinations for wrappedStablePairs

@@ -150,6 +150,7 @@ export class TradeV3 {
   public constructor(route: RouteV3, amount: CurrencyAmount, tradeType: TradeType) {
     const amounts: TokenAmount[] = new Array(route.path.length)
     const nextSources: (Pair | StablePairWrapper)[] = new Array(route.sources.length)
+    const stablePool = route.stablePool.clone()
     if (tradeType === TradeType.EXACT_INPUT) {
       invariant(currencyEquals(amount.currency, route.input), 'INPUT')
       amounts[0] = wrappedAmount(amount, route.chainId)
@@ -157,7 +158,7 @@ export class TradeV3 {
         const source = route.sources[i]
         const [outputAmount, nextSource] = source instanceof Pair ?
           source.getOutputAmount(amounts[i]) :
-          source.getOutputAmount(amounts[i], route.stablePool)
+          source.getOutputAmount(amounts[i], stablePool)
         amounts[i + 1] = outputAmount
         nextSources[i] = nextSource
       }
@@ -168,7 +169,7 @@ export class TradeV3 {
         const source = route.sources[i - 1]
         const [inputAmount, nextSource] = source instanceof Pair ?
           source.getInputAmount(amounts[i]) :
-          source.getInputAmount(amounts[i], route.stablePool)
+          source.getInputAmount(amounts[i], stablePool)
         amounts[i - 1] = inputAmount
         nextSources[i - 1] = nextSource
       }
@@ -194,7 +195,7 @@ export class TradeV3 {
       this.inputAmount.raw,
       this.outputAmount.raw
     )
-    this.nextMidPrice = Price.fromRouteV3(new RouteV3(nextSources, route.stablePool, route.input))
+    this.nextMidPrice = Price.fromRouteV3(new RouteV3(nextSources, stablePool.clone(), route.input))
     this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount)
   }
 
@@ -247,7 +248,8 @@ export class TradeV3 {
    * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
    * @param bestTrades used in recursion; the current list of best trades
    */
-  public static bestTradeExactIn(
+  public static bestTradeExactInIteration(
+    originalStablePool: StablePool,
     stablePool: StablePool,
     sources: (Pair | StablePairWrapper)[],
     currencyAmountIn: CurrencyAmount,
@@ -269,7 +271,7 @@ export class TradeV3 {
           : undefined
     invariant(chainId !== undefined, 'CHAIN_ID')
     // create copy of stablePool object no not change the original one
-    const stablePoolForIteration = stablePool.clone()
+    // const stablePoolForIteration = stablePool.clone()
 
     const amountIn = wrappedAmount(currencyAmountIn, chainId)
     const tokenOut = wrappedCurrency(currencyOut, chainId)
@@ -280,10 +282,19 @@ export class TradeV3 {
       Object.values(stablePool.tokens).includes(currencyAmountIn.token) &&
       Object.values(stablePool.tokens).includes(currencyOut)
     ) {
+      const source = StablePairWrapper.wrapSinglePairFromPool(
+        stablePool,
+        stablePool.indexFromToken(currencyAmountIn.token),
+        stablePool.indexFromToken(currencyOut)
+      )
+
+      // write pricings into the pool
+      source.getOutputAmount(currencyAmountIn, stablePool)
+
       const stableTrade = new TradeV3(
         new RouteV3(
-          [StablePairWrapper.wrapSinglePairFromPool(stablePool, stablePool.indexFromToken(currencyAmountIn.token), stablePool.indexFromToken(currencyOut))],
-          stablePool,
+          [source],
+          originalStablePool,
           currencyAmountIn.token,
           currencyOut
         ),
@@ -302,7 +313,7 @@ export class TradeV3 {
 
       let amountOut: TokenAmount
       try {
-        ;[amountOut] = source instanceof Pair ? source.getOutputAmount(amountIn) : source.getOutputAmount(amountIn, stablePoolForIteration)
+        ;[amountOut] = source instanceof Pair ? source.getOutputAmount(amountIn) : source.getOutputAmount(amountIn, stablePool)
       } catch (error) {
         // input too low
         if ((error as any).isInsufficientInputAmountError) {
@@ -315,7 +326,7 @@ export class TradeV3 {
         sortedInsert(
           bestTrades,
           new TradeV3(
-            new RouteV3([...currentSources, source], stablePool, originalAmountIn.currency, currencyOut),
+            new RouteV3([...currentSources, source], originalStablePool, originalAmountIn.currency, currencyOut),
             originalAmountIn,
             TradeType.EXACT_INPUT
           ),
@@ -326,8 +337,9 @@ export class TradeV3 {
         const sourcesExcludingThisSource = sources.slice(0, i).concat(sources.slice(i + 1, sources.length))
 
         // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
-        TradeV3.bestTradeExactIn(
-          stablePoolForIteration,
+        TradeV3.bestTradeExactInIteration(
+          originalStablePool,
+          stablePool,
           sourcesExcludingThisSource,
           amountOut,
           currencyOut,
@@ -361,7 +373,8 @@ export class TradeV3 {
    * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
    * @param bestTrades used in recursion; the current list of best trades
    */
-  public static bestTradeExactOut(
+  public static bestTradeExactOutIteration(
+    originalStablePool: StablePool,
     stablePool: StablePool,
     sources: (Pair | StablePairWrapper)[],
     currencyIn: Currency,
@@ -383,7 +396,7 @@ export class TradeV3 {
           : undefined
     invariant(chainId !== undefined, 'CHAIN_ID')
     // create copy of stablePool object
-    const stablePoolForIteration = stablePool.clone()
+    // const stablePoolForIteration = stablePool.clone()
 
     const amountOut = wrappedAmount(currencyAmountOut, chainId)
     const tokenIn = wrappedCurrency(currencyIn, chainId)
@@ -394,10 +407,19 @@ export class TradeV3 {
       Object.values(stablePool.tokens).includes(currencyAmountOut.token) &&
       Object.values(stablePool.tokens).includes(currencyIn)
     ) {
+      const source = StablePairWrapper.wrapSinglePairFromPool(
+        stablePool,
+        stablePool.indexFromToken(currencyAmountOut.token),
+        stablePool.indexFromToken(currencyIn)
+      )
+
+      // return value does not matter, we just need the stablePool pricing to be stored in the pair
+      source.getInputAmount(amountOut, stablePool)
+
       const stableTrade = new TradeV3(
         new RouteV3(
-          [StablePairWrapper.wrapSinglePairFromPool(stablePool, stablePool.indexFromToken(currencyAmountOut.token), stablePool.indexFromToken(currencyIn))],
-          stablePool, currencyAmountOut.token, currencyIn),
+          [source],
+          originalStablePool, currencyIn, currencyAmountOut.token),
         currencyAmountOut,
         TradeType.EXACT_OUTPUT
       )
@@ -412,7 +434,7 @@ export class TradeV3 {
 
       let amountIn: TokenAmount
       try {
-        ;[amountIn] = source instanceof Pair ? source.getInputAmount(amountOut) : source.getInputAmount(amountOut, stablePoolForIteration)
+        ;[amountIn] = source instanceof Pair ? source.getInputAmount(amountOut) : source.getInputAmount(amountOut, stablePool)
       } catch (error) {
         // not enough liquidity in this source
         if ((error as any).isInsufficientReservesError) {
@@ -425,7 +447,7 @@ export class TradeV3 {
         sortedInsert(
           bestTrades,
           new TradeV3(
-            new RouteV3([source, ...currentSources], stablePool, currencyIn, originalAmountOut.currency),
+            new RouteV3([source, ...currentSources], originalStablePool, currencyIn, originalAmountOut.currency),
             originalAmountOut,
             TradeType.EXACT_OUTPUT
           ),
@@ -436,8 +458,9 @@ export class TradeV3 {
         const sourcesExcludingThisSource = sources.slice(0, i).concat(sources.slice(i + 1, sources.length))
 
         // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
-        TradeV3.bestTradeExactOut(
-          stablePoolForIteration,
+        TradeV3.bestTradeExactOutIteration(
+          originalStablePool,
+          stablePool,
           sourcesExcludingThisSource,
           currencyIn,
           amountIn,
@@ -453,5 +476,46 @@ export class TradeV3 {
     }
 
     return bestTrades
+  }
+
+
+  public static bestTradeExactOut(
+    stablePool: StablePool,
+    sources: (Pair | StablePairWrapper)[],
+    currencyIn: Currency,
+    currencyAmountOut: CurrencyAmount,
+    { maxNumResults = 3, maxHops = 3 }: BestTradeOptionsV3 = {},
+  ): TradeV3[] {
+
+    return this.bestTradeExactOutIteration(
+      stablePool,
+      stablePool.clone(),
+      sources,
+      currencyIn,
+      currencyAmountOut,
+      { maxNumResults, maxHops },
+      [],
+      currencyAmountOut,
+      [])
+
+  }
+
+  public static bestTradeExactIn(
+    stablePool: StablePool,
+    sources: (Pair | StablePairWrapper)[],
+    currencyAmountIn: CurrencyAmount,
+    currencyOut: Currency,
+    { maxNumResults = 3, maxHops = 3 }: BestTradeOptionsV3 = {},
+  ): TradeV3[] {
+    return this.bestTradeExactInIteration(
+      stablePool,
+      stablePool.clone(),
+      sources,
+      currencyAmountIn,
+      currencyOut,
+      { maxNumResults, maxHops },
+      [],
+      currencyAmountIn,
+      [])
   }
 }

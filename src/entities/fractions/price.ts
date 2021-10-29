@@ -34,6 +34,10 @@ export class Price extends Fraction {
   public static fromRouteV3(route: RouteV3): Price {
     const prices: Price[] = []
     for (const [i, source] of route.sources.entries()) {
+      // if (source.type !== 'Pair') {
+      //   console.log("invariant", (source as StablePairWrapper).status)
+      //   invariant((source as StablePairWrapper).status === 'PRICED', 'NOT PRICED')
+      // }
       prices.push(
         route.path[i].equals(source.token0)
           ? (source.type === 'Pair'

@@ -101,7 +101,7 @@ describe('TradeV3', () => {
 
   it('can be constructed with NETWORK_CCY[chainId] as input', () => {
     const trade = new TradeV3(
-      new RouteV3([pair_weth_0], stablePool, NETWORK_CCY[chainId]),
+      new RouteV3([pair_weth_0], stablePool.clone(), NETWORK_CCY[chainId]),
       CurrencyAmount.networkCCYAmount(chainId, JSBI.BigInt(100)),
       TradeType.EXACT_INPUT
     )
@@ -111,7 +111,7 @@ describe('TradeV3', () => {
   })
   it('can be constructed with NETWORK_CCY[chainId] as input for exact output', () => {
     const trade = new TradeV3(
-      new RouteV3([pair_weth_0], stablePool, NETWORK_CCY[chainId], token0),
+      new RouteV3([pair_weth_0], stablePool.clone(), NETWORK_CCY[chainId], token0),
       new TokenAmount(token0, JSBI.BigInt(100)),
       TradeType.EXACT_OUTPUT
     )
@@ -156,6 +156,7 @@ describe('TradeV3', () => {
       console
       const result = TradeV3.bestTradeExactIn(
         stablePool,
+       
         [pair_t0_s1, pair_s1_s2, pair_s2_t2, pair_t0_t2],
         new TokenAmount(token0, JSBI.BigInt(100)),
         token2
@@ -202,6 +203,7 @@ describe('TradeV3', () => {
       console.log("stable balances before", stablePool.tokenBalances.map(value => value.toBigInt()))
       const result = TradeV3.bestTradeExactIn(
         stablePool,
+       
         [pair_s0_s1, pair_s1_s2, pair_s0_s2],
         new TokenAmount(stable0, JSBI.BigInt(100)),
         stable2
@@ -217,8 +219,8 @@ describe('TradeV3', () => {
       console.log("dummy balances after", dummyStablePool.tokenBalances.map(value => value.toBigInt()))
 
       console.log("manual calculation 2 trade", s2Amount.raw, result[0].outputAmount.raw)
-      const [amountManual,] = pair_s0_s2.getOutputAmount(new TokenAmount(stable0, JSBI.BigInt(100)), stablePool)
-      console.log("wow", amountManual.raw, result[0].outputAmount.raw)
+      // const [amountManual,] = pair_s0_s2.getOutputAmount(new TokenAmount(stable0, JSBI.BigInt(100)), stablePool)
+      // console.log("wow", amountManual.raw, result[0].outputAmount.raw)
       console.log("manual calculation 1 trade", stablePool.clone().getOutputAmount(new TokenAmount(stable0, JSBI.BigInt(100)), 2).raw)
       console.log("trade calculation 2 trades", result[0].outputAmount.raw)
       // console.log("trade calculation 2 trades other", result[1].outputAmount.raw)
