@@ -36,4 +36,5 @@ export declare class StablePairWrapper implements Source {
     priceFromReserve(outToken: Token): Price;
     getOutputAmount(inputAmount: TokenAmount, stablePool: StablePool): [TokenAmount, StablePairWrapper];
     getInputAmount(outputAmount: TokenAmount, stablePool: StablePool): [TokenAmount, StablePairWrapper];
+    static wrapPairsFromPool(stablePool: StablePool): StablePairWrapper[];
 }

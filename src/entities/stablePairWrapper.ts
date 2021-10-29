@@ -29,7 +29,7 @@ export class StablePairWrapper implements Source {
     constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount, indexA: number, indexB: number) {
 
         invariant(tokenAmountA.token.chainId === tokenAmountB.token.chainId, 'CHAIN_IDS')
-        
+
         this.liquidityToken = new Token(
             tokenAmountA.token.chainId,
             STABLE_POOL_LP_ADDRESS[tokenAmountA.token.chainId] ?? '0x0000000000000000000000000000000000000001',
@@ -175,5 +175,23 @@ export class StablePairWrapper implements Source {
             new StablePairWrapper(
                 inputReserve.add(input),
                 outputReserve.subtract(outputAmount), stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))]
+    }
+
+    // generates the n^2-n combinations for wrappedStablePairs
+    public static wrapPairsFromPool(stablePool: StablePool): StablePairWrapper[] {
+
+        let wrapperList = []
+
+        for (let i = 0; i < stablePool.tokenBalances.length; i++) {
+            for (let j = 0; j < i; j++) {
+                wrapperList.push(new StablePairWrapper(
+                    new TokenAmount(stablePool.tokens[i], stablePool.tokenBalances[i].toBigInt()),
+                    new TokenAmount(stablePool.tokens[j], stablePool.tokenBalances[j].toBigInt()),
+                    i,
+                    j
+                ))
+            }
+        }
+        return wrapperList
     }
 }

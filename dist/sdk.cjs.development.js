@@ -3611,6 +3611,19 @@ var StablePairWrapper = /*#__PURE__*/function () {
     stablePool.setBalanceValue(inputReserve.add(input));
     stablePool.setBalanceValue(outputReserve.subtract(outputAmount));
     return [input, new StablePairWrapper(inputReserve.add(input), outputReserve.subtract(outputAmount), stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))];
+  } // generates the n^2-n combinations for wrappedStablePairs
+  ;
+
+  StablePairWrapper.wrapPairsFromPool = function wrapPairsFromPool(stablePool) {
+    var wrapperList = [];
+
+    for (var i = 0; i < stablePool.tokenBalances.length; i++) {
+      for (var j = 0; j < i; j++) {
+        wrapperList.push(new StablePairWrapper(new TokenAmount(stablePool.tokens[i], stablePool.tokenBalances[i].toBigInt()), new TokenAmount(stablePool.tokens[j], stablePool.tokenBalances[j].toBigInt()), i, j));
+      }
+    }
+
+    return wrapperList;
   };
 
   _createClass(StablePairWrapper, [{
