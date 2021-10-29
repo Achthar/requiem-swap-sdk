@@ -44,14 +44,7 @@ describe('TradeV3', () => {
   const stable2 = new Token(chainId, '0x0000000000000000000000000000000000000007', 18, 's2')
   const stable3 = new Token(chainId, '0x0000000000000000000000000000000000000008', 18, 's3')
 
-  // const pair_t0_s0 = new Pair(new TokenAmount(token0, JSBI.BigInt(1000)), new TokenAmount(stable0, JSBI.BigInt(1000)))
-  const pair_t0_s1 = new Pair(new TokenAmount(token0, JSBI.BigInt(1000)), new TokenAmount(stable1, JSBI.BigInt(1100)))
-  // const pair_s0_s1 = new StablePairWrapper(new TokenAmount(stable0, JSBI.BigInt(1000)), new TokenAmount(stable1, JSBI.BigInt(900)), 0, 1)
-  // const pair_s1_t2 = new Pair(new TokenAmount(stable1, JSBI.BigInt(1200)), new TokenAmount(token2, JSBI.BigInt(1000)))
-  // const pair_t2_t3 = new Pair(new TokenAmount(token2, JSBI.BigInt(1200)), new TokenAmount(token3, JSBI.BigInt(1300)))
-  // const pair_s1_s3 = new StablePairWrapper(new TokenAmount(stable1, JSBI.BigInt(1000)), new TokenAmount(stable3, JSBI.BigInt(900)), 1, 3)
-  const pair_s1_s2 = new StablePairWrapper(new TokenAmount(stable1, JSBI.BigInt(1000)), new TokenAmount(stable2, JSBI.BigInt(900)), 1, 2)
-  const pair_s2_t2 = new Pair(new TokenAmount(stable2, JSBI.BigInt(1000)), new TokenAmount(token2, JSBI.BigInt(1100)))
+
 
   const manualSS = {
     "lpToken": '0xDf65aC8079A71f5174A35dE3D29e5458d03D5787',
@@ -88,6 +81,21 @@ describe('TradeV3', () => {
     BigNumber.from('4000000000000000000000'),
     BigNumber.from('0')
   )
+
+
+
+  // const pair_t0_s0 = new Pair(new TokenAmount(token0, JSBI.BigInt(1000)), new TokenAmount(stable0, JSBI.BigInt(1000)))
+  const pair_t0_s1 = new Pair(new TokenAmount(token0, JSBI.BigInt(1000)), new TokenAmount(stable1, JSBI.BigInt(1100)))
+  // const pair_s0_s1 = new StablePairWrapper(new TokenAmount(stable0, JSBI.BigInt(1000)), new TokenAmount(stable1, JSBI.BigInt(900)), 0, 1)
+  // const pair_s1_t2 = new Pair(new TokenAmount(stable1, JSBI.BigInt(1200)), new TokenAmount(token2, JSBI.BigInt(1000)))
+  // const pair_t2_t3 = new Pair(new TokenAmount(token2, JSBI.BigInt(1200)), new TokenAmount(token3, JSBI.BigInt(1300)))
+  // const pair_s1_s3 = new StablePairWrapper(new TokenAmount(stable1, JSBI.BigInt(1000)), new TokenAmount(stable3, JSBI.BigInt(900)), 1, 3)
+  // const pair_s1_s2 = new StablePairWrapper(new TokenAmount(stable1, JSBI.BigInt(1000)), new TokenAmount(stable2, JSBI.BigInt(900)), 1, 2)
+  const pair_s2_t2 = new Pair(new TokenAmount(stable2, JSBI.BigInt(1000)), new TokenAmount(token2, JSBI.BigInt(1100)))
+
+  const pair_s0_s1 = StablePairWrapper.wrapSinglePairFromPool(stablePool, 0, 1)
+  const pair_s1_s2 = StablePairWrapper.wrapSinglePairFromPool(stablePool, 1, 2)
+  const pair_s0_s2 = StablePairWrapper.wrapSinglePairFromPool(stablePool, 0, 2)
 
   const empty_pair_0_1 = new Pair(new TokenAmount(token0, JSBI.BigInt(0)), new TokenAmount(token1, JSBI.BigInt(0)))
 
@@ -142,27 +150,90 @@ describe('TradeV3', () => {
     })
 
     it('provides best route', () => {
+      console.log('-----provides best route-----')
+      console.log("stable balances before", stablePool.tokenBalances.map(value => value.toBigInt()))
+      // console.log("PAIRS1S2 before", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
+      console
       const result = TradeV3.bestTradeExactIn(
         stablePool,
         [pair_t0_s1, pair_s1_s2, pair_s2_t2, pair_t0_t2],
         new TokenAmount(token0, JSBI.BigInt(100)),
         token2
       )
-      const [s1Amount,] = pair_t0_s1.getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
-      const s2Amount = stablePool.getOutputAmount(s1Amount, 2)
+      console.log("stable balances after", stablePool.tokenBalances.map(value => value.toBigInt()))
 
-      const [t3Amount,] = pair_s2_t2.getOutputAmount(s2Amount)
-      console.log("manualT2 n", t3Amount) // should be 98
+      // console.log("PAIRS1S2 afters", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
+
+      const dummyStablePool = stablePool.clone()
+
+      const [s1Amount,] = pair_t0_s1.getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
+      console.log("obtained s1 from s0", s1Amount.raw)
+      const [s2Amount,] = pair_s1_s2.getOutputAmount(s1Amount, dummyStablePool)
+      console.log("obtained s2 from s1", s2Amount.raw)
+      const [t2Amount,] = pair_s2_t2.getOutputAmount(s2Amount)
+      console.log("obtained t2 from s2", t2Amount.raw)
+
+      const s2AmountTest = stablePool.clone().getOutputAmount(s1Amount, 2)
+      console.log("T2 through stablePool direct test", s2AmountTest.raw)
+
+      const [t2AmountDirect,] = pair_t0_t2.getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
+
+      // console.log("PAIRS1S2", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
+      console.log("T2 through stablePool", t2Amount.raw) // should be 99
+      console.log("T2 via Pair", t2AmountDirect.raw) // should be 99
+      console.log("-- Wrapped pair calc for S2", s2Amount.raw)
+      console.log("-- direct SP calc for S2", stablePool.clone().getOutputAmount(s1Amount, 2).raw)
+      console.log("result0", result[0].outputAmount.raw)
+      console.log("result1", result[1].outputAmount.raw)
+      // console.log('provides best route result', result)
       expect(result).toHaveLength(2)
       expect(result[0].route.sources).toHaveLength(1) // 0 -> 2 at 10:11
       expect(result[0].route.path).toEqual([token0, token2])
       expect(result[0].inputAmount).toEqual(new TokenAmount(token0, JSBI.BigInt(100)))
-      expect(result[0].outputAmount).toEqual(new TokenAmount(token2, JSBI.BigInt(99)))
+      expect(result[0].outputAmount).toEqual(new TokenAmount(token2, t2AmountDirect.raw))
       expect(result[1].route.sources).toHaveLength(3) // 0 -> 1 -> 2 at 12:12:10
       expect(result[1].route.path).toEqual([token0, stable1, stable2, token2])
       expect(result[1].inputAmount).toEqual(new TokenAmount(token0, JSBI.BigInt(100)))
-      expect(result[1].outputAmount).toEqual(new TokenAmount(token2, t3Amount.raw))
+      expect(result[1].outputAmount).toEqual(t2Amount)
     })
+
+    it('respects stables only', () => {
+      console.log('-----respects stables only-----')
+      console.log("stable balances before", stablePool.tokenBalances.map(value => value.toBigInt()))
+      const result = TradeV3.bestTradeExactIn(
+        stablePool,
+        [pair_s0_s1, pair_s1_s2, pair_s0_s2],
+        new TokenAmount(stable0, JSBI.BigInt(100)),
+        stable2
+      )
+      console.log("stable balances after", stablePool.tokenBalances.map(value => value.toBigInt()))
+      const dummyStablePool = stablePool.clone()
+      console.log("dummystable balances before", dummyStablePool.tokenBalances.map(value => value.toBigInt()))
+      const [s1Amount,] = pair_s0_s1.getOutputAmount(new TokenAmount(stable0, JSBI.BigInt(100)), dummyStablePool)
+      console.log("s1 amount obtained", s1Amount.raw)
+      console.log("dummystable balances mid", dummyStablePool.tokenBalances.map(value => value.toBigInt()))
+      const [s2Amount,] = pair_s1_s2.getOutputAmount(s1Amount, dummyStablePool)
+      console.log("s2 amount obtained", s2Amount.raw)
+      console.log("dummy balances after", dummyStablePool.tokenBalances.map(value => value.toBigInt()))
+
+      console.log("manual calculation 2 trade", s2Amount.raw, result[0].outputAmount.raw)
+      const [amountManual,] = pair_s0_s2.getOutputAmount(new TokenAmount(stable0, JSBI.BigInt(100)), stablePool)
+      console.log("wow", amountManual.raw, result[0].outputAmount.raw)
+      console.log("manual calculation 1 trade", stablePool.clone().getOutputAmount(new TokenAmount(stable0, JSBI.BigInt(100)), 2).raw)
+      console.log("trade calculation 2 trades", result[0].outputAmount.raw)
+      // console.log("trade calculation 2 trades other", result[1].outputAmount.raw)
+      // console.log("manualT2 n", s3AmountBad) // should be 98
+      expect(result).toHaveLength(1)
+      expect(result[0].route.sources).toHaveLength(1) // 0 -> 1 -> 2 at 10:11
+      expect(result[0].route.path).toEqual([stable0, stable2])
+      expect(result[0].inputAmount).toEqual(new TokenAmount(stable0, JSBI.BigInt(100)))
+      expect(result[0].outputAmount).toEqual(stablePool.clone().getOutputAmount(new TokenAmount(stable0, JSBI.BigInt(100)), 2))
+      // expect(result[1].route.sources).toHaveLength(1) // 0 -> 2 at 12:12:10
+      // expect(result[1].route.path).toEqual([stable0, stable2])
+      // expect(result[1].inputAmount).toEqual(new TokenAmount(stable0, JSBI.BigInt(100)))
+      // expect(result[1].outputAmount).toEqual(stablePool.clone().getOutputAmount(new TokenAmount(stable0, JSBI.BigInt(100)), 2))
+    })
+
 
     it('doesnt throw for zero liquidity sources', () => {
       expect(TradeV3.bestTradeExactIn(stablePool, [empty_pair_0_1], new TokenAmount(token0, JSBI.BigInt(100)), token1)).toHaveLength(

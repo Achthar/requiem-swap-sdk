@@ -12,7 +12,7 @@ export class StablePairWrapper implements Source {
 
     // the tokenAmounts are the reference Balances that we keep track of in the stablePool
     // whenever we make changes to these, we need to update the stablePool reference Balance to calculate the correct 
-    public readonly tokenAmounts: TokenAmount[]
+    public tokenAmounts: TokenAmount[]
     public readonly stableIndexes: number[]
 
     // the tokenAmount for calculating the price
@@ -23,7 +23,7 @@ export class StablePairWrapper implements Source {
     public readonly type: string
     public readonly referenceMidPrices: Price[]
     public readonly liquidityToken: Token
-
+    // public executionPrice: Price
     // public readonly inputReserve: TokenAmount
     // public readonly outputReserve: TokenAmount
 
@@ -44,7 +44,7 @@ export class StablePairWrapper implements Source {
 
         this.pricingBasesIn = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]
         this.pricingBasesOut = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]
-
+        // this.executionPrice = new Price(tokenAmountA.token, tokenAmountB.token, tokenAmountA.raw, tokenAmountB.raw)
         this.referenceMidPrices = []
         this.type = 'StablePairWrapper'
     }
@@ -117,24 +117,25 @@ export class StablePairWrapper implements Source {
         )
     }
 
-    // function that wraps the output calculation based on a stablePool
+    /**
+     * function that wraps the output calculation based on a stablePool
+     * @param inputAmount input amount that is used for calculating the output amount
+     * @param stablePool input stablePool: IMPORTANT NOTE: the balances of that object change according to the trade logic
+     * this is required as multiple trades will lead to adjusted balances in case it is routed twice or more through the pool
+     * @returns the output amount as TokenAmount and the StableWrappedPair with the adjusted balances
+     */
     public getOutputAmount(inputAmount: TokenAmount, stablePool: StablePool): [TokenAmount, StablePairWrapper] {
         invariant(this.involvesToken(inputAmount.token), 'TOKEN')
         const inputReserve = this.reserveOf(inputAmount.token)
         const outputReserve = this.reserveOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0)
-
-
-        // set the balance values to the expected valuses
-        stablePool.setBalanceValue(this.tokenAmounts[0])
-        stablePool.setBalanceValue(this.tokenAmounts[1])
 
         const output = stablePool.getOutputAmount(
             inputAmount,
             this.token0.equals(inputAmount.token) ? this.stableIndexes[1] : this.stableIndexes[0])
 
         // adjust the values based on the supposdly executed trade
-        stablePool.setBalanceValue(inputReserve.add(inputAmount))
-        stablePool.setBalanceValue(outputReserve.subtract(output))
+        stablePool.addBalanceValue(inputAmount)
+        stablePool.subtractBalanceValue(output)
 
         // here we save the pricing results if it is called
         const inIndex = inputAmount.token.equals(this.token0) ? 0 : 1
@@ -142,6 +143,7 @@ export class StablePairWrapper implements Source {
         this.pricingBasesIn[inIndex] = inputAmount
         this.pricingBasesOut[outIndex] = output
 
+        // this.executionPrice = new Price(inputAmount.token, output.token, inputAmount.raw, output.raw)
         return [
             output,
             new StablePairWrapper(
@@ -150,15 +152,19 @@ export class StablePairWrapper implements Source {
         ]
     }
 
-    // function that wraps the input calculation based on a stablePool
+    /**
+     * function that wraps the input calculation based on a stablePool
+     * @param outputAmount output amount to calculate the input with
+     * @param stablePool  input stablePool: IMPORTANT NOTE: the balances of that object change according to the trade logic
+     * this is required as multiple trades will lead to adjusted balances in case it is routed twice or more through the pool
+     * @returns the input TokenAmount required to obtain the target output
+     */
     public getInputAmount(outputAmount: TokenAmount, stablePool: StablePool): [TokenAmount, StablePairWrapper] {
         invariant(this.involvesToken(outputAmount.token), 'TOKEN')
 
         const outputReserve = this.reserveOf(outputAmount.token)
         const inputReserve = this.reserveOf(outputAmount.token.equals(this.token0) ? this.token1 : this.token0)
 
-        stablePool.setBalanceValue(this.tokenAmounts[0])
-        stablePool.setBalanceValue(this.tokenAmounts[1])
 
         const input = stablePool.getInputAmount(
             outputAmount,
@@ -170,8 +176,10 @@ export class StablePairWrapper implements Source {
         this.pricingBasesIn[inIndex] = input
         this.pricingBasesOut[outIndex] = outputAmount
 
-        stablePool.setBalanceValue(inputReserve.add(input))
-        stablePool.setBalanceValue(outputReserve.subtract(outputAmount))
+        // adjust the values based on the supposdly executed trade
+        stablePool.addBalanceValue(input)
+        stablePool.subtractBalanceValue(outputAmount)
+
 
         return [input,
             new StablePairWrapper(
@@ -195,5 +203,16 @@ export class StablePairWrapper implements Source {
             }
         }
         return wrapperList
+    }
+
+    public static wrapSinglePairFromPool(stablePool: StablePool, i: number, j: number) {
+        invariant(i !== j, 'SAME INDEX')
+        invariant(i < stablePool.tokenBalances.length || j < stablePool.tokenBalances.length, 'INDEX OUT OF RANGE')
+        return new StablePairWrapper(
+            new TokenAmount(stablePool.tokens[i], stablePool.tokenBalances[i].toBigInt()),
+            new TokenAmount(stablePool.tokens[j], stablePool.tokenBalances[j].toBigInt()),
+            i,
+            j
+        )
     }
 }

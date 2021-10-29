@@ -268,9 +268,31 @@ export class TradeV3 {
           ? currencyOut.chainId
           : undefined
     invariant(chainId !== undefined, 'CHAIN_ID')
+    // create copy of stablePool object no not change the original one
+    const stablePoolForIteration = stablePool.clone()
 
     const amountIn = wrappedAmount(currencyAmountIn, chainId)
     const tokenOut = wrappedCurrency(currencyOut, chainId)
+
+    if ( // check if it can be only a single stable swap trade
+      currencyAmountIn instanceof TokenAmount &&
+      currencyOut instanceof Token &&
+      Object.values(stablePool.tokens).includes(currencyAmountIn.token) &&
+      Object.values(stablePool.tokens).includes(currencyOut)
+    ) {
+      const stableTrade = new TradeV3(
+        new RouteV3(
+          [StablePairWrapper.wrapSinglePairFromPool(stablePool, stablePool.indexFromToken(currencyAmountIn.token), stablePool.indexFromToken(currencyOut))],
+          stablePool,
+          currencyAmountIn.token,
+          currencyOut
+        ),
+        currencyAmountIn,
+        TradeType.EXACT_INPUT
+      )
+      return [stableTrade]
+    }
+
     for (let i = 0; i < sources.length; i++) {
       let source = sources[i]
 
@@ -280,7 +302,7 @@ export class TradeV3 {
 
       let amountOut: TokenAmount
       try {
-        ;[amountOut] = source instanceof Pair ? source.getOutputAmount(amountIn) : source.getOutputAmount(amountIn, stablePool)
+        ;[amountOut] = source instanceof Pair ? source.getOutputAmount(amountIn) : source.getOutputAmount(amountIn, stablePoolForIteration)
       } catch (error) {
         // input too low
         if ((error as any).isInsufficientInputAmountError) {
@@ -305,7 +327,7 @@ export class TradeV3 {
 
         // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
         TradeV3.bestTradeExactIn(
-          stablePool,
+          stablePoolForIteration,
           sourcesExcludingThisSource,
           amountOut,
           currencyOut,
@@ -320,7 +342,6 @@ export class TradeV3 {
       }
 
     }
-
     return bestTrades
   }
 
@@ -361,9 +382,28 @@ export class TradeV3 {
           ? currencyIn.chainId
           : undefined
     invariant(chainId !== undefined, 'CHAIN_ID')
+    // create copy of stablePool object
+    const stablePoolForIteration = stablePool.clone()
 
     const amountOut = wrappedAmount(currencyAmountOut, chainId)
     const tokenIn = wrappedCurrency(currencyIn, chainId)
+
+    if ( // check ifit can be only a single stable swap trade
+      currencyAmountOut instanceof TokenAmount &&
+      currencyIn instanceof Token &&
+      Object.values(stablePool.tokens).includes(currencyAmountOut.token) &&
+      Object.values(stablePool.tokens).includes(currencyIn)
+    ) {
+      const stableTrade = new TradeV3(
+        new RouteV3(
+          [StablePairWrapper.wrapSinglePairFromPool(stablePool, stablePool.indexFromToken(currencyAmountOut.token), stablePool.indexFromToken(currencyIn))],
+          stablePool, currencyAmountOut.token, currencyIn),
+        currencyAmountOut,
+        TradeType.EXACT_OUTPUT
+      )
+      return [stableTrade]
+    }
+
     for (let i = 0; i < sources.length; i++) {
       const source = sources[i]
       // source irrelevant
@@ -372,7 +412,7 @@ export class TradeV3 {
 
       let amountIn: TokenAmount
       try {
-        ;[amountIn] = source instanceof Pair ? source.getInputAmount(amountOut) : source.getInputAmount(amountOut, stablePool)
+        ;[amountIn] = source instanceof Pair ? source.getInputAmount(amountOut) : source.getInputAmount(amountOut, stablePoolForIteration)
       } catch (error) {
         // not enough liquidity in this source
         if ((error as any).isInsufficientReservesError) {
@@ -397,7 +437,7 @@ export class TradeV3 {
 
         // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
         TradeV3.bestTradeExactOut(
-          stablePool,
+          stablePoolForIteration,
           sourcesExcludingThisSource,
           currencyIn,
           amountIn,

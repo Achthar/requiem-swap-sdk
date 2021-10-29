@@ -39,11 +39,15 @@ export class Price extends Fraction {
           ? (source.type === 'Pair'
             ? new Price(source.reserve0.currency, source.reserve1.currency, source.reserve0.raw, source.reserve1.raw)
             // here we need the recorded prcing bases
-            : new Price(source.reserve0.currency, source.reserve1.currency, (source as StablePairWrapper).pricingBasesIn[0].raw, (source as StablePairWrapper).pricingBasesOut[1].raw))
+            : new Price(source.reserve0.currency, source.reserve1.currency,
+              (source as StablePairWrapper).pricingBasesIn[0].raw,
+              (source as StablePairWrapper).pricingBasesOut[1].raw))
           : (source.type === 'Pair' ?
             new Price(source.reserve1.currency, source.reserve0.currency, source.reserve1.raw, source.reserve0.raw)
             // pricing base for stablePriceWrapper
-            : new Price(source.reserve0.currency, source.reserve1.currency, (source as StablePairWrapper).pricingBasesIn[1].raw, (source as StablePairWrapper).pricingBasesOut[0].raw))
+            : new Price(source.reserve1.currency, source.reserve0.currency,
+              (source as StablePairWrapper).pricingBasesIn[1].raw,
+              (source as StablePairWrapper).pricingBasesOut[0].raw))
       )
     }
     return prices.slice(1).reduce((accumulator, currentValue) => accumulator.multiply(currentValue), prices[0])

@@ -19,7 +19,7 @@ export class RouteV3 {
   public readonly midPrice: Price
 
   public constructor(sources: (Pair|StablePairWrapper)[], stablePool: StablePool, input: Currency, output?: Currency) {
-    invariant(sources.length > 0, 'PAIRS')
+    invariant(sources.length > 0, 'SOURCES')
     invariant(
       sources.every(source => source.chainId === sources[0].chainId),
       'CHAIN_IDS'
