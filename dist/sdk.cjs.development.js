@@ -3512,7 +3512,7 @@ var RouterV3 = /*#__PURE__*/function () {
       switch (trade.tradeType) {
         case exports.TradeType.EXACT_INPUT:
           if (etherIn) {
-            methodName = 'swapExactETHForTokens'; // function multiSwapExactETHForTokens( address[][] calldata path, uint256[] memory routerId,
+            methodName = 'multiSwapExactETHForTokens'; // function multiSwapExactETHForTokens( address[][] calldata path, uint256[] memory routerId,
             // uint256 amountOutMin, uint256 deadline )
 
             args = [_path, routerId, amountOut, deadline];

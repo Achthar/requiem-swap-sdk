@@ -147,12 +147,12 @@ export abstract class RouterV3 {
     } else {
       const path = []
       for (let i = 0; i < trade.route.pathMatrix.length; i++)
-        path.push(trade.route.pathMatrix[i].map(token => token.address))
+      path.push(trade.route.pathMatrix[i].map(token => token.address))
       const routerId = trade.route.routerIds.map(id => id.toString())
       switch (trade.tradeType) {
         case TradeType.EXACT_INPUT:
           if (etherIn) {
-            methodName = 'swapExactETHForTokens'
+            methodName = 'multiSwapExactETHForTokens'
             // function multiSwapExactETHForTokens( address[][] calldata path, uint256[] memory routerId,
             // uint256 amountOutMin, uint256 deadline )
             args = [path, routerId, amountOut, deadline]
