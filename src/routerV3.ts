@@ -100,7 +100,7 @@ export abstract class RouterV3 {
         ? `0x${(Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16)}`
         : `0x${options.deadline.toString(16)}`
 
-    if (!options.multiSwap || (trade.route.routerIds.length === 1 && trade.route.routerIds[0] === 1)) {
+    if (!options.multiSwap && (trade.route.routerIds.length === 1 && trade.route.routerIds[0] === 1)) {
       const path: string[] = trade.route.path.map((token) => token.address)
       const useFeeOnTransfer = Boolean(options.feeOnTransfer)
       switch (trade.tradeType) {
@@ -167,7 +167,7 @@ export abstract class RouterV3 {
             methodName = 'multiSwapExactTokensForTokens'
             // multiSwapExactTokensForTokens( address[][] calldata path, uint256[] memory routerId, 
             // uint256 amountIn, uint256 amountOutMin, uint256 deadline )
-            args = [path, routerId, amountIn, amountOut, path, deadline]
+            args = [path, routerId, amountIn, amountOut, deadline]
             value = ZERO_HEX
           }
           break

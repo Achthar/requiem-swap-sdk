@@ -3447,7 +3447,7 @@ var RouterV3 = /*#__PURE__*/function () {
     var value;
     var deadline = 'ttl' in options ? "0x" + (Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16) : "0x" + options.deadline.toString(16);
 
-    if (!options.multiSwap || trade.route.routerIds.length === 1 && trade.route.routerIds[0] === 1) {
+    if (!options.multiSwap && trade.route.routerIds.length === 1 && trade.route.routerIds[0] === 1) {
       var path = trade.route.path.map(function (token) {
         return token.address;
       });
@@ -3527,7 +3527,7 @@ var RouterV3 = /*#__PURE__*/function () {
             methodName = 'multiSwapExactTokensForTokens'; // multiSwapExactTokensForTokens( address[][] calldata path, uint256[] memory routerId, 
             // uint256 amountIn, uint256 amountOutMin, uint256 deadline )
 
-            args = [_path, routerId, amountIn, amountOut, _path, deadline];
+            args = [_path, routerId, amountIn, amountOut, deadline];
             value = ZERO_HEX$1;
           }
 
