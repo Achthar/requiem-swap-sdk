@@ -183,7 +183,7 @@ export class StablePairWrapper implements Source {
         stablePool.addBalanceValue(input)
         stablePool.subtractBalanceValue(outputAmount)
 
-        console.log("get " + outputAmount.raw.toString() + outputAmount.token.symbol + " for " + input.raw.toString() + input.token.symbol)
+        // console.log("get " + outputAmount.raw.toString() + outputAmount.token.symbol + " for " + input.raw.toString() + input.token.symbol)
 
         return [input,
             new StablePairWrapper(

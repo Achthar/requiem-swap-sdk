@@ -3700,8 +3700,8 @@ var StablePairWrapper = /*#__PURE__*/function () {
     this.status = 'PRICED'; // adjust the values based on the supposdly executed trade
 
     stablePool.addBalanceValue(input);
-    stablePool.subtractBalanceValue(outputAmount);
-    console.log("get " + outputAmount.raw.toString() + outputAmount.token.symbol + " for " + input.raw.toString() + input.token.symbol);
+    stablePool.subtractBalanceValue(outputAmount); // console.log("get " + outputAmount.raw.toString() + outputAmount.token.symbol + " for " + input.raw.toString() + input.token.symbol)
+
     return [input, new StablePairWrapper(input, outputAmount, stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))];
   } // generates the n^2-n combinations for wrappedStablePairs
   ;
