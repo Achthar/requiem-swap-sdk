@@ -156,7 +156,7 @@ describe('TradeV3', () => {
       console
       const result = TradeV3.bestTradeExactIn(
         stablePool,
-       
+
         [pair_t0_s1, pair_s1_s2, pair_s2_t2, pair_t0_t2],
         new TokenAmount(token0, JSBI.BigInt(100)),
         token2
@@ -198,12 +198,13 @@ describe('TradeV3', () => {
       expect(result[1].outputAmount).toEqual(t2Amount)
     })
 
+
     it('respects stables only', () => {
       console.log('-----respects stables only-----')
       console.log("stable balances before", stablePool.tokenBalances.map(value => value.toBigInt()))
       const result = TradeV3.bestTradeExactIn(
         stablePool,
-       
+
         [pair_s0_s1, pair_s1_s2, pair_s0_s2],
         new TokenAmount(stable0, JSBI.BigInt(100)),
         stable2
@@ -444,6 +445,56 @@ describe('TradeV3', () => {
         TradeV3.bestTradeExactOut(stablePool, [pair_t0_t2], token0, new TokenAmount(token2, JSBI.BigInt(100)), { maxHops: 0 })
       ).toThrow('MAX_HOPS')
     })
+
+    it('provides best route exact OUT', () => {
+      console.log('-----provides best route exact OUT-----')
+      console.log("stable balances before", stablePool.tokenBalances.map(value => value.toBigInt()))
+      // console.log("PAIRS1S2 before", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
+      const t2Amount =  new TokenAmount(token2, JSBI.BigInt(100))
+      const result = TradeV3.bestTradeExactOut(
+        stablePool,
+
+        [pair_t0_s1, pair_s1_s2, pair_s2_t2, pair_t0_t2],
+        token0,
+        t2Amount
+      )
+      console.log("stable balances after", stablePool.tokenBalances.map(value => value.toBigInt()))
+
+      // console.log("PAIRS1S2 afters", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
+
+      const dummyStablePool = stablePool.clone()
+
+      const [s2Amount,] = pair_s2_t2.getInputAmount(t2Amount)
+      console.log("input s2 from t2", s2Amount.raw)
+      const [s1Amount,] = pair_s1_s2.getInputAmount(s2Amount, dummyStablePool)
+      console.log("input s1 from s2", s1Amount.raw)
+      const [t0Amount,] = pair_t0_s1.getInputAmount(s1Amount)
+      console.log("input t0 from s1", t0Amount.raw)
+
+      // const s2AmountTest = stablePool.clone().getInputAmount(s1Amount, 2)
+      // console.log("T2 through stablePool direct test", s2AmountTest.raw)
+
+      const [t0AmountDirect,] = pair_t0_t2.getInputAmount(t2Amount)
+
+      // console.log("PAIRS1S2", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
+      console.log("T2 through stablePool", t2Amount.raw) // should be 99
+      console.log("T2 via Pair", t0AmountDirect.raw) // should be 99
+      console.log("-- Wrapped pair calc for S2", s2Amount.raw)
+      console.log("-- direct SP calc for S2", stablePool.clone().getOutputAmount(s1Amount, 2).raw)
+      console.log("result0", result[0].outputAmount.raw)
+      console.log("result1", result[1].outputAmount.raw)
+      // console.log('provides best route result', result)
+      expect(result).toHaveLength(2)
+      expect(result[0].route.sources).toHaveLength(1) // 0 -> 2 at 10:11
+      expect(result[0].route.path).toEqual([token0, token2])
+      expect(result[0].inputAmount).toEqual(t0AmountDirect)
+      expect(result[0].outputAmount).toEqual(t2Amount)
+      expect(result[1].route.sources).toHaveLength(3) // 0 -> 1 -> 2 at 12:12:10
+      expect(result[1].route.path).toEqual([token0, stable1, stable2, token2])
+      expect(result[1].inputAmount).toEqual(t0Amount)
+      expect(result[1].outputAmount).toEqual(t2Amount)
+    })
+
 
     it('provides best route', () => {
       const result = TradeV3.bestTradeExactOut(

@@ -145,7 +145,7 @@ export class StablePairWrapper implements Source {
         this.pricingBasesIn[inIndex] = inputAmount
         this.pricingBasesOut[outIndex] = output
         this.status = 'PRICED'
-        console.log("get " + output.raw.toString() + output.token.symbol + " for " + inputAmount.raw.toString() + inputAmount.token.symbol)
+        // console.log("get " + output.raw.toString() + output.token.symbol + " for " + inputAmount.raw.toString() + inputAmount.token.symbol)
         // this.executionPrice = new Price(inputAmount.token, output.token, inputAmount.raw, output.raw)
         return [
             output,

@@ -3272,7 +3272,7 @@ var StablePool = /*#__PURE__*/function () {
   };
 
   _proto.getInputAmount = function getInputAmount(outputAmount, inIndex) {
-    var swap = this.calculateSwap(inIndex, this.indexFromToken(outputAmount.token), outputAmount.toBigNumber());
+    var swap = this.calculateSwap(this.indexFromToken(outputAmount.token), inIndex, outputAmount.toBigNumber());
     return new TokenAmount(this.tokenFromIndex(inIndex), swap.toBigInt());
   }
   /**
@@ -3633,8 +3633,8 @@ var StablePairWrapper = /*#__PURE__*/function () {
     var outIndex = output.token.equals(this.token0) ? 0 : 1;
     this.pricingBasesIn[inIndex] = inputAmount;
     this.pricingBasesOut[outIndex] = output;
-    this.status = 'PRICED';
-    console.log("get " + output.raw.toString() + output.token.symbol + " for " + inputAmount.raw.toString() + inputAmount.token.symbol); // this.executionPrice = new Price(inputAmount.token, output.token, inputAmount.raw, output.raw)
+    this.status = 'PRICED'; // console.log("get " + output.raw.toString() + output.token.symbol + " for " + inputAmount.raw.toString() + inputAmount.token.symbol)
+    // this.executionPrice = new Price(inputAmount.token, output.token, inputAmount.raw, output.raw)
 
     return [output, new StablePairWrapper(inputAmount, output, stablePool.indexFromToken(inputReserve.token), stablePool.indexFromToken(outputReserve.token))];
   }
