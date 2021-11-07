@@ -4,7 +4,6 @@ import { SwapStorage } from './swapStorage';
 import { BigintIsh, ChainId } from '../constants';
 import { Token } from './token';
 import { TokenAmount } from './fractions/tokenAmount';
-import { Pair } from './pair';
 /**
   * A class that contains relevant stablePool information
   * It is mainly designed to save the map between the indices
@@ -37,7 +36,6 @@ export declare class StablePool {
     tokenFromIndex(index: number): Token;
     indexFromToken(token: Token): number;
     getBalances(): BigNumber[];
-    generatePairs(pairs: Pair[]): Pair[];
     calculateSwapViaPing(inIndex: number, outIndex: number, inAmount: BigNumber | BigintIsh, chainId: number, provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh>;
     calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber): BigNumber;
     getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount;

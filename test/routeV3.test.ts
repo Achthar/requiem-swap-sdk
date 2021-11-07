@@ -10,6 +10,7 @@ describe('RouteV3', () => {
   const chainId = ChainId.BSC_MAINNET
   const token0 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000001', 18, 't0')
   const token1 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000002', 18, 't1')
+  const token2 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000007', 18, 't2')
 
   const stable0 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000003', 18, 's0')
   const stable1 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000004', 18, 's1')
@@ -18,7 +19,13 @@ describe('RouteV3', () => {
 
   const weth = WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET]
 
-  const pair_0_1 = new Pair(new TokenAmount(token0, '100'), new TokenAmount(token1, '200'))
+  const pair_t0_t1 = new Pair(new TokenAmount(token0, '100'), new TokenAmount(token1, '200'))
+
+  const pair_t1_s0 = new Pair(new TokenAmount(token1, '100'), new TokenAmount(stable0, '200'))
+  const pair_t1_t2 = new Pair(new TokenAmount(token1, '100'), new TokenAmount(token2, '200'))
+  const pair_t2_s0 = new Pair(new TokenAmount(token2, '100'), new TokenAmount(stable0, '200'))
+
+  const pair_s1_t0 = new Pair(new TokenAmount(stable1, '100'), new TokenAmount(token0, '200'))
 
   // const pair_t0_s0 = new Pair(new TokenAmount(token0, '100'), new TokenAmount(stable0, '200'))
 
@@ -65,8 +72,8 @@ describe('RouteV3', () => {
 
 
   it('constructs a path from the tokens', () => {
-    const route = new RouteV3([pair_0_1], stablePool, token0)
-    expect(route.sources).toEqual([pair_0_1])
+    const route = new RouteV3([pair_t0_t1], stablePool, token0)
+    expect(route.sources).toEqual([pair_t0_t1])
     expect(route.path).toEqual([token0, token1])
     expect(route.input).toEqual(token0)
     expect(route.output).toEqual(token1)
@@ -78,11 +85,29 @@ describe('RouteV3', () => {
     expect(route.sources).toEqual([pair_s0_weth, pair_s0_s1, pair_s1_weth])
     expect(route.input).toEqual(weth)
     expect(route.output).toEqual(weth)
+    console.log("----routes ----")
+    for (let j = 0; j < route.pathMatrix.length; j++) {
+      console.log(route.routerIds[j], route.pathMatrix[j].map(token => token.symbol))
+    }
   })
+
+
+  it('supports multiple pairs mixed withg stable', () => {
+    const route = new RouteV3([pair_s0_weth, pair_t1_s0, pair_t1_t2, pair_t2_s0, pair_s0_s1, pair_s1_t0], stablePool, weth)
+    // expect(route.sources).toEqual([pair_s0_weth, pair_s0_s1, pair_s1_weth])
+    expect(route.input).toEqual(weth)
+    expect(route.output).toEqual(token0)
+
+    console.log("----routes long test----")
+    for (let j = 0; j < route.pathMatrix.length; j++) {
+      console.log(route.routerIds[j], route.pathMatrix[j].map(token => token.symbol))
+    }
+  })
+
 
   it('supports ether input', () => {
     const route = new RouteV3([pair_s0_weth], stablePool, NETWORK_CCY[chainId])
-    expect(route.sources).toEqual([pair_s0_weth as (Pair|StablePairWrapper)])
+    expect(route.sources).toEqual([pair_s0_weth as (Pair | StablePairWrapper)])
     expect(route.input).toEqual(NETWORK_CCY[chainId])
     expect(route.output).toEqual(stable0)
   })

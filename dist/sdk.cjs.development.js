@@ -3223,28 +3223,6 @@ var StablePool = /*#__PURE__*/function () {
     return Object.keys(this.tokens).map(function (_, index) {
       return _this.tokenBalances[index];
     });
-  };
-
-  _proto.generatePairs = function generatePairs(pairs) {
-    var _this2 = this;
-
-    var relevantStables = [];
-    var generatedPairs = [];
-    pairs.forEach(function (pair) {
-      if (Object.values(_this2.tokens).includes(pair.token0)) {
-        relevantStables.push(pair.token0);
-      }
-
-      if (Object.values(_this2.tokens).includes(pair.token1)) {
-        relevantStables.push(pair.token1);
-      }
-    });
-
-    if (relevantStables.length === 0) {
-      return [];
-    }
-
-    return generatedPairs;
   } // calculates the output amount usingn the input for the swableSwap
   // requires the view on a contract as manual calculation on the frontend would
   // be inefficient
@@ -3464,57 +3442,119 @@ var RouterV3 = /*#__PURE__*/function () {
     var to = validateAndParseAddress(options.recipient);
     var amountIn = toHex$1(trade.maximumAmountIn(options.allowedSlippage));
     var amountOut = toHex$1(trade.minimumAmountOut(options.allowedSlippage));
-    var path = trade.route.path.map(function (token) {
-      return token.address;
-    });
-    var deadline = 'ttl' in options ? "0x" + (Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16) : "0x" + options.deadline.toString(16);
-    var useFeeOnTransfer = Boolean(options.feeOnTransfer);
     var methodName;
-    var args;
+    var args = [];
     var value;
+    var deadline = 'ttl' in options ? "0x" + (Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16) : "0x" + options.deadline.toString(16);
 
-    switch (trade.tradeType) {
-      case exports.TradeType.EXACT_INPUT:
-        if (etherIn) {
-          methodName = useFeeOnTransfer ? 'swapExactETHForTokensSupportingFeeOnTransferTokens' : 'swapExactETHForTokens'; // (uint amountOutMin, address[] calldata path, address to, uint deadline)
+    if (!options.multiSwap || trade.route.routerIds.length === 1 && trade.route.routerIds[0] === 1) {
+      var path = trade.route.path.map(function (token) {
+        return token.address;
+      });
+      var useFeeOnTransfer = Boolean(options.feeOnTransfer);
 
-          args = [amountOut, path, to, deadline];
-          value = amountIn;
-        } else if (etherOut) {
-          methodName = useFeeOnTransfer ? 'swapExactTokensForETHSupportingFeeOnTransferTokens' : 'swapExactTokensForETH'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+      switch (trade.tradeType) {
+        case exports.TradeType.EXACT_INPUT:
+          if (etherIn) {
+            methodName = useFeeOnTransfer ? 'swapExactETHForTokensSupportingFeeOnTransferTokens' : 'swapExactETHForTokens'; // (uint amountOutMin, address[] calldata path, address to, uint deadline)
 
-          args = [amountIn, amountOut, path, to, deadline];
-          value = ZERO_HEX$1;
-        } else {
-          methodName = useFeeOnTransfer ? 'swapExactTokensForTokensSupportingFeeOnTransferTokens' : 'swapExactTokensForTokens'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+            args = [amountOut, path, to, deadline];
+            value = amountIn;
+          } else if (etherOut) {
+            methodName = useFeeOnTransfer ? 'swapExactTokensForETHSupportingFeeOnTransferTokens' : 'swapExactTokensForETH'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
 
-          args = [amountIn, amountOut, path, to, deadline];
-          value = ZERO_HEX$1;
-        }
+            args = [amountIn, amountOut, path, to, deadline];
+            value = ZERO_HEX$1;
+          } else {
+            methodName = useFeeOnTransfer ? 'swapExactTokensForTokensSupportingFeeOnTransferTokens' : 'swapExactTokensForTokens'; // (uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
 
-        break;
+            args = [amountIn, amountOut, path, to, deadline];
+            value = ZERO_HEX$1;
+          }
 
-      case exports.TradeType.EXACT_OUTPUT:
-        !!useFeeOnTransfer ?  invariant(false, 'EXACT_OUT_FOT')  : void 0;
+          break;
 
-        if (etherIn) {
-          methodName = 'swapETHForExactTokens'; // (uint amountOut, address[] calldata path, address to, uint deadline)
+        case exports.TradeType.EXACT_OUTPUT:
+          !!useFeeOnTransfer ?  invariant(false, 'EXACT_OUT_FOT')  : void 0;
 
-          args = [amountOut, path, to, deadline];
-          value = amountIn;
-        } else if (etherOut) {
-          methodName = 'swapTokensForExactETH'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+          if (etherIn) {
+            methodName = 'swapETHForExactTokens'; // (uint amountOut, address[] calldata path, address to, uint deadline)
 
-          args = [amountOut, amountIn, path, to, deadline];
-          value = ZERO_HEX$1;
-        } else {
-          methodName = 'swapTokensForExactTokens'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+            args = [amountOut, path, to, deadline];
+            value = amountIn;
+          } else if (etherOut) {
+            methodName = 'swapTokensForExactETH'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
 
-          args = [amountOut, amountIn, path, to, deadline];
-          value = ZERO_HEX$1;
-        }
+            args = [amountOut, amountIn, path, to, deadline];
+            value = ZERO_HEX$1;
+          } else {
+            methodName = 'swapTokensForExactTokens'; // (uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
 
-        break;
+            args = [amountOut, amountIn, path, to, deadline];
+            value = ZERO_HEX$1;
+          }
+
+          break;
+      }
+    } else {
+      var _path = [];
+
+      for (var i = 0; i < trade.route.pathMatrix.length; i++) {
+        _path.push(trade.route.pathMatrix[i].map(function (token) {
+          return token.address;
+        }));
+      }
+
+      var routerId = trade.route.routerIds.map(function (id) {
+        return id.toString();
+      });
+
+      switch (trade.tradeType) {
+        case exports.TradeType.EXACT_INPUT:
+          if (etherIn) {
+            methodName = 'swapExactETHForTokens'; // function multiSwapExactETHForTokens( address[][] calldata path, uint256[] memory routerId,
+            // uint256 amountOutMin, uint256 deadline )
+
+            args = [_path, routerId, amountOut, deadline];
+            value = amountIn;
+          } else if (etherOut) {
+            methodName = 'multiSwapExactTokensForETH'; // multiSwapExactTokensForETH( address[][] calldata path, uint256[] memory routerId, uint256 amountIn,
+            // uint256 amountOutMin, uint256 deadline )
+
+            args = [_path, routerId, amountIn, amountOut, deadline];
+            value = ZERO_HEX$1;
+          } else {
+            methodName = 'multiSwapExactTokensForTokens'; // multiSwapExactTokensForTokens( address[][] calldata path, uint256[] memory routerId, 
+            // uint256 amountIn, uint256 amountOutMin, uint256 deadline )
+
+            args = [_path, routerId, amountIn, amountOut, _path, deadline];
+            value = ZERO_HEX$1;
+          }
+
+          break;
+
+        case exports.TradeType.EXACT_OUTPUT:
+          if (etherIn) {
+            methodName = 'multiSwapETHForExactTokens'; // multiSwapETHForExactTokens( address[][] calldata path, uint256[] memory routerId, uint256 amountOut, uint256 deadline )
+
+            args = [_path, routerId, amountOut, deadline];
+            value = amountIn;
+          } else if (etherOut) {
+            methodName = 'multiSwapTokensForExactETH'; // multiSwapTokensForExactETH( address[][] calldata path, uint256[] memory routerId,
+            // uint256 amountOut, uint256 amountInMax, uint256 deadline )
+
+            args = [_path, routerId, amountOut, amountIn, deadline];
+            value = ZERO_HEX$1;
+          } else {
+            methodName = 'multiSwapTokensForExactTokens'; // multiSwapTokensForExactTokens( address[][] calldata path, uint256[] memory routerId, 
+            // uint256 amountOut, uint256 amountInMax,  uint256 deadline )
+
+            args = [_path, routerId, amountOut, amountIn, deadline];
+            value = ZERO_HEX$1;
+          }
+
+          break;
+      }
     }
 
     return {
@@ -3730,14 +3770,14 @@ var RouteV3 = /*#__PURE__*/function () {
 
     for (var _iterator = _createForOfIteratorHelperLoose(sources.entries()), _step; !(_step = _iterator()).done;) {
       var _step$value = _step.value,
-          i = _step$value[0],
-          source = _step$value[1];
-      var currentInput = path[i];
-      !(currentInput.equals(source.token0) || currentInput.equals(source.token1)) ?  invariant(false, 'PATH')  : void 0;
+          _i = _step$value[0],
+          _source = _step$value[1];
+      var _currentInput = path[_i];
+      !(_currentInput.equals(_source.token0) || _currentInput.equals(_source.token1)) ?  invariant(false, 'PATH')  : void 0;
 
-      var _output = currentInput.equals(source.token0) ? source.token1 : source.token0;
+      var _output2 = _currentInput.equals(_source.token0) ? _source.token1 : _source.token0;
 
-      path.push(_output);
+      path.push(_output2);
     }
 
     this.stablePool = stablePool;
@@ -3745,7 +3785,46 @@ var RouteV3 = /*#__PURE__*/function () {
     this.path = path;
     this.midPrice = Price.fromRouteV3(this);
     this.input = input;
-    this.output = output !== null && output !== void 0 ? output : path[path.length - 1];
+    this.output = output !== null && output !== void 0 ? output : path[path.length - 1]; // generate new inputs for aggregator 
+
+    var pathMatrix = [];
+    var routerIds = [];
+    var currentInput = this.path[0];
+    var currentRouterId = -1;
+    var lastRouterId = -1;
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      currentRouterId = sources[i] instanceof StablePairWrapper ? 0 : 1;
+      !(currentInput.equals(source.token0) || currentInput.equals(source.token1)) ?  invariant(false, 'PATH')  : void 0;
+
+      var _output = currentInput.equals(source.token0) ? source.token1 : source.token0;
+
+      if (i === 0) {
+        pathMatrix.push([currentInput, _output]);
+        routerIds.push(source instanceof StablePairWrapper ? 0 : 1);
+      } else {
+        if (source instanceof StablePairWrapper) {
+          // current item is stablePool
+          pathMatrix.push([currentInput, _output]);
+          routerIds.push(0);
+        } else {
+          // current item is a pair
+          if (lastRouterId === 0) {
+            pathMatrix.push([currentInput, _output]);
+            routerIds.push(1);
+          } else {
+            pathMatrix[pathMatrix.length - 1].push(_output);
+          }
+        }
+      }
+
+      currentInput = _output;
+      lastRouterId = currentRouterId;
+    }
+
+    this.pathMatrix = pathMatrix;
+    this.routerIds = routerIds;
   }
 
   _createClass(RouteV3, [{

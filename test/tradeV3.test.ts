@@ -196,6 +196,11 @@ describe('TradeV3', () => {
       expect(result[1].route.path).toEqual([token0, stable1, stable2, token2])
       expect(result[1].inputAmount).toEqual(new TokenAmount(token0, JSBI.BigInt(100)))
       expect(result[1].outputAmount).toEqual(t2Amount)
+
+      console.log("----routes ----")
+      for (let j = 0; j < result[1].route.pathMatrix.length; j++) {
+        console.log(result[1].route.routerIds[j], result[1].route.pathMatrix[j].map(token => token.symbol))
+      }
     })
 
 
@@ -450,7 +455,7 @@ describe('TradeV3', () => {
       console.log('-----provides best route exact OUT-----')
       console.log("stable balances before", stablePool.tokenBalances.map(value => value.toBigInt()))
       // console.log("PAIRS1S2 before", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
-      const t2Amount =  new TokenAmount(token2, JSBI.BigInt(100))
+      const t2Amount = new TokenAmount(token2, JSBI.BigInt(100))
       const result = TradeV3.bestTradeExactOut(
         stablePool,
 
@@ -483,6 +488,10 @@ describe('TradeV3', () => {
       console.log("-- direct SP calc for S2", stablePool.clone().getOutputAmount(s1Amount, 2).raw)
       console.log("result0", result[0].outputAmount.raw)
       console.log("result1", result[1].outputAmount.raw)
+
+      for (let j = 0; j < result[1].route.pathMatrix.length; j++) {
+        console.log(result[1].route.pathMatrix[j].map(token => token.symbol))
+      }
       // console.log('provides best route result', result)
       expect(result).toHaveLength(2)
       expect(result[0].route.sources).toHaveLength(1) // 0 -> 2 at 10:11

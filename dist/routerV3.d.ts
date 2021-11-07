@@ -22,6 +22,10 @@ export interface TradeV3Options {
      * Whether any of the tokens in the path are fee on transfer tokens, which should be handled with special methods
      */
     feeOnTransfer?: boolean;
+    /**
+     * Whether we swap through multiple routers / pair types
+     */
+    multiSwap?: boolean;
 }
 export interface TradeV3OptionsDeadline extends Omit<TradeV3Options, 'ttl'> {
     /**
@@ -41,7 +45,7 @@ export interface SwapV3Parameters {
     /**
      * The arguments to pass to the method, all hex encoded.
      */
-    args: (string | string[])[];
+    args: (string | string[] | string[][])[];
     /**
      * The amount of wei to send in hex.
      */
