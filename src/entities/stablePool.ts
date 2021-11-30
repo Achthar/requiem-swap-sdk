@@ -253,7 +253,6 @@ export class StablePool {
     this.setTokenBalances(newBalances)
   }
 
-
   public addBalanceValue(tokenAmount: TokenAmount) {
     let newBalances = [] // safe way for replacement
     for (let i = 0; i < this.tokenBalances.length; i++) {
@@ -262,7 +261,6 @@ export class StablePool {
     this.setTokenBalances(newBalances)
   }
 
-
   public subtractBalanceValue(tokenAmount: TokenAmount) {
     let newBalances = [] // safe way for replacement
     for (let i = 0; i < this.tokenBalances.length; i++) {
@@ -270,8 +268,6 @@ export class StablePool {
     }
     this.setTokenBalances(newBalances)
   }
-
-
 
   public clone(): StablePool {
     return new StablePool(

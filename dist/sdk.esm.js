@@ -48,9 +48,21 @@ var FACTORY_ADDRESS = {
   97: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
   80001: '0xf10Bd0dA1f0e69c3334D7F8116C9082746EBC1B4',
   43113: '0xC07098cdCf93b2dc5c20E749cDd1ba69cB9AcEBe'
+};
+var WEIGHTED_FACTORY_ADDRESS = {
+  56: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
+  97: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
+  80001: '0xf10Bd0dA1f0e69c3334D7F8116C9082746EBC1B4',
+  43113: '0xC07098cdCf93b2dc5c20E749cDd1ba69cB9AcEBe'
 }; // export const INIT_CODE_HASH = '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5'
 
 var INIT_CODE_HASH = {
+  56: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
+  97: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
+  80001: '0xc2b3644608b464a0df0eb711ce9c6ce7535d1bd4d0154b8389738a3e7fbb1a61',
+  43113: '0x197a29e2e90d809812f533e62529432f8e2741455e49d25365a66b4be2a453dd'
+};
+var INIT_CODE_HASH_WEIGHTED = {
   56: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
   97: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
   80001: '0xc2b3644608b464a0df0eb711ce9c6ce7535d1bd4d0154b8389738a3e7fbb1a61',
@@ -761,6 +773,68 @@ var Price = /*#__PURE__*/function (_Fraction) {
     return prices.slice(1).reduce(function (accumulator, currentValue) {
       return accumulator.multiply(currentValue);
     }, prices[0]);
+  } // upgraded version to include StablePairWrappers in a Route
+  ;
+
+  Price.fromRouteV4 = function fromRouteV4(route) {
+    var prices = [];
+
+    for (var _iterator3 = _createForOfIteratorHelperLoose(route.pools.entries()), _step3; !(_step3 = _iterator3()).done;) {
+      var _step3$value = _step3.value,
+          i = _step3$value[0],
+          pool = _step3$value[1];
+      var price = void 0;
+
+      if (route.path[i].equals(pool.token0)) {
+        switch (pool.type) {
+          case 'Pair':
+            {
+              price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.reserve0.raw, pool.reserve1.raw);
+              break;
+            }
+          // here we need the recorded prcing bases
+
+          case 'StablePoolWrapper':
+            {
+              price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.pricingBasesIn[0].raw, pool.pricingBasesOut[1].raw);
+              break;
+            }
+
+          case 'WeightedPair':
+            {
+              price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.reserve0.raw, pool.reserve1.raw);
+              break;
+            }
+        }
+      } else {
+        switch (pool.type) {
+          case 'Pair':
+            {
+              price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.reserve1.raw, pool.reserve0.raw);
+              break;
+            }
+
+          case 'WeightedPair':
+            {
+              price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.reserve1.raw, pool.reserve0.raw);
+              break;
+            }
+          // pricing base for stablePriceWrapper
+
+          case 'StablePairWrapper':
+            {
+              price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.pricingBasesIn[1].raw, pool.pricingBasesOut[0].raw);
+              break;
+            }
+        }
+      }
+
+      prices.push(price);
+    }
+
+    return prices.slice(1).reduce(function (accumulator, currentValue) {
+      return accumulator.multiply(currentValue);
+    }, prices[0]);
   };
 
   var _proto = Price.prototype;
@@ -824,7 +898,7 @@ var Pair = /*#__PURE__*/function () {
   function Pair(tokenAmountA, tokenAmountB) {
     var tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) // does safety checks
     ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
-    this.liquidityToken = new Token(tokenAmounts[0].token.chainId, Pair.getAddress(tokenAmounts[0].token, tokenAmounts[1].token), 18, tokenAmounts[0].token.chainId === 56 ? 'Cake-LP' : 'Requiem-LP', tokenAmounts[0].token.chainId === 56 ? 'Pancake LPs' : 'Requiem LPs');
+    this.liquidityToken = new Token(tokenAmounts[0].token.chainId, Pair.getAddress(tokenAmounts[0].token, tokenAmounts[1].token), 18, 'Requiem-LP', 'Requiem LPs');
     this.type = 'Pair';
     this.tokenAmounts = tokenAmounts;
   }
@@ -1430,6 +1504,826 @@ var Trade = /*#__PURE__*/function () {
   };
 
   return Trade;
+}();
+
+var ZERO$1 = /*#__PURE__*/BigNumber.from(0);
+var ONE$1 = /*#__PURE__*/BigNumber.from(1);
+var TWO$1 = /*#__PURE__*/BigNumber.from(2);
+var TENK = /*#__PURE__*/BigNumber.from(10000);
+
+var _256 = /*#__PURE__*/BigNumber.from('256');
+
+var _128 = /*#__PURE__*/BigNumber.from('128');
+
+var MIN_PRECISION = 32;
+var MAX_PRECISION = 127;
+var FIXED_1 = /*#__PURE__*/BigNumber.from('0x080000000000000000000000000000000');
+var FIXED_2 = /*#__PURE__*/BigNumber.from('0x100000000000000000000000000000000');
+var MAX_NUM = /*#__PURE__*/BigNumber.from('0x200000000000000000000000000000000');
+var LN2_NUMERATOR = /*#__PURE__*/BigNumber.from('0x3f80fe03f80fe03f80fe03f80fe03f8');
+var LN2_DENOMINATOR = /*#__PURE__*/BigNumber.from('0x5b9de1d10bf4103d647b0955897ba80');
+var OPT_LOG_MAX_VAL = /*#__PURE__*/BigNumber.from('0x15bf0a8b1457695355fb8ac404e7a79e3');
+var OPT_EXP_MAX_VAL = /*#__PURE__*/BigNumber.from('0x800000000000000000000000000000000'); // const LAMBERT_CONV_RADIUS = BigNumber.from('0x002f16ac6c59de6f8d5d6f63c1482a7c86')
+// const LAMBERT_POS2_SAMPLE = BigNumber.from('0x0003060c183060c183060c183060c18306')
+// const LAMBERT_POS2_MAXVAL = BigNumber.from('0x01af16ac6c59de6f8d5d6f63c1482a7c80')
+// const LAMBERT_POS3_MAXVAL = BigNumber.from('0x6b22d43e72c326539cceeef8bb48f255ff')
+// const MAX_UNF_WEIGHT = BigNumber.from('0x10c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9')
+
+var maxExpArray = /*#__PURE__*/new Array(128);
+maxExpArray[32] = /*#__PURE__*/BigNumber.from('0x1c35fedd14ffffffffffffffffffffffff');
+maxExpArray[33] = /*#__PURE__*/BigNumber.from('0x1b0ce43b323fffffffffffffffffffffff');
+maxExpArray[34] = /*#__PURE__*/BigNumber.from('0x19f0028ec1ffffffffffffffffffffffff');
+maxExpArray[35] = /*#__PURE__*/BigNumber.from('0x18ded91f0e7fffffffffffffffffffffff');
+maxExpArray[36] = /*#__PURE__*/BigNumber.from('0x17d8ec7f0417ffffffffffffffffffffff');
+maxExpArray[37] = /*#__PURE__*/BigNumber.from('0x16ddc6556cdbffffffffffffffffffffff');
+maxExpArray[38] = /*#__PURE__*/BigNumber.from('0x15ecf52776a1ffffffffffffffffffffff');
+maxExpArray[39] = /*#__PURE__*/BigNumber.from('0x15060c256cb2ffffffffffffffffffffff');
+maxExpArray[40] = /*#__PURE__*/BigNumber.from('0x1428a2f98d72ffffffffffffffffffffff');
+maxExpArray[41] = /*#__PURE__*/BigNumber.from('0x13545598e5c23fffffffffffffffffffff');
+maxExpArray[42] = /*#__PURE__*/BigNumber.from('0x1288c4161ce1dfffffffffffffffffffff');
+maxExpArray[43] = /*#__PURE__*/BigNumber.from('0x11c592761c666fffffffffffffffffffff');
+maxExpArray[44] = /*#__PURE__*/BigNumber.from('0x110a688680a757ffffffffffffffffffff');
+maxExpArray[45] = /*#__PURE__*/BigNumber.from('0x1056f1b5bedf77ffffffffffffffffffff');
+maxExpArray[46] = /*#__PURE__*/BigNumber.from('0x0faadceceeff8bffffffffffffffffffff');
+maxExpArray[47] = /*#__PURE__*/BigNumber.from('0x0f05dc6b27edadffffffffffffffffffff');
+maxExpArray[48] = /*#__PURE__*/BigNumber.from('0x0e67a5a25da4107fffffffffffffffffff');
+maxExpArray[49] = /*#__PURE__*/BigNumber.from('0x0dcff115b14eedffffffffffffffffffff');
+maxExpArray[50] = /*#__PURE__*/BigNumber.from('0x0d3e7a392431239fffffffffffffffffff');
+maxExpArray[51] = /*#__PURE__*/BigNumber.from('0x0cb2ff529eb71e4fffffffffffffffffff');
+maxExpArray[52] = /*#__PURE__*/BigNumber.from('0x0c2d415c3db974afffffffffffffffffff');
+maxExpArray[53] = /*#__PURE__*/BigNumber.from('0x0bad03e7d883f69bffffffffffffffffff');
+maxExpArray[54] = /*#__PURE__*/BigNumber.from('0x0b320d03b2c343d5ffffffffffffffffff');
+maxExpArray[55] = /*#__PURE__*/BigNumber.from('0x0abc25204e02828dffffffffffffffffff');
+maxExpArray[56] = /*#__PURE__*/BigNumber.from('0x0a4b16f74ee4bb207fffffffffffffffff');
+maxExpArray[57] = /*#__PURE__*/BigNumber.from('0x09deaf736ac1f569ffffffffffffffffff');
+maxExpArray[58] = /*#__PURE__*/BigNumber.from('0x0976bd9952c7aa957fffffffffffffffff');
+maxExpArray[59] = /*#__PURE__*/BigNumber.from('0x09131271922eaa606fffffffffffffffff');
+maxExpArray[60] = /*#__PURE__*/BigNumber.from('0x08b380f3558668c46fffffffffffffffff');
+maxExpArray[61] = /*#__PURE__*/BigNumber.from('0x0857ddf0117efa215bffffffffffffffff');
+maxExpArray[62] = /*#__PURE__*/BigNumber.from('0x07ffffffffffffffffffffffffffffffff');
+maxExpArray[63] = /*#__PURE__*/BigNumber.from('0x07abbf6f6abb9d087fffffffffffffffff');
+maxExpArray[64] = /*#__PURE__*/BigNumber.from('0x075af62cbac95f7dfa7fffffffffffffff');
+maxExpArray[65] = /*#__PURE__*/BigNumber.from('0x070d7fb7452e187ac13fffffffffffffff');
+maxExpArray[66] = /*#__PURE__*/BigNumber.from('0x06c3390ecc8af379295fffffffffffffff');
+maxExpArray[67] = /*#__PURE__*/BigNumber.from('0x067c00a3b07ffc01fd6fffffffffffffff');
+maxExpArray[68] = /*#__PURE__*/BigNumber.from('0x0637b647c39cbb9d3d27ffffffffffffff');
+maxExpArray[69] = /*#__PURE__*/BigNumber.from('0x05f63b1fc104dbd39587ffffffffffffff');
+maxExpArray[70] = /*#__PURE__*/BigNumber.from('0x05b771955b36e12f7235ffffffffffffff');
+maxExpArray[71] = /*#__PURE__*/BigNumber.from('0x057b3d49dda84556d6f6ffffffffffffff');
+maxExpArray[72] = /*#__PURE__*/BigNumber.from('0x054183095b2c8ececf30ffffffffffffff');
+maxExpArray[73] = /*#__PURE__*/BigNumber.from('0x050a28be635ca2b888f77fffffffffffff');
+maxExpArray[74] = /*#__PURE__*/BigNumber.from('0x04d5156639708c9db33c3fffffffffffff');
+maxExpArray[75] = /*#__PURE__*/BigNumber.from('0x04a23105873875bd52dfdfffffffffffff');
+maxExpArray[76] = /*#__PURE__*/BigNumber.from('0x0471649d87199aa990756fffffffffffff');
+maxExpArray[77] = /*#__PURE__*/BigNumber.from('0x04429a21a029d4c1457cfbffffffffffff');
+maxExpArray[78] = /*#__PURE__*/BigNumber.from('0x0415bc6d6fb7dd71af2cb3ffffffffffff');
+maxExpArray[79] = /*#__PURE__*/BigNumber.from('0x03eab73b3bbfe282243ce1ffffffffffff');
+maxExpArray[80] = /*#__PURE__*/BigNumber.from('0x03c1771ac9fb6b4c18e229ffffffffffff');
+maxExpArray[81] = /*#__PURE__*/BigNumber.from('0x0399e96897690418f785257fffffffffff');
+maxExpArray[82] = /*#__PURE__*/BigNumber.from('0x0373fc456c53bb779bf0ea9fffffffffff');
+maxExpArray[83] = /*#__PURE__*/BigNumber.from('0x034f9e8e490c48e67e6ab8bfffffffffff');
+maxExpArray[84] = /*#__PURE__*/BigNumber.from('0x032cbfd4a7adc790560b3337ffffffffff');
+maxExpArray[85] = /*#__PURE__*/BigNumber.from('0x030b50570f6e5d2acca94613ffffffffff');
+maxExpArray[86] = /*#__PURE__*/BigNumber.from('0x02eb40f9f620fda6b56c2861ffffffffff');
+maxExpArray[87] = /*#__PURE__*/BigNumber.from('0x02cc8340ecb0d0f520a6af58ffffffffff');
+maxExpArray[88] = /*#__PURE__*/BigNumber.from('0x02af09481380a0a35cf1ba02ffffffffff');
+maxExpArray[89] = /*#__PURE__*/BigNumber.from('0x0292c5bdd3b92ec810287b1b3fffffffff');
+maxExpArray[90] = /*#__PURE__*/BigNumber.from('0x0277abdcdab07d5a77ac6d6b9fffffffff');
+maxExpArray[91] = /*#__PURE__*/BigNumber.from('0x025daf6654b1eaa55fd64df5efffffffff');
+maxExpArray[92] = /*#__PURE__*/BigNumber.from('0x0244c49c648baa98192dce88b7ffffffff');
+maxExpArray[93] = /*#__PURE__*/BigNumber.from('0x022ce03cd5619a311b2471268bffffffff');
+maxExpArray[94] = /*#__PURE__*/BigNumber.from('0x0215f77c045fbe885654a44a0fffffffff');
+maxExpArray[95] = /*#__PURE__*/BigNumber.from('0x01ffffffffffffffffffffffffffffffff');
+maxExpArray[96] = /*#__PURE__*/BigNumber.from('0x01eaefdbdaaee7421fc4d3ede5ffffffff');
+maxExpArray[97] = /*#__PURE__*/BigNumber.from('0x01d6bd8b2eb257df7e8ca57b09bfffffff');
+maxExpArray[98] = /*#__PURE__*/BigNumber.from('0x01c35fedd14b861eb0443f7f133fffffff');
+maxExpArray[99] = /*#__PURE__*/BigNumber.from('0x01b0ce43b322bcde4a56e8ada5afffffff');
+maxExpArray[100] = /*#__PURE__*/BigNumber.from('0x019f0028ec1fff007f5a195a39dfffffff');
+maxExpArray[101] = /*#__PURE__*/BigNumber.from('0x018ded91f0e72ee74f49b15ba527ffffff');
+maxExpArray[102] = /*#__PURE__*/BigNumber.from('0x017d8ec7f04136f4e5615fd41a63ffffff');
+maxExpArray[103] = /*#__PURE__*/BigNumber.from('0x016ddc6556cdb84bdc8d12d22e6fffffff');
+maxExpArray[104] = /*#__PURE__*/BigNumber.from('0x015ecf52776a1155b5bd8395814f7fffff');
+maxExpArray[105] = /*#__PURE__*/BigNumber.from('0x015060c256cb23b3b3cc3754cf40ffffff');
+maxExpArray[106] = /*#__PURE__*/BigNumber.from('0x01428a2f98d728ae223ddab715be3fffff');
+maxExpArray[107] = /*#__PURE__*/BigNumber.from('0x013545598e5c23276ccf0ede68034fffff');
+maxExpArray[108] = /*#__PURE__*/BigNumber.from('0x01288c4161ce1d6f54b7f61081194fffff');
+maxExpArray[109] = /*#__PURE__*/BigNumber.from('0x011c592761c666aa641d5a01a40f17ffff');
+maxExpArray[110] = /*#__PURE__*/BigNumber.from('0x0110a688680a7530515f3e6e6cfdcdffff');
+maxExpArray[111] = /*#__PURE__*/BigNumber.from('0x01056f1b5bedf75c6bcb2ce8aed428ffff');
+maxExpArray[112] = /*#__PURE__*/BigNumber.from('0x00faadceceeff8a0890f3875f008277fff');
+maxExpArray[113] = /*#__PURE__*/BigNumber.from('0x00f05dc6b27edad306388a600f6ba0bfff');
+maxExpArray[114] = /*#__PURE__*/BigNumber.from('0x00e67a5a25da41063de1495d5b18cdbfff');
+maxExpArray[115] = /*#__PURE__*/BigNumber.from('0x00dcff115b14eedde6fc3aa5353f2e4fff');
+maxExpArray[116] = /*#__PURE__*/BigNumber.from('0x00d3e7a3924312399f9aae2e0f868f8fff');
+maxExpArray[117] = /*#__PURE__*/BigNumber.from('0x00cb2ff529eb71e41582cccd5a1ee26fff');
+maxExpArray[118] = /*#__PURE__*/BigNumber.from('0x00c2d415c3db974ab32a51840c0b67edff');
+maxExpArray[119] = /*#__PURE__*/BigNumber.from('0x00bad03e7d883f69ad5b0a186184e06bff');
+maxExpArray[120] = /*#__PURE__*/BigNumber.from('0x00b320d03b2c343d4829abd6075f0cc5ff');
+maxExpArray[121] = /*#__PURE__*/BigNumber.from('0x00abc25204e02828d73c6e80bcdb1a95bf');
+maxExpArray[122] = /*#__PURE__*/BigNumber.from('0x00a4b16f74ee4bb2040a1ec6c15fbbf2df');
+maxExpArray[123] = /*#__PURE__*/BigNumber.from('0x009deaf736ac1f569deb1b5ae3f36c130f');
+maxExpArray[124] = /*#__PURE__*/BigNumber.from('0x00976bd9952c7aa957f5937d790ef65037');
+maxExpArray[125] = /*#__PURE__*/BigNumber.from('0x009131271922eaa6064b73a22d0bd4f2bf');
+maxExpArray[126] = /*#__PURE__*/BigNumber.from('0x008b380f3558668c46c91c49a2f8e967b9');
+maxExpArray[127] = /*#__PURE__*/BigNumber.from('0x00857ddf0117efa215952912839f6473e6');
+
+function leftShift(num, shift) {
+  return num.mul(TWO$1.pow(shift));
+}
+
+function signedRightShift(num, shift) {
+  return num.div(TWO$1.pow(shift));
+}
+/**
+     * @dev General Description:
+     *     Determine a value of precision.
+     *     Calculate an integer approximation of (_baseN / _baseD) ^ (_expN / _expD) * 2 ^ precision.
+     *     Return the result along with the precision used.
+     *
+     * Detailed Description:
+     *     Instead of calculating "base ^ exp", we calculate "e ^ (log(base) * exp)".
+     *     The value of "log(base)" is represented with an integer slightly smaller than "log(base) * 2 ^ precision".
+     *     The larger "precision" is, the more accurately this value represents the real value.
+     *     However, the larger "precision" is, the more bits are required in order to store this value.
+     *     And the exponentiation function, which takes "x" and calculates "e ^ x", is limited to a maximum exponent (maximum value of "x").
+     *     This maximum exponent depends on the "precision" used, and it is given by "maxExpArray[precision] >> (MAX_PRECISION - precision)".
+     *     Hence we need to determine the highest precision which can be used for the given input, before calling the exponentiation function.
+     *     This allows us to compute "base ^ exp" with maximum accuracy and without exceeding 256 bits in any of the intermediate computations.
+     *     This functions assumes that "_expN < 2 ^ 256 / log(MAX_NUM - 1)", otherwise the multiplication should be replaced with a "safeMul".
+     *     Since we rely on unsigned-integer arithmetic and "base < 1" ==> "log(base) < 0", this function does not support "_baseN < _baseD".
+     */
+
+
+function power(_baseN, _baseD, _expN, _expD) {
+  !_baseN.gt(_baseD) ? process.env.NODE_ENV !== "production" ? invariant(false, "not support _baseN < _baseD") : invariant(false) : void 0;
+  !_baseN.lt(MAX_NUM) ? process.env.NODE_ENV !== "production" ? invariant(false) : invariant(false) : void 0;
+  var baseLog;
+
+  var base = _baseN.mul(FIXED_1).div(_baseD);
+
+  if (base.lt(OPT_LOG_MAX_VAL)) {
+    baseLog = optimalLog(base);
+  } else {
+    baseLog = generalLog(base);
+  }
+
+  var baseLogTimesExp = baseLog.mul(_expN).div(_expD);
+
+  if (baseLogTimesExp.lt(OPT_EXP_MAX_VAL)) {
+    return [optimalExp(baseLogTimesExp), MAX_PRECISION];
+  } else {
+    var precision = findPositionInMaxExpArray(baseLogTimesExp);
+    return [generalExp(signedRightShift(baseLogTimesExp, BigNumber.from(MAX_PRECISION - precision)), BigNumber.from(precision)), precision];
+  }
+}
+/**
+ * @dev computes the largest integer smaller than or equal to the binary logarithm of the input.
+ */
+
+function floorLog2(_n) {
+  var res = ZERO$1;
+
+  if (_n.lt(_256)) {
+    // At most 8 iterations
+    while (_n.gt(ONE$1)) {
+      _n = signedRightShift(_n, ONE$1);
+      res = res.add(ONE$1);
+    }
+  } else {
+    // Exactly 8 iterations
+    for (var s = _128; s.gt(ZERO$1); s = signedRightShift(s, ONE$1)) {
+      if (_n.gt(leftShift(ONE$1, s))) {
+        _n = signedRightShift(_n, s);
+        res = res.or(s);
+      }
+    }
+  }
+
+  return res;
+}
+/**
+ * @dev computes log(x / FIXED_1) * FIXED_1.
+ * This functions assumes that "x >= FIXED_1", because the output would be negative otherwise.
+ */
+
+
+function generalLog(x) {
+  var res = ZERO$1; // If x >= 2, then we compute the integer part of log2(x), which is larger than 0.
+
+  if (x.gte(FIXED_2)) {
+    var count = floorLog2(x.div(FIXED_1));
+    x = signedRightShift(x, count); // now x < 2
+
+    res = count.mul(FIXED_1);
+  } // If x > 1, then we compute the fraction part of log2(x), which is larger than 0.
+
+
+  if (x.gt(FIXED_1)) {
+    for (var i = MAX_PRECISION; i > 0; --i) {
+      x = x.mul(x).div(FIXED_1); // now 1 < x < 4
+
+      if (x.gte(FIXED_2)) {
+        x = signedRightShift(x, ONE$1); // now 1 < x < 2
+
+        res = res.add(leftShift(ONE$1, BigNumber.from(i - 1)));
+      }
+    }
+  }
+
+  return res.mul(LN2_NUMERATOR).div(LN2_DENOMINATOR);
+}
+/**
+    * @dev computes log(x / FIXED_1) * FIXED_1
+    * Input range: FIXED_1 <= x <= OPT_LOG_MAX_VAL - 1
+    * Auto-generated via "PrintFunctionOptimalLog.py"
+    * Detailed description:
+    * - Rewrite the input as a product of natural exponents and a single residual r, such that 1 < r < 2
+    * - The natural logarithm of each (pre-calculated) exponent is the degree of the exponent
+    * - The natural logarithm of r is calculated via Taylor series for log(1 + x), where x = r - 1
+    * - The natural logarithm of the input is calculated by summing up the intermediate results above
+    * - For example: log(250) = log(e^4 * e^1 * e^0.5 * 1.021692859) = 4 + 1 + 0.5 + log(1 + 0.021692859)
+    */
+
+function optimalLog(x) {
+  var res = ZERO$1;
+  var y;
+  var z;
+  var w;
+
+  if (x.gte('0xd3094c70f034de4b96ff7d5b6f99fcd8')) {
+    res = res.add(BigNumber.from('0x40000000000000000000000000000000'));
+    x = x.mul(FIXED_1).div(BigNumber.from('0xd3094c70f034de4b96ff7d5b6f99fcd8'));
+  } // add 1 / 2^1
+
+
+  if (x.gte('0xa45af1e1f40c333b3de1db4dd55f29a7')) {
+    res = res.add(BigNumber.from('0x20000000000000000000000000000000'));
+    x = x.mul(FIXED_1).div(BigNumber.from('0xa45af1e1f40c333b3de1db4dd55f29a7'));
+  } // add 1 / 2^2
+
+
+  if (x.gte('0x910b022db7ae67ce76b441c27035c6a1')) {
+    res = res.add(BigNumber.from('0x10000000000000000000000000000000'));
+    x = x.mul(FIXED_1).div(BigNumber.from('0x910b022db7ae67ce76b441c27035c6a1'));
+  } // add 1 / 2^3
+
+
+  if (x.gte('0x88415abbe9a76bead8d00cf112e4d4a8')) {
+    res = res.add(BigNumber.from('0x08000000000000000000000000000000'));
+    x = x.mul(FIXED_1).div(BigNumber.from('0x88415abbe9a76bead8d00cf112e4d4a8'));
+  } // add 1 / 2^4
+
+
+  if (x.gte('0x84102b00893f64c705e841d5d4064bd3')) {
+    res = res.add(BigNumber.from('0x04000000000000000000000000000000'));
+    x = x.mul(FIXED_1).div(BigNumber.from('0x84102b00893f64c705e841d5d4064bd3'));
+  } // add 1 / 2^5
+
+
+  if (x.gte('0x8204055aaef1c8bd5c3259f4822735a2')) {
+    res = res.add(BigNumber.from('0x02000000000000000000000000000000'));
+    x = x.mul(FIXED_1).div(BigNumber.from('0x8204055aaef1c8bd5c3259f4822735a2'));
+  } // add 1 / 2^6
+
+
+  if (x.gte('0x810100ab00222d861931c15e39b44e99')) {
+    res = res.add(BigNumber.from('0x01000000000000000000000000000000'));
+    x = x.mul(FIXED_1).div(BigNumber.from('0x810100ab00222d861931c15e39b44e99'));
+  } // add 1 / 2^7
+
+
+  if (x.gte('0x808040155aabbbe9451521693554f733')) {
+    res = res.add(BigNumber.from('0x00800000000000000000000000000000'));
+    x = x.mul(FIXED_1).div(BigNumber.from('0x808040155aabbbe9451521693554f733'));
+  } // add 1 / 2^8
+
+
+  z = y = x.sub(FIXED_1);
+  w = y.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x100000000000000000000000000000000').sub(y)).div(BigNumber.from('0x100000000000000000000000000000000')));
+  z = z.mul(w).div(FIXED_1); // add y^01 / 01 - y^02 / 02
+
+  res = res.add(z.mul(BigNumber.from('0x0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa').sub(y)).div(BigNumber.from('0x200000000000000000000000000000000')));
+  z = z.mul(w).div(FIXED_1); // add y^03 / 03 - y^04 / 04
+
+  res = res.add(z.mul(BigNumber.from('0x099999999999999999999999999999999').sub(y)).div(BigNumber.from('0x300000000000000000000000000000000')));
+  z = z.mul(w).div(FIXED_1); // add y^05 / 05 - y^06 / 06
+
+  res = res.add(z.mul(BigNumber.from('0x092492492492492492492492492492492').sub(y)).div(BigNumber.from('0x400000000000000000000000000000000')));
+  z = z.mul(w).div(FIXED_1); // add y^07 / 07 - y^08 / 08
+
+  res = res.add(z.mul(BigNumber.from('0x08e38e38e38e38e38e38e38e38e38e38e').sub(y)).div(BigNumber.from('0x500000000000000000000000000000000')));
+  z = z.mul(w).div(FIXED_1); // add y^09 / 09 - y^10 / 10
+
+  res = res.add(z.mul(BigNumber.from('0x08ba2e8ba2e8ba2e8ba2e8ba2e8ba2e8b').sub(y)).div(BigNumber.from('0x600000000000000000000000000000000')));
+  z = z.mul(w).div(FIXED_1); // add y^11 / 11 - y^12 / 12
+
+  res = res.add(z.mul(BigNumber.from('0x089d89d89d89d89d89d89d89d89d89d89').sub(y)).div(BigNumber.from('0x700000000000000000000000000000000')));
+  z = z.mul(w).div(FIXED_1); // add y^13 / 13 - y^14 / 14
+
+  res = res.add(z.mul(BigNumber.from('0x088888888888888888888888888888888').sub(y)).div(BigNumber.from('0x800000000000000000000000000000000'))); // add y^15 / 15 - y^16 / 16
+
+  return res;
+}
+function optimalExp(x) {
+  var res = ZERO$1;
+  var y;
+  var z;
+  z = y = x.mod(BigNumber.from('0x10000000000000000000000000000000')); // get the input modulo 2^(-3)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x10e1b3be415a0000'))); // add y^02 * (20! / 02!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x05a0913f6b1e0000'))); // add y^03 * (20! / 03!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x0168244fdac78000'))); // add y^04 * (20! / 04!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x004807432bc18000'))); // add y^05 * (20! / 05!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x000c0135dca04000'))); // add y^06 * (20! / 06!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x0001b707b1cdc000'))); // add y^07 * (20! / 07!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x000036e0f639b800'))); // add y^08 * (20! / 08!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x00000618fee9f800'))); // add y^09 * (20! / 09!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x0000009c197dcc00'))); // add y^10 * (20! / 10!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x0000000e30dce400'))); // add y^11 * (20! / 11!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x000000012ebd1300'))); // add y^12 * (20! / 12!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x0000000017499f00'))); // add y^13 * (20! / 13!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x0000000001a9d480'))); // add y^14 * (20! / 14!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x00000000001c6380'))); // add y^15 * (20! / 15!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x000000000001c638'))); // add y^16 * (20! / 16!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x0000000000001ab8'))); // add y^17 * (20! / 17!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x000000000000017c'))); // add y^18 * (20! / 18!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x0000000000000014'))); // add y^19 * (20! / 19!)
+
+  z = z.mul(y).div(FIXED_1);
+  res = res.add(z.mul(BigNumber.from('0x0000000000000001'))); // add y^20 * (20! / 20!)
+
+  res = res.div(BigNumber.from('0x21c3677c82b40000')).add(y).add(FIXED_1); // divide by 20! and then add y^1 / 1! + y^0 / 0!
+
+  if (!x.and(BigNumber.from('0x010000000000000000000000000000000')).isZero()) res = res.mul(BigNumber.from('0x1c3d6a24ed82218787d624d3e5eba95f9')).div(BigNumber.from('0x18ebef9eac820ae8682b9793ac6d1e776')); // multiply by e^2^(-3)
+
+  if (!x.and(BigNumber.from('0x020000000000000000000000000000000')).isZero()) res = res.mul(BigNumber.from('0x18ebef9eac820ae8682b9793ac6d1e778')).div(BigNumber.from('0x1368b2fc6f9609fe7aceb46aa619baed4')); // multiply by e^2^(-2)
+
+  if (!x.and(BigNumber.from('0x040000000000000000000000000000000')).isZero()) res = res.mul(BigNumber.from('0x1368b2fc6f9609fe7aceb46aa619baed5')).div(BigNumber.from('0x0bc5ab1b16779be3575bd8f0520a9f21f')); // multiply by e^2^(-1)
+
+  if (!x.and(BigNumber.from('0x080000000000000000000000000000000')).isZero()) res = res.mul(BigNumber.from('0x0bc5ab1b16779be3575bd8f0520a9f21e')).div(BigNumber.from('0x0454aaa8efe072e7f6ddbab84b40a55c9')); // multiply by e^2^(+0)
+
+  if (!x.and(BigNumber.from('0x100000000000000000000000000000000')).isZero()) res = res.mul(BigNumber.from('0x0454aaa8efe072e7f6ddbab84b40a55c5')).div(BigNumber.from('0x00960aadc109e7a3bf4578099615711ea')); // multiply by e^2^(+1)
+
+  if (!x.and(BigNumber.from('0x200000000000000000000000000000000')).isZero()) res = res.mul(BigNumber.from('0x00960aadc109e7a3bf4578099615711d7')).div(BigNumber.from('0x0002bf84208204f5977f9a8cf01fdce3d')); // multiply by e^2^(+2)
+
+  if (!x.and(BigNumber.from('0x400000000000000000000000000000000')).isZero()) res = res.mul(BigNumber.from('0x0002bf84208204f5977f9a8cf01fdc307')).div(BigNumber.from('0x0000003c6ab775dd0b95b4cbee7e65d11')); // multiply by e^2^(+3)
+
+  return res;
+}
+/**
+   * @dev this function can be auto-generated by the script "PrintFunctionGeneralExp.py".
+   * it approximates "e ^ x" via maclaurin summation: "(x^0)/0! + (x^1)/1! + ... + (x^n)/n!".
+   * it returns "e ^ (x / 2 ^ precision) * 2 ^ precision", that is, the result is upshifted for accuracy.
+   * the global "maxExpArray" maps each "precision" to "((maximumExponent + 1) << (MAX_PRECISION - precision)) - 1".
+   * the maximum permitted value for "x" is therefore given by "maxExpArray[precision] >> (MAX_PRECISION - precision)".
+   */
+
+function generalExp(_x, _precision) {
+  var xi = _x;
+  var res = ZERO$1;
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x3442c4e6074a82f1797f72ac0000000')); // add x^02 * (33! / 02!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x116b96f757c380fb287fd0e40000000')); // add x^03 * (33! / 03!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x045ae5bdd5f0e03eca1ff4390000000')); // add x^04 * (33! / 04!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00defabf91302cd95b9ffda50000000')); // add x^05 * (33! / 05!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x002529ca9832b22439efff9b8000000')); // add x^06 * (33! / 06!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00054f1cf12bd04e516b6da88000000')); // add x^07 * (33! / 07!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000a9e39e257a09ca2d6db51000000')); // add x^08 * (33! / 08!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x000012e066e7b839fa050c309000000')); // add x^09 * (33! / 09!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x000001e33d7d926c329a1ad1a800000')); // add x^10 * (33! / 10!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000002bee513bdb4a6b19b5f800000')); // add x^11 * (33! / 11!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00000003a9316fa79b88eccf2a00000')); // add x^12 * (33! / 12!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000000048177ebe1fa812375200000')); // add x^13 * (33! / 13!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000000005263fe90242dcbacf00000')); // add x^14 * (33! / 14!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x000000000057e22099c030d94100000')); // add x^15 * (33! / 15!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000000000057e22099c030d9410000')); // add x^16 * (33! / 16!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00000000000052b6b54569976310000')); // add x^17 * (33! / 17!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00000000000004985f67696bf748000')); // add x^18 * (33! / 18!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x000000000000003dea12ea99e498000')); // add x^19 * (33! / 19!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00000000000000031880f2214b6e000')); // add x^20 * (33! / 20!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x000000000000000025bcff56eb36000')); // add x^21 * (33! / 21!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x000000000000000001b722e10ab1000')); // add x^22 * (33! / 22!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000000000000000001317c70077000')); // add x^23 * (33! / 23!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00000000000000000000cba84aafa00')); // add x^24 * (33! / 24!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00000000000000000000082573a0a00')); // add x^25 * (33! / 25!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00000000000000000000005035ad900')); // add x^26 * (33! / 26!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x000000000000000000000002f881b00')); // add x^27 * (33! / 27!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000000000000000000000001b29340')); // add x^28 * (33! / 28!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x00000000000000000000000000efc40')); // add x^29 * (33! / 29!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000000000000000000000000007fe0')); // add x^30 * (33! / 30!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000000000000000000000000000420')); // add x^31 * (33! / 31!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000000000000000000000000000021')); // add x^32 * (33! / 32!)
+
+  xi = signedRightShift(xi.mul(_x), _precision);
+  res = res.add(xi.mul('0x0000000000000000000000000000001')); // add x^33 * (33! / 33!)
+
+  return res.div(BigNumber.from('0x688589cc0e9505e2f2fee5580000000')).add(_x).add(leftShift(ONE$1, _precision)); // divide by 33! and then add x^1 / 1! + x^0 / 0!
+}
+/**
+    * @dev the global "maxExpArray" is sorted in descending order, and therefore the following statements are equivalent:
+    * - This function finds the position of [the smallest value in "maxExpArray" larger than or equal to "x"]
+    * - This function finds the highest position of [a value in "maxExpArray" larger than or equal to "x"]
+    */
+
+function findPositionInMaxExpArray(_x) {
+  var lo = MIN_PRECISION;
+  var hi = MAX_PRECISION;
+
+  while (lo + 1 < hi) {
+    var mid = (lo + hi) / 2;
+    if (maxExpArray[mid].gte(_x)) lo = mid;else hi = mid;
+  }
+
+  if (maxExpArray[hi].gte(_x)) return hi;
+  if (maxExpArray[lo].gte(_x)) return lo;
+   process.env.NODE_ENV !== "production" ? invariant(false) : invariant(false) ;
+}
+/**
+ * @dev given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset,
+ *
+ * Formula:
+ * return = reserveOut * (1 - (reserveIn * 10000 / (reserveIn * 10000 + amountIn * (10000 - swapFee))) ^ (tokenWeightIn / tokenWeightOut))
+ *
+ * @param amountIn                  source reserve amount
+ * @param reserveIn    source reserve balance
+ * @param reserveOut    target reserve balance
+ * @param tokenWeightIn     source reserve weight, represented in ppm (2-98)
+ * @param tokenWeightOut     target reserve weight, represented in ppm (2-98)
+ * @param swapFee                  swap fee of the conversion
+ *
+ * @return amountOut
+ */
+
+function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
+  // validate input
+  !amountIn.gt(ZERO$1) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT") : invariant(false) : void 0;
+  !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY") : invariant(false) : void 0;
+  var amountInWithFee = amountIn.mul(TENK.sub(swapFee)); // special case for equal weights
+
+  if (tokenWeightIn.eq(tokenWeightOut)) {
+    return reserveOut.mul(amountInWithFee).div(reserveIn.mul(TENK).add(amountInWithFee));
+  } // let result;
+  // let precision: number;
+
+
+  var baseN = reserveIn.mul(TENK).add(amountInWithFee);
+
+  var _power = power(baseN, reserveIn.mul(TENK), tokenWeightIn, tokenWeightOut),
+      result = _power[0],
+      precision = _power[1];
+
+  var temp1 = reserveOut.mul(result);
+  var temp2 = leftShift(reserveOut, BigNumber.from(precision));
+  return temp1.sub(temp2).div(result);
+}
+/**
+ * @dev given an output amount of an asset and pair reserves, returns a required input amount of the other asset
+ *
+ * Formula:
+ * return = reserveIn * ( (reserveOut / (reserveOut - amountOut)) ^ (tokenWeightOut / tokenWeightIn) - 1) * (10000/ (10000 - swapFee)
+ *
+ * @param amountOut     target reserve amount
+ * @param reserveIn    source reserve balance
+ * @param reserveOut    target reserve balance
+ * @param tokenWeightIn     source reserve weight, represented in ppm (2-98)
+ * @param tokenWeightOut     target reserve weight, represented in ppm (2-98)
+ * @param swapFee                  swap fee of the conversion
+ *
+ * @return amountIn
+ */
+
+function getAmountIn(amountOut, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
+  // validate input
+  !amountOut.gt(ZERO$1) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT") : invariant(false) : void 0;
+  !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY") : invariant(false) : void 0; // special case for equal weights
+
+  if (tokenWeightIn.eq(tokenWeightOut)) {
+    var numerator = reserveIn.mul(amountOut).mul(TENK);
+    var denominator = reserveOut.sub(amountOut).mul(TENK.sub(swapFee));
+    return numerator.div(denominator).add(1);
+  }
+
+  var baseD = reserveOut.sub(amountOut);
+
+  var _power2 = power(reserveOut, baseD, tokenWeightOut, tokenWeightIn),
+      result = _power2[0],
+      precision = _power2[1];
+
+  var baseReserveIn = reserveIn.mul(TENK);
+  var temp1 = baseReserveIn.mul(result);
+  var temp2 = leftShift(baseReserveIn, BigNumber.from(precision));
+  return signedRightShift(temp1.sub(temp2), BigNumber.from(precision)).div(TENK.sub(swapFee)).add(1);
+}
+
+var PAIR_ADDRESS_CACHE$1 = {};
+var WeightedPair = /*#__PURE__*/function () {
+  function WeightedPair(tokenAmountA, tokenAmountB, weightA, fee) {
+    var tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) // does safety checks
+    ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
+    this.weights = tokenAmountA.token.sortsBefore(tokenAmountB.token) // does safety checks
+    ? [weightA, JSBI.subtract(_100, weightA)] : [JSBI.subtract(_100, weightA), weightA];
+    this.fee = fee;
+    this.liquidityToken = new Token(tokenAmounts[0].token.chainId, WeightedPair.getAddress(tokenAmounts[0].token, tokenAmounts[1].token, JSBI.BigInt(50), fee), 18, 'Requiem-LP', 'Requiem LPs');
+    this.type = 'WeightedPair';
+    this.tokenAmounts = tokenAmounts;
+  }
+
+  WeightedPair.getAddress = function getAddress(tokenA, tokenB, weightA, fee) {
+    var _PAIR_ADDRESS_CACHE, _PAIR_ADDRESS_CACHE$t;
+
+    var tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA]; // does safety checks
+
+    if (((_PAIR_ADDRESS_CACHE = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t = _PAIR_ADDRESS_CACHE[tokens[0].address]) === null || _PAIR_ADDRESS_CACHE$t === void 0 ? void 0 : _PAIR_ADDRESS_CACHE$t[tokens[1].address]) === undefined) {
+      var _PAIR_ADDRESS_CACHE2, _extends2, _extends3;
+
+      PAIR_ADDRESS_CACHE$1 = _extends({}, PAIR_ADDRESS_CACHE$1, (_extends3 = {}, _extends3[tokens[0].address] = _extends({}, (_PAIR_ADDRESS_CACHE2 = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE2 === void 0 ? void 0 : _PAIR_ADDRESS_CACHE2[tokens[0].address], (_extends2 = {}, _extends2[tokens[1].address] = getCreate2Address(WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId], keccak256(['bytes'], [pack(['address', 'address', 'uint32', 'uint32'], [tokens[0].address, tokens[1].address, weightA.toString(), fee.toString()])]), INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]), _extends2)), _extends3));
+    }
+
+    return PAIR_ADDRESS_CACHE$1[tokens[0].address][tokens[1].address];
+  }
+  /**
+   * Returns true if the token is either token0 or token1
+   * @param token to check
+   */
+  ;
+
+  var _proto = WeightedPair.prototype;
+
+  _proto.involvesToken = function involvesToken(token) {
+    return token.equals(this.token0) || token.equals(this.token1);
+  }
+  /**
+   * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
+   */
+  ;
+
+  /**
+   * Return the price of the given token in terms of the other token in the pair.
+   * @param token token to return price of
+   */
+  _proto.priceOf = function priceOf(token) {
+    !this.involvesToken(token) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
+    return token.equals(this.token0) ? this.token0Price : this.token1Price;
+  }
+  /**
+   * Returns the chain ID of the tokens in the pair.
+   */
+  ;
+
+  _proto.reserveOf = function reserveOf(token) {
+    !this.involvesToken(token) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
+    return token.equals(this.token0) ? this.reserve0 : this.reserve1;
+  };
+
+  _proto.weightOf = function weightOf(token) {
+    !this.involvesToken(token) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
+    return token.equals(this.token0) ? this.weight0 : this.weight1;
+  };
+
+  _proto.getOutputAmount = function getOutputAmount(inputAmount) {
+    !this.involvesToken(inputAmount.token) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
+
+    if (JSBI.equal(this.reserve0.raw, ZERO) || JSBI.equal(this.reserve1.raw, ZERO)) {
+      throw new InsufficientReservesError();
+    }
+
+    var inputReserve = this.reserveOf(inputAmount.token);
+    var outputReserve = this.reserveOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0);
+    var inputWeight = this.weightOf(inputAmount.token);
+    var outputWeight = this.weightOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0);
+    var outputAmount = new TokenAmount(inputAmount.token.equals(this.token0) ? this.token1 : this.token0, // getAmountOut(inputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
+    JSBI.BigInt(getAmountOut(inputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString()));
+
+    if (JSBI.equal(outputAmount.raw, ZERO)) {
+      throw new InsufficientInputAmountError();
+    }
+
+    return [outputAmount, new WeightedPair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount), inputWeight, this.fee)];
+  };
+
+  _proto.getInputAmount = function getInputAmount(outputAmount) {
+    !this.involvesToken(outputAmount.token) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
+
+    if (JSBI.equal(this.reserve0.raw, ZERO) || JSBI.equal(this.reserve1.raw, ZERO) || JSBI.greaterThanOrEqual(outputAmount.raw, this.reserveOf(outputAmount.token).raw)) {
+      throw new InsufficientReservesError();
+    }
+
+    var outputReserve = this.reserveOf(outputAmount.token);
+    var inputReserve = this.reserveOf(outputAmount.token.equals(this.token0) ? this.token1 : this.token0);
+    var outputWeight = this.weightOf(outputAmount.token);
+    var inputWeight = this.weightOf(outputAmount.token.equals(this.token0) ? this.token1 : this.token0);
+    var inputAmount = new TokenAmount(outputAmount.token.equals(this.token0) ? this.token1 : this.token0, // getAmountIn(outputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
+    JSBI.BigInt(getAmountIn(outputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString()));
+    return [inputAmount, new WeightedPair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount), inputWeight, this.fee)];
+  };
+
+  _proto.getLiquidityMinted = function getLiquidityMinted(totalSupply, tokenAmountA, tokenAmountB) {
+    !totalSupply.token.equals(this.liquidityToken) ? process.env.NODE_ENV !== "production" ? invariant(false, 'LIQUIDITY') : invariant(false) : void 0;
+    var tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) // does safety checks
+    ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
+    !(tokenAmounts[0].token.equals(this.token0) && tokenAmounts[1].token.equals(this.token1)) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
+    var liquidity;
+
+    if (JSBI.equal(totalSupply.raw, ZERO)) {
+      liquidity = JSBI.subtract(sqrt(JSBI.multiply(tokenAmounts[0].raw, tokenAmounts[1].raw)), MINIMUM_LIQUIDITY);
+    } else {
+      var amount0 = JSBI.divide(JSBI.multiply(tokenAmounts[0].raw, totalSupply.raw), this.reserve0.raw);
+      var amount1 = JSBI.divide(JSBI.multiply(tokenAmounts[1].raw, totalSupply.raw), this.reserve1.raw);
+      liquidity = JSBI.lessThanOrEqual(amount0, amount1) ? amount0 : amount1;
+    }
+
+    if (!JSBI.greaterThan(liquidity, ZERO)) {
+      throw new InsufficientInputAmountError();
+    }
+
+    return new TokenAmount(this.liquidityToken, liquidity);
+  };
+
+  _proto.getLiquidityValue = function getLiquidityValue(token, totalSupply, liquidity, feeOn, kLast) {
+    if (feeOn === void 0) {
+      feeOn = false;
+    }
+
+    !this.involvesToken(token) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
+    !totalSupply.token.equals(this.liquidityToken) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOTAL_SUPPLY') : invariant(false) : void 0;
+    !liquidity.token.equals(this.liquidityToken) ? process.env.NODE_ENV !== "production" ? invariant(false, 'LIQUIDITY') : invariant(false) : void 0;
+    !JSBI.lessThanOrEqual(liquidity.raw, totalSupply.raw) ? process.env.NODE_ENV !== "production" ? invariant(false, 'LIQUIDITY') : invariant(false) : void 0;
+    var totalSupplyAdjusted;
+
+    if (!feeOn) {
+      totalSupplyAdjusted = totalSupply;
+    } else {
+      !!!kLast ? process.env.NODE_ENV !== "production" ? invariant(false, 'K_LAST') : invariant(false) : void 0;
+      var kLastParsed = parseBigintIsh(kLast);
+
+      if (!JSBI.equal(kLastParsed, ZERO)) {
+        var rootK = sqrt(JSBI.multiply(this.reserve0.raw, this.reserve1.raw));
+        var rootKLast = sqrt(kLastParsed);
+
+        if (JSBI.greaterThan(rootK, rootKLast)) {
+          var numerator = JSBI.multiply(totalSupply.raw, JSBI.subtract(rootK, rootKLast));
+          var denominator = JSBI.add(JSBI.multiply(rootK, FIVE), rootKLast);
+          var feeLiquidity = JSBI.divide(numerator, denominator);
+          totalSupplyAdjusted = totalSupply.add(new TokenAmount(this.liquidityToken, feeLiquidity));
+        } else {
+          totalSupplyAdjusted = totalSupply;
+        }
+      } else {
+        totalSupplyAdjusted = totalSupply;
+      }
+    }
+
+    return new TokenAmount(token, JSBI.divide(JSBI.multiply(liquidity.raw, this.reserveOf(token).raw), totalSupplyAdjusted.raw));
+  };
+
+  _createClass(WeightedPair, [{
+    key: "token0Price",
+    get: function get() {
+      return new Price(this.token0, this.token1, this.tokenAmounts[0].raw, this.tokenAmounts[1].raw);
+    }
+    /**
+     * Returns the current mid price of the pair in terms of token1, i.e. the ratio of reserve0 to reserve1
+     */
+
+  }, {
+    key: "token1Price",
+    get: function get() {
+      return new Price(this.token1, this.token0, this.tokenAmounts[1].raw, this.tokenAmounts[0].raw);
+    }
+  }, {
+    key: "chainId",
+    get: function get() {
+      return this.token0.chainId;
+    }
+  }, {
+    key: "token0",
+    get: function get() {
+      return this.tokenAmounts[0].token;
+    }
+  }, {
+    key: "token1",
+    get: function get() {
+      return this.tokenAmounts[1].token;
+    }
+  }, {
+    key: "reserve0",
+    get: function get() {
+      return this.tokenAmounts[0];
+    }
+  }, {
+    key: "reserve1",
+    get: function get() {
+      return this.tokenAmounts[1];
+    }
+  }, {
+    key: "weight0",
+    get: function get() {
+      return this.weights[0];
+    }
+  }, {
+    key: "weight1",
+    get: function get() {
+      return this.weights[1];
+    }
+  }]);
+
+  return WeightedPair;
 }();
 
 function toHex(currencyAmount) {
@@ -4232,5 +5126,5 @@ var TradeV3 = /*#__PURE__*/function () {
   return TradeV3;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, Price, Rounding, Route, RouteV3, Router, RouterV3, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, WETH, WRAPPED_NETWORK_TOKENS, currencyEquals, inputOutputComparator, inputOutputComparatorV3, tradeComparator, tradeComparatorV3 };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, Price, Rounding, Route, RouteV3, Router, RouterV3, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, tradeComparator, tradeComparatorV3 };
 //# sourceMappingURL=sdk.esm.js.map

@@ -4,34 +4,36 @@ import invariant from 'tiny-invariant'
 import JSBI from 'jsbi'
 import { pack, keccak256 } from '@ethersproject/solidity'
 import { getCreate2Address } from '@ethersproject/address'
-
+import { BigNumber } from '@ethersproject/bignumber'
 import {
   BigintIsh,
-  FACTORY_ADDRESS,
-  INIT_CODE_HASH,
+  WEIGHTED_FACTORY_ADDRESS,
+  INIT_CODE_HASH_WEIGHTED,
   MINIMUM_LIQUIDITY,
   ZERO,
-  ONE,
+  // ONE,
   FIVE,
-  FEES_NUMERATOR,
-  FEES_DENOMINATOR,
+  _100,
+  // FEES_NUMERATOR,
+  // FEES_DENOMINATOR,
   ChainId,
 } from '../constants'
 import { sqrt, parseBigintIsh } from '../utils'
 import { InsufficientReservesError, InsufficientInputAmountError } from '../errors'
 import { Token } from './token'
-import { Source } from './source'
+// import { getAmountOut, getAmountIn } from './weightedPairCalc'
+import { getAmountOut, getAmountIn } from './weightedPairCalc'
 
 let PAIR_ADDRESS_CACHE: { [token0Address: string]: { [token1Address: string]: string } } = {}
 
-export class Pair implements Source {
+export class WeightedPair {
   public readonly liquidityToken: Token
   private readonly tokenAmounts: [TokenAmount, TokenAmount]
+  private readonly weights: [JSBI, JSBI]
+  private readonly fee: JSBI
   public readonly type: string
 
-  public static getAddress(tokenA: Token, tokenB: Token): string {
-    invariant(tokenA.chainId === tokenB.chainId, 'CHAIN_ID')
-    const chainId = tokenA.chainId
+  public static getAddress(tokenA: Token, tokenB: Token, weightA: JSBI, fee: JSBI): string {
     const tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA] // does safety checks
 
     if (PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address] === undefined) {
@@ -40,9 +42,9 @@ export class Pair implements Source {
         [tokens[0].address]: {
           ...PAIR_ADDRESS_CACHE?.[tokens[0].address],
           [tokens[1].address]: getCreate2Address(
-            FACTORY_ADDRESS[chainId],
-            keccak256(['bytes'], [pack(['address', 'address'], [tokens[0].address, tokens[1].address])]),
-            INIT_CODE_HASH[chainId]
+            WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId],
+            keccak256(['bytes'], [pack(['address', 'address', 'uint32', 'uint32'], [tokens[0].address, tokens[1].address, weightA.toString(), fee.toString()])]),
+            INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]
           ),
         },
       }
@@ -51,18 +53,22 @@ export class Pair implements Source {
     return PAIR_ADDRESS_CACHE[tokens[0].address][tokens[1].address]
   }
 
-  public constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount) {
+  public constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount, weightA: JSBI, fee: JSBI) {
     const tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) // does safety checks
       ? [tokenAmountA, tokenAmountB]
       : [tokenAmountB, tokenAmountA]
+    this.weights = tokenAmountA.token.sortsBefore(tokenAmountB.token) // does safety checks
+      ? [weightA, JSBI.subtract(_100, weightA)]
+      : [JSBI.subtract(_100, weightA), weightA]
+    this.fee = fee
     this.liquidityToken = new Token(
       tokenAmounts[0].token.chainId,
-      Pair.getAddress(tokenAmounts[0].token, tokenAmounts[1].token),
+      WeightedPair.getAddress(tokenAmounts[0].token, tokenAmounts[1].token, JSBI.BigInt(50), fee),
       18,
       'Requiem-LP',
       'Requiem LPs'
     )
-    this.type = 'Pair'
+    this.type = 'WeightedPair'
     this.tokenAmounts = tokenAmounts as [TokenAmount, TokenAmount]
   }
 
@@ -120,32 +126,47 @@ export class Pair implements Source {
     return this.tokenAmounts[1]
   }
 
+  public get weight0(): JSBI {
+    return this.weights[0]
+  }
+
+  public get weight1(): JSBI {
+    return this.weights[1]
+  }
+
+
   public reserveOf(token: Token): TokenAmount {
     invariant(this.involvesToken(token), 'TOKEN')
     return token.equals(this.token0) ? this.reserve0 : this.reserve1
   }
+  public weightOf(token: Token): JSBI {
+    invariant(this.involvesToken(token), 'TOKEN')
+    return token.equals(this.token0) ? this.weight0 : this.weight1
+  }
 
-  public getOutputAmount(inputAmount: TokenAmount): [TokenAmount, Pair] {
+  public getOutputAmount(inputAmount: TokenAmount): [TokenAmount, WeightedPair] {
     invariant(this.involvesToken(inputAmount.token), 'TOKEN')
     if (JSBI.equal(this.reserve0.raw, ZERO) || JSBI.equal(this.reserve1.raw, ZERO)) {
       throw new InsufficientReservesError()
     }
     const inputReserve = this.reserveOf(inputAmount.token)
     const outputReserve = this.reserveOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0)
-    const inputAmountWithFee = JSBI.multiply(inputAmount.raw, FEES_NUMERATOR)
-    const numerator = JSBI.multiply(inputAmountWithFee, outputReserve.raw)
-    const denominator = JSBI.add(JSBI.multiply(inputReserve.raw, FEES_DENOMINATOR), inputAmountWithFee)
+
+    const inputWeight = this.weightOf(inputAmount.token)
+    const outputWeight = this.weightOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0)
+
     const outputAmount = new TokenAmount(
       inputAmount.token.equals(this.token0) ? this.token1 : this.token0,
-      JSBI.divide(numerator, denominator)
+      // getAmountOut(inputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
+      JSBI.BigInt(getAmountOut(inputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString())
     )
     if (JSBI.equal(outputAmount.raw, ZERO)) {
       throw new InsufficientInputAmountError()
     }
-    return [outputAmount, new Pair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount))]
+    return [outputAmount, new WeightedPair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount), inputWeight, this.fee)]
   }
 
-  public getInputAmount(outputAmount: TokenAmount): [TokenAmount, Pair] {
+  public getInputAmount(outputAmount: TokenAmount): [TokenAmount, WeightedPair] {
     invariant(this.involvesToken(outputAmount.token), 'TOKEN')
     if (
       JSBI.equal(this.reserve0.raw, ZERO) ||
@@ -157,13 +178,16 @@ export class Pair implements Source {
 
     const outputReserve = this.reserveOf(outputAmount.token)
     const inputReserve = this.reserveOf(outputAmount.token.equals(this.token0) ? this.token1 : this.token0)
-    const numerator = JSBI.multiply(JSBI.multiply(inputReserve.raw, outputAmount.raw), FEES_DENOMINATOR)
-    const denominator = JSBI.multiply(JSBI.subtract(outputReserve.raw, outputAmount.raw), FEES_NUMERATOR)
+
+    const outputWeight = this.weightOf(outputAmount.token)
+    const inputWeight = this.weightOf(outputAmount.token.equals(this.token0) ? this.token1 : this.token0)
+
     const inputAmount = new TokenAmount(
       outputAmount.token.equals(this.token0) ? this.token1 : this.token0,
-      JSBI.add(JSBI.divide(numerator, denominator), ONE)
+      // getAmountIn(outputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
+      JSBI.BigInt(getAmountIn(outputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(),BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString())
     )
-    return [inputAmount, new Pair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount))]
+    return [inputAmount, new WeightedPair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount), inputWeight, this.fee)]
   }
 
   public getLiquidityMinted(

@@ -22,7 +22,13 @@ export declare enum Rounding {
 export declare const FACTORY_ADDRESS: {
     [chainId: number]: string;
 };
+export declare const WEIGHTED_FACTORY_ADDRESS: {
+    [chainId: number]: string;
+};
 export declare const INIT_CODE_HASH: {
+    [chainId: number]: string;
+};
+export declare const INIT_CODE_HASH_WEIGHTED: {
     [chainId: number]: string;
 };
 export declare const STABLE_POOL_ADDRESS: {
@@ -38,6 +44,7 @@ export declare const TWO: JSBI;
 export declare const THREE: JSBI;
 export declare const FIVE: JSBI;
 export declare const TEN: JSBI;
+export declare const TENK: JSBI;
 export declare const _100: JSBI;
 export declare const FEES_NUMERATOR: JSBI;
 export declare const FEES_DENOMINATOR: JSBI;

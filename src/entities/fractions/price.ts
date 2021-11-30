@@ -8,6 +8,7 @@ import { BigintIsh, Rounding, TEN } from '../../constants'
 import { Currency } from '../currency'
 import { Route } from '../route'
 import { RouteV3 } from 'entities/routeV3'
+import { RouteV4 } from 'entities/routeV4'
 import { Fraction } from './fraction'
 import { CurrencyAmount } from './currencyAmount'
 // import { Pair } from 'entities'
@@ -53,6 +54,54 @@ export class Price extends Fraction {
               (source as StablePairWrapper).pricingBasesIn[1].raw,
               (source as StablePairWrapper).pricingBasesOut[0].raw))
       )
+    }
+    return prices.slice(1).reduce((accumulator, currentValue) => accumulator.multiply(currentValue), prices[0])
+  }
+
+  // upgraded version to include StablePairWrappers in a Route
+  public static fromRouteV4(route: RouteV4): Price {
+    const prices: Price[] = []
+    for (const [i, pool] of route.pools.entries()) {
+      let price: any
+      if (route.path[i].equals(pool.token0)) {
+        switch (pool.type) {
+          case 'Pair': {
+            price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.reserve0.raw, pool.reserve1.raw)
+            break;
+          }
+          // here we need the recorded prcing bases
+          case 'StablePoolWrapper': {
+            price = new Price(pool.reserve0.currency, pool.reserve1.currency,
+              (pool as StablePairWrapper).pricingBasesIn[0].raw,
+              (pool as StablePairWrapper).pricingBasesOut[1].raw)
+            break;
+          }
+          case 'WeightedPair': {
+            price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.reserve0.raw, pool.reserve1.raw)
+            break;
+          }
+        }
+      }
+      else {
+        switch (pool.type) {
+          case 'Pair': {
+            price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.reserve1.raw, pool.reserve0.raw)
+            break;
+          }
+          case 'WeightedPair': {
+            price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.reserve1.raw, pool.reserve0.raw)
+            break;
+          }
+          // pricing base for stablePriceWrapper
+          case 'StablePairWrapper': {
+            price = new Price(pool.reserve1.currency, pool.reserve0.currency,
+              (pool as StablePairWrapper).pricingBasesIn[1].raw,
+              (pool as StablePairWrapper).pricingBasesOut[0].raw)
+            break;
+          }
+        }
+      }
+      prices.push(price)
     }
     return prices.slice(1).reduce((accumulator, currentValue) => accumulator.multiply(currentValue), prices[0])
   }

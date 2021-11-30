@@ -2,6 +2,7 @@ import { BigintIsh, Rounding } from '../../constants';
 import { Currency } from '../currency';
 import { Route } from '../route';
 import { RouteV3 } from 'entities/routeV3';
+import { RouteV4 } from 'entities/routeV4';
 import { Fraction } from './fraction';
 import { CurrencyAmount } from './currencyAmount';
 export declare class Price extends Fraction {
@@ -10,6 +11,7 @@ export declare class Price extends Fraction {
     readonly scalar: Fraction;
     static fromRoute(route: Route): Price;
     static fromRouteV3(route: RouteV3): Price;
+    static fromRouteV4(route: RouteV4): Price;
     constructor(baseCurrency: Currency, quoteCurrency: Currency, denominator: BigintIsh, numerator: BigintIsh);
     get raw(): Fraction;
     get adjusted(): Fraction;

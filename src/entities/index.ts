@@ -4,7 +4,7 @@ export * from './route'
 export * from './trade'
 export * from './currency'
 export * from './fractions'
-
+export * from './weightedPair'
 // export * from './stables'
 // export * from './stablePairWrapper'
 // export * from './stablePool'
