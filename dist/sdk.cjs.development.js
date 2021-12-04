@@ -724,6 +724,14 @@ var TokenAmount = /*#__PURE__*/function (_CurrencyAmount) {
   return TokenAmount;
 }(CurrencyAmount);
 
+var PoolType;
+
+(function (PoolType) {
+  PoolType["Pair"] = "Pair";
+  PoolType["StablePairWrapper"] = "StablePairWrapper";
+  PoolType["WeightedPair"] = "WeightedPair";
+})(PoolType || (PoolType = {}));
+
 var Price = /*#__PURE__*/function (_Fraction) {
   _inheritsLoose(Price, _Fraction);
 
@@ -765,8 +773,8 @@ var Price = /*#__PURE__*/function (_Fraction) {
       //   console.log("invariant", (source as StablePairWrapper).status)
       //   invariant((source as StablePairWrapper).status === 'PRICED', 'NOT PRICED')
       // }
-      prices.push(route.path[i].equals(source.token0) ? source.type === 'Pair' ? new Price(source.reserve0.currency, source.reserve1.currency, source.reserve0.raw, source.reserve1.raw) // here we need the recorded prcing bases
-      : new Price(source.reserve0.currency, source.reserve1.currency, source.pricingBasesIn[0].raw, source.pricingBasesOut[1].raw) : source.type === 'Pair' ? new Price(source.reserve1.currency, source.reserve0.currency, source.reserve1.raw, source.reserve0.raw) // pricing base for stablePriceWrapper
+      prices.push(route.path[i].equals(source.token0) ? source.type === PoolType.Pair ? new Price(source.reserve0.currency, source.reserve1.currency, source.reserve0.raw, source.reserve1.raw) // here we need the recorded prcing bases
+      : new Price(source.reserve0.currency, source.reserve1.currency, source.pricingBasesIn[0].raw, source.pricingBasesOut[1].raw) : source.type === PoolType.Pair ? new Price(source.reserve1.currency, source.reserve0.currency, source.reserve1.raw, source.reserve0.raw) // pricing base for stablePriceWrapper
       : new Price(source.reserve1.currency, source.reserve0.currency, source.pricingBasesIn[1].raw, source.pricingBasesOut[0].raw));
     }
 
@@ -774,6 +782,7 @@ var Price = /*#__PURE__*/function (_Fraction) {
       return accumulator.multiply(currentValue);
     }, prices[0]);
   } // upgraded version to include StablePairWrappers in a Route
+  // as well as weighted pairs
   ;
 
   Price.fromRouteV4 = function fromRouteV4(route) {
@@ -787,41 +796,45 @@ var Price = /*#__PURE__*/function (_Fraction) {
 
       if (route.path[i].equals(pool.token0)) {
         switch (pool.type) {
-          case 'Pair':
+          // regular UniswapV2 type pairs can be priced using just amounts
+          case PoolType.Pair:
             {
               price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.reserve0.raw, pool.reserve1.raw);
               break;
             }
           // here we need the recorded prcing bases
 
-          case 'StablePoolWrapper':
+          case PoolType.StablePairWrapper:
             {
               price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.pricingBasesIn[0].raw, pool.pricingBasesOut[1].raw);
               break;
             }
+          // prcing for weighted pairs - not directly derivable from token amounts
 
-          case 'WeightedPair':
+          case PoolType.WeightedPair:
             {
-              price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.reserve0.raw, pool.reserve1.raw);
+              price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.pricingBasesIn[0].raw, pool.pricingBasesOut[1].raw);
               break;
             }
         }
       } else {
         switch (pool.type) {
-          case 'Pair':
-            {
-              price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.reserve1.raw, pool.reserve0.raw);
-              break;
-            }
-
-          case 'WeightedPair':
+          // regular UniswapV2 type pairs can be priced using just amounts
+          case PoolType.Pair:
             {
               price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.reserve1.raw, pool.reserve0.raw);
               break;
             }
           // pricing base for stablePriceWrapper
 
-          case 'StablePairWrapper':
+          case PoolType.StablePairWrapper:
+            {
+              price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.pricingBasesIn[1].raw, pool.pricingBasesOut[0].raw);
+              break;
+            }
+          // pricing base for weighted pairs
+
+          case PoolType.WeightedPair:
             {
               price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.pricingBasesIn[1].raw, pool.pricingBasesOut[0].raw);
               break;
@@ -899,7 +912,7 @@ var Pair = /*#__PURE__*/function () {
     var tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) // does safety checks
     ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
     this.liquidityToken = new Token(tokenAmounts[0].token.chainId, Pair.getAddress(tokenAmounts[0].token, tokenAmounts[1].token), 18, 'Requiem-LP', 'Requiem LPs');
-    this.type = 'Pair';
+    this.type = PoolType.Pair;
     this.tokenAmounts = tokenAmounts;
   }
 
@@ -2120,7 +2133,10 @@ var WeightedPair = /*#__PURE__*/function () {
     ? [weightA, JSBI.subtract(_100, weightA)] : [JSBI.subtract(_100, weightA), weightA];
     this.fee = fee;
     this.liquidityToken = new Token(tokenAmounts[0].token.chainId, WeightedPair.getAddress(tokenAmounts[0].token, tokenAmounts[1].token, JSBI.BigInt(50), fee), 18, 'Requiem-LP', 'Requiem LPs');
-    this.type = 'WeightedPair';
+    this.type = PoolType.WeightedPair; // assign pricing bases
+
+    this.pricingBasesIn = tokenAmounts;
+    this.pricingBasesOut = tokenAmounts;
     this.tokenAmounts = tokenAmounts;
   }
 
@@ -2186,14 +2202,26 @@ var WeightedPair = /*#__PURE__*/function () {
     var inputReserve = this.reserveOf(inputAmount.token);
     var outputReserve = this.reserveOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0);
     var inputWeight = this.weightOf(inputAmount.token);
-    var outputWeight = this.weightOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0);
+    var outputWeight = this.weightOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0); // const inA = inputAmount.toBigNumber()
+    // const inRes=  inputReserve.toBigNumber()
+    // const outRes =  outputReserve.toBigNumber()
+    // const inWeight =  BigNumber.from(inputWeight.toString())
+    // const outWeight=  BigNumber.from(outputWeight.toString())
+    // const f =  BigNumber.from(this.fee.toString())
+
     var outputAmount = new TokenAmount(inputAmount.token.equals(this.token0) ? this.token1 : this.token0, // getAmountOut(inputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
-    JSBI.BigInt(getAmountOut(inputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), bignumber.BigNumber.from(inputWeight.toString()), bignumber.BigNumber.from(outputWeight.toString()), bignumber.BigNumber.from(this.fee.toString())).toString()));
+    JSBI.BigInt(getAmountOut(inputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), bignumber.BigNumber.from(inputWeight.toString()), bignumber.BigNumber.from(outputWeight.toString()), bignumber.BigNumber.from(this.fee.toString())).toString()) // JSBI.BigInt(getAmountOut(inA, inRes, outRes, inWeight, outWeight, f).toString())
+    ); // console.log("OA", outputAmount.raw.toString())
 
     if (JSBI.equal(outputAmount.raw, ZERO)) {
       throw new InsufficientInputAmountError();
-    }
+    } // here we save the pricing results if it is called
 
+
+    var inIndex = inputAmount.token.equals(this.token0) ? 0 : 1;
+    var outIndex = outputAmount.token.equals(this.token0) ? 0 : 1;
+    this.pricingBasesIn[inIndex] = inputAmount;
+    this.pricingBasesOut[outIndex] = outputAmount;
     return [outputAmount, new WeightedPair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount), inputWeight, this.fee)];
   };
 
@@ -2209,7 +2237,12 @@ var WeightedPair = /*#__PURE__*/function () {
     var outputWeight = this.weightOf(outputAmount.token);
     var inputWeight = this.weightOf(outputAmount.token.equals(this.token0) ? this.token1 : this.token0);
     var inputAmount = new TokenAmount(outputAmount.token.equals(this.token0) ? this.token1 : this.token0, // getAmountIn(outputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
-    JSBI.BigInt(getAmountIn(outputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), bignumber.BigNumber.from(inputWeight.toString()), bignumber.BigNumber.from(outputWeight.toString()), bignumber.BigNumber.from(this.fee.toString())).toString()));
+    JSBI.BigInt(getAmountIn(outputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), bignumber.BigNumber.from(inputWeight.toString()), bignumber.BigNumber.from(outputWeight.toString()), bignumber.BigNumber.from(this.fee.toString())).toString())); // here we save the pricing results if it is called
+
+    var inIndex = inputAmount.token.equals(this.token0) ? 0 : 1;
+    var outIndex = outputAmount.token.equals(this.token0) ? 0 : 1;
+    this.pricingBasesIn[inIndex] = inputAmount;
+    this.pricingBasesOut[outIndex] = outputAmount;
     return [inputAmount, new WeightedPair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount), inputWeight, this.fee)];
   };
 
@@ -2270,6 +2303,10 @@ var WeightedPair = /*#__PURE__*/function () {
     }
 
     return new TokenAmount(token, JSBI.divide(JSBI.multiply(liquidity.raw, this.reserveOf(token).raw), totalSupplyAdjusted.raw));
+  };
+
+  _proto.clone = function clone() {
+    return new WeightedPair(this.tokenAmounts[0], this.tokenAmounts[1], this.weight0, this.fee);
   };
 
   _createClass(WeightedPair, [{
@@ -4493,11 +4530,11 @@ var StablePairWrapper = /*#__PURE__*/function () {
     this.liquidityToken = new Token(tokenAmountA.token.chainId, (_STABLE_POOL_LP_ADDRE = STABLE_POOL_LP_ADDRESS[tokenAmountA.token.chainId]) !== null && _STABLE_POOL_LP_ADDRE !== void 0 ? _STABLE_POOL_LP_ADDRE : '0x0000000000000000000000000000000000000001', 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
     this.tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
     this.stableIndexes = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [indexA, indexB] : [indexB, indexA];
-    this.pricingBasesIn = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA];
-    this.pricingBasesOut = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]; // this.executionPrice = new Price(tokenAmountA.token, tokenAmountB.token, tokenAmountA.raw, tokenAmountB.raw)
+    this.pricingBasesIn = this.tokenAmounts;
+    this.pricingBasesOut = this.tokenAmounts; // this.executionPrice = new Price(tokenAmountA.token, tokenAmountB.token, tokenAmountA.raw, tokenAmountB.raw)
 
     this.referenceMidPrices = [];
-    this.type = 'StablePairWrapper';
+    this.type = PoolType.StablePairWrapper;
     this.status = 'NOT PRICED';
   }
   /**

@@ -3,12 +3,15 @@ import { TokenAmount } from './fractions/tokenAmount';
 import JSBI from 'jsbi';
 import { BigintIsh, ChainId } from '../constants';
 import { Token } from './token';
+import { PoolType } from './pool';
 export declare class WeightedPair {
     readonly liquidityToken: Token;
     private readonly tokenAmounts;
+    pricingBasesIn: TokenAmount[];
+    pricingBasesOut: TokenAmount[];
     private readonly weights;
     private readonly fee;
-    readonly type: string;
+    readonly type: PoolType;
     static getAddress(tokenA: Token, tokenB: Token, weightA: JSBI, fee: JSBI): string;
     constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount, weightA: JSBI, fee: JSBI);
     /**
@@ -45,4 +48,5 @@ export declare class WeightedPair {
     getInputAmount(outputAmount: TokenAmount): [TokenAmount, WeightedPair];
     getLiquidityMinted(totalSupply: TokenAmount, tokenAmountA: TokenAmount, tokenAmountB: TokenAmount): TokenAmount;
     getLiquidityValue(token: Token, totalSupply: TokenAmount, liquidity: TokenAmount, feeOn?: boolean, kLast?: BigintIsh): TokenAmount;
+    clone(): WeightedPair;
 }

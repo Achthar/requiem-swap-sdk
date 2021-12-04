@@ -11,8 +11,6 @@ export declare class RouteV4 {
     readonly input: Currency;
     readonly output: Currency;
     readonly midPrice: Price;
-    readonly pathMatrix: Token[][];
-    readonly routerIds: number[];
     constructor(pools: Pool[], stablePool: StablePool, input: Currency, output?: Currency);
     get chainId(): ChainId;
 }

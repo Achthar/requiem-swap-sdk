@@ -3,10 +3,11 @@ import { TokenAmount } from './fractions/tokenAmount';
 import { BigintIsh, ChainId } from '../constants';
 import { Token } from './token';
 import { Source } from './source';
+import { PoolType } from './pool';
 export declare class Pair implements Source {
     readonly liquidityToken: Token;
     private readonly tokenAmounts;
-    readonly type: string;
+    readonly type: PoolType;
     static getAddress(tokenA: Token, tokenB: Token): string;
     constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount);
     /**

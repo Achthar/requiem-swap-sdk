@@ -5,12 +5,13 @@ import { TokenAmount } from "./fractions/tokenAmount";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Source } from './source';
 import { ChainId } from "./../constants";
+import { PoolType } from "./pool";
 export declare class StablePairWrapper implements Source {
     tokenAmounts: TokenAmount[];
     readonly stableIndexes: number[];
     pricingBasesIn: TokenAmount[];
     pricingBasesOut: TokenAmount[];
-    readonly type: string;
+    readonly type: PoolType;
     readonly referenceMidPrices: Price[];
     readonly liquidityToken: Token;
     status: string;
