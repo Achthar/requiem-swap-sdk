@@ -13,6 +13,8 @@ import { Fraction } from './fraction'
 import { CurrencyAmount } from './currencyAmount'
 // import { Pair } from 'entities'
 import { StablePairWrapper } from 'entities/stablePairWrapper'
+import { WeightedPair } from 'entities'
+import { PoolType } from '../pool'
 
 export class Price extends Fraction {
   public readonly baseCurrency: Currency // input i.e. denominator
@@ -41,13 +43,13 @@ export class Price extends Fraction {
       // }
       prices.push(
         route.path[i].equals(source.token0)
-          ? (source.type === 'Pair'
+          ? (source.type === PoolType.Pair
             ? new Price(source.reserve0.currency, source.reserve1.currency, source.reserve0.raw, source.reserve1.raw)
             // here we need the recorded prcing bases
             : new Price(source.reserve0.currency, source.reserve1.currency,
               (source as StablePairWrapper).pricingBasesIn[0].raw,
               (source as StablePairWrapper).pricingBasesOut[1].raw))
-          : (source.type === 'Pair' ?
+          : (source.type === PoolType.Pair ?
             new Price(source.reserve1.currency, source.reserve0.currency, source.reserve1.raw, source.reserve0.raw)
             // pricing base for stablePriceWrapper
             : new Price(source.reserve1.currency, source.reserve0.currency,
@@ -59,44 +61,53 @@ export class Price extends Fraction {
   }
 
   // upgraded version to include StablePairWrappers in a Route
+  // as well as weighted pairs
   public static fromRouteV4(route: RouteV4): Price {
     const prices: Price[] = []
     for (const [i, pool] of route.pools.entries()) {
       let price: any
       if (route.path[i].equals(pool.token0)) {
         switch (pool.type) {
-          case 'Pair': {
+          // regular UniswapV2 type pairs can be priced using just amounts
+          case PoolType.Pair: {
             price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.reserve0.raw, pool.reserve1.raw)
             break;
           }
           // here we need the recorded prcing bases
-          case 'StablePoolWrapper': {
+          case PoolType.StablePairWrapper: {
             price = new Price(pool.reserve0.currency, pool.reserve1.currency,
               (pool as StablePairWrapper).pricingBasesIn[0].raw,
               (pool as StablePairWrapper).pricingBasesOut[1].raw)
             break;
           }
-          case 'WeightedPair': {
-            price = new Price(pool.reserve0.currency, pool.reserve1.currency, pool.reserve0.raw, pool.reserve1.raw)
+          // prcing for weighted pairs - not directly derivable from token amounts
+          case PoolType.WeightedPair: {
+            price = new Price(pool.reserve0.currency, pool.reserve1.currency,
+              (pool as WeightedPair).pricingBasesIn[0].raw,
+              (pool as WeightedPair).pricingBasesOut[1].raw)
             break;
           }
         }
       }
       else {
         switch (pool.type) {
-          case 'Pair': {
-            price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.reserve1.raw, pool.reserve0.raw)
-            break;
-          }
-          case 'WeightedPair': {
+          // regular UniswapV2 type pairs can be priced using just amounts
+          case PoolType.Pair: {
             price = new Price(pool.reserve1.currency, pool.reserve0.currency, pool.reserve1.raw, pool.reserve0.raw)
             break;
           }
           // pricing base for stablePriceWrapper
-          case 'StablePairWrapper': {
+          case PoolType.StablePairWrapper: {
             price = new Price(pool.reserve1.currency, pool.reserve0.currency,
               (pool as StablePairWrapper).pricingBasesIn[1].raw,
               (pool as StablePairWrapper).pricingBasesOut[0].raw)
+            break;
+          }
+          // pricing base for weighted pairs
+          case PoolType.WeightedPair: {
+            price = new Price(pool.reserve1.currency, pool.reserve0.currency,
+              (pool as WeightedPair).pricingBasesIn[1].raw,
+              (pool as WeightedPair).pricingBasesOut[0].raw)
             break;
           }
         }

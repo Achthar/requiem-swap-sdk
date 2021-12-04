@@ -9,9 +9,10 @@ import { Percent } from './fractions/percent'
 import { Price } from './fractions/price'
 import { TokenAmount, InputOutput } from './fractions/tokenAmount'
 import { Pair } from './pair'
-import { Pool } from './pool'
-import { RouteV4 } from './routeV4'
+import { WeightedPair } from './weightedPair'
 import { StablePairWrapper } from './stablePairWrapper'
+import { Pool, PoolType } from './pool'
+import { RouteV4 } from './routeV4'
 import { StablePool } from './stablePool'
 import { currencyEquals, Token, WRAPPED_NETWORK_TOKENS } from './token'
 
@@ -308,13 +309,24 @@ export class TradeV4 {
     for (let i = 0; i < pools.length; i++) {
       let pool = pools[i]
 
-
       if (!pool.token0.equals(amountIn.token) && !pool.token1.equals(amountIn.token)) continue
       if (pool.reserve0.equalTo(ZERO) || pool.reserve1.equalTo(ZERO)) continue
 
       let amountOut: TokenAmount
+      // if( pool instanceof WeightedPair)  {console.log("out": pool.getInputAmount(amountOut) }
       try {
-        ;[amountOut] = pool instanceof Pair ? pool.getOutputAmount(amountIn) : pool.getOutputAmount(amountIn, stablePool)
+        if (pool.type === PoolType.Pair) {
+          ;[amountOut] = (pool as Pair).getOutputAmount(amountIn)
+        } else if (pool.type === PoolType.WeightedPair) {
+          ;[amountOut] = (pool as WeightedPair).clone().getOutputAmount(amountIn)
+          // ;[amountOut] = (pool as WeightedPair).getOutputAmount(amountIn)
+          console.log("out weighted", amountOut.raw)
+          // const [amountOut1,] = ((pool).clone() as any as Pair).getOutputAmount(amountIn)
+          // console.log("out PAIR", amountOut1.raw)
+        } else {
+          [amountOut] = (pool as StablePairWrapper).getOutputAmount(amountIn, stablePool)
+        }
+        // ;[amountOut] = pool instanceof Pair || pool instanceof WeightedPair ? pool.getOutputAmount(amountIn) : pool.getOutputAmount(amountIn, stablePool)
       } catch (error) {
         // input too low
         if ((error as any).isInsufficientInputAmountError) {
@@ -435,7 +447,7 @@ export class TradeV4 {
 
       let amountIn: TokenAmount
       try {
-        ;[amountIn] = pool instanceof Pair ? pool.getInputAmount(amountOut) : pool.getInputAmount(amountOut, stablePool)
+        ;[amountIn] = pool instanceof Pair || pool instanceof WeightedPair ? pool.getInputAmount(amountOut) : pool.getInputAmount(amountOut, stablePool)
       } catch (error) {
         // not enough liquidity in this pool
         if ((error as any).isInsufficientReservesError) {

@@ -5,7 +5,6 @@ import { Currency, NETWORK_CCY } from './currency'
 import { Token, WRAPPED_NETWORK_TOKENS } from './token'
 import { Price } from './fractions/price'
 import { StablePool } from './stablePool'
-import { StablePairWrapper } from './stablePairWrapper'
 
 // new version of the route 
 // the first verion to include the stable pool for less friction
@@ -16,8 +15,6 @@ export class RouteV4 {
   public readonly input: Currency
   public readonly output: Currency
   public readonly midPrice: Price
-  public readonly pathMatrix: Token[][]
-  public readonly routerIds: number[]
 
   public constructor(pools: Pool[], stablePool: StablePool, input: Currency, output?: Currency) {
     invariant(pools.length > 0, 'poolS')
@@ -50,44 +47,6 @@ export class RouteV4 {
     this.midPrice = Price.fromRouteV4(this)
     this.input = input
     this.output = output ?? path[path.length - 1]
-
-    // generate new inputs for aggregator 
-
-    const pathMatrix: Token[][] = []
-    const routerIds: number[] = []
-    let currentInput = this.path[0]
-    let currentRouterId: number = -1
-    let lastRouterId: number = -1
-    for (let i = 0; i < pools.length; i++) {
-      const pool = pools[i]
-      currentRouterId = pools[i] instanceof StablePairWrapper ? 0 : 1
-      invariant(currentInput.equals(pool.token0) || currentInput.equals(pool.token1), 'PATH')
-      const output = currentInput.equals(pool.token0) ? pool.token1 : pool.token0
-
-      if (i === 0) {
-        pathMatrix.push([currentInput, output])
-        routerIds.push(pool instanceof StablePairWrapper ? 0 : 1)
-      }
-      else {
-        if (pool instanceof StablePairWrapper) { // current item is stablePool
-          pathMatrix.push([currentInput, output])
-          routerIds.push(0)
-        }
-        else { // current item is a pair
-          if (lastRouterId === 0) {
-            pathMatrix.push([currentInput, output])
-            routerIds.push(1)
-          } else {
-            pathMatrix[pathMatrix.length - 1].push(output)
-          }
-        }
-      }
-      currentInput = output
-      lastRouterId = currentRouterId
-    }
-
-    this.pathMatrix = pathMatrix
-    this.routerIds = routerIds
   }
 
   public get chainId(): ChainId {

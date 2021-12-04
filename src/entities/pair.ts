@@ -21,13 +21,14 @@ import { sqrt, parseBigintIsh } from '../utils'
 import { InsufficientReservesError, InsufficientInputAmountError } from '../errors'
 import { Token } from './token'
 import { Source } from './source'
+import { PoolType } from './pool'
 
 let PAIR_ADDRESS_CACHE: { [token0Address: string]: { [token1Address: string]: string } } = {}
 
 export class Pair implements Source {
   public readonly liquidityToken: Token
   private readonly tokenAmounts: [TokenAmount, TokenAmount]
-  public readonly type: string
+  public readonly type: PoolType
 
   public static getAddress(tokenA: Token, tokenB: Token): string {
     invariant(tokenA.chainId === tokenB.chainId, 'CHAIN_ID')
@@ -62,7 +63,7 @@ export class Pair implements Source {
       'Requiem-LP',
       'Requiem LPs'
     )
-    this.type = 'Pair'
+    this.type = PoolType.Pair
     this.tokenAmounts = tokenAmounts as [TokenAmount, TokenAmount]
   }
 

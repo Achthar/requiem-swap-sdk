@@ -21,17 +21,22 @@ import {
 import { sqrt, parseBigintIsh } from '../utils'
 import { InsufficientReservesError, InsufficientInputAmountError } from '../errors'
 import { Token } from './token'
-// import { getAmountOut, getAmountIn } from './weightedPairCalc'
 import { getAmountOut, getAmountIn } from './weightedPairCalc'
+import { PoolType } from './pool'
 
 let PAIR_ADDRESS_CACHE: { [token0Address: string]: { [token1Address: string]: string } } = {}
 
 export class WeightedPair {
   public readonly liquidityToken: Token
   private readonly tokenAmounts: [TokenAmount, TokenAmount]
+  // the tokenAmount for calculating the price
+  // these cannot be derived from the tokenAmounts since
+  // they follow the stableSwap logic for pricing
+  public pricingBasesIn: TokenAmount[]
+  public pricingBasesOut: TokenAmount[]
   private readonly weights: [JSBI, JSBI]
   private readonly fee: JSBI
-  public readonly type: string
+  public readonly type: PoolType
 
   public static getAddress(tokenA: Token, tokenB: Token, weightA: JSBI, fee: JSBI): string {
     const tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA] // does safety checks
@@ -68,7 +73,12 @@ export class WeightedPair {
       'Requiem-LP',
       'Requiem LPs'
     )
-    this.type = 'WeightedPair'
+    this.type = PoolType.WeightedPair
+
+    // assign pricing bases
+    this.pricingBasesIn = tokenAmounts
+    this.pricingBasesOut = tokenAmounts
+
     this.tokenAmounts = tokenAmounts as [TokenAmount, TokenAmount]
   }
 
@@ -155,14 +165,30 @@ export class WeightedPair {
     const inputWeight = this.weightOf(inputAmount.token)
     const outputWeight = this.weightOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0)
 
+    // const inA = inputAmount.toBigNumber()
+    // const inRes=  inputReserve.toBigNumber()
+    // const outRes =  outputReserve.toBigNumber()
+    // const inWeight =  BigNumber.from(inputWeight.toString())
+    // const outWeight=  BigNumber.from(outputWeight.toString())
+    // const f =  BigNumber.from(this.fee.toString())
+
     const outputAmount = new TokenAmount(
       inputAmount.token.equals(this.token0) ? this.token1 : this.token0,
       // getAmountOut(inputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
       JSBI.BigInt(getAmountOut(inputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString())
+      // JSBI.BigInt(getAmountOut(inA, inRes, outRes, inWeight, outWeight, f).toString())
     )
+    // console.log("OA", outputAmount.raw.toString())
     if (JSBI.equal(outputAmount.raw, ZERO)) {
       throw new InsufficientInputAmountError()
     }
+
+    // here we save the pricing results if it is called
+    const inIndex = inputAmount.token.equals(this.token0) ? 0 : 1
+    const outIndex = outputAmount.token.equals(this.token0) ? 0 : 1
+    this.pricingBasesIn[inIndex] = inputAmount
+    this.pricingBasesOut[outIndex] = outputAmount
+
     return [outputAmount, new WeightedPair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount), inputWeight, this.fee)]
   }
 
@@ -185,8 +211,14 @@ export class WeightedPair {
     const inputAmount = new TokenAmount(
       outputAmount.token.equals(this.token0) ? this.token1 : this.token0,
       // getAmountIn(outputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
-      JSBI.BigInt(getAmountIn(outputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(),BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString())
+      JSBI.BigInt(getAmountIn(outputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString())
     )
+    // here we save the pricing results if it is called
+    const inIndex = inputAmount.token.equals(this.token0) ? 0 : 1
+    const outIndex = outputAmount.token.equals(this.token0) ? 0 : 1
+    this.pricingBasesIn[inIndex] = inputAmount
+    this.pricingBasesOut[outIndex] = outputAmount
+
     return [inputAmount, new WeightedPair(inputReserve.add(inputAmount), outputReserve.subtract(outputAmount), inputWeight, this.fee)]
   }
 
@@ -253,5 +285,9 @@ export class WeightedPair {
       token,
       JSBI.divide(JSBI.multiply(liquidity.raw, this.reserveOf(token).raw), totalSupplyAdjusted.raw)
     )
+  }
+
+  public clone(): WeightedPair {
+    return new WeightedPair(this.tokenAmounts[0], this.tokenAmounts[1], this.weight0, this.fee)
   }
 }

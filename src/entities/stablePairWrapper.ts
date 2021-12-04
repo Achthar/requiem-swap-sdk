@@ -6,6 +6,7 @@ import invariant from "tiny-invariant";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Source } from './source';
 import { ChainId, STABLE_POOL_LP_ADDRESS } from "./../constants";
+import { PoolType } from "./pool";
 
 // A class that wraps a stablePool to a pair-like structure
 export class StablePairWrapper implements Source {
@@ -20,7 +21,7 @@ export class StablePairWrapper implements Source {
     // they follow the stableSwap logic for pricing
     public pricingBasesIn: TokenAmount[]
     public pricingBasesOut: TokenAmount[]
-    public readonly type: string
+    public readonly type: PoolType
     public readonly referenceMidPrices: Price[]
     public readonly liquidityToken: Token
     public status: string
@@ -43,11 +44,11 @@ export class StablePairWrapper implements Source {
         this.tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]
         this.stableIndexes = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [indexA, indexB] : [indexB, indexA]
 
-        this.pricingBasesIn = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]
-        this.pricingBasesOut = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]
+        this.pricingBasesIn =  this.tokenAmounts
+        this.pricingBasesOut =  this.tokenAmounts
         // this.executionPrice = new Price(tokenAmountA.token, tokenAmountB.token, tokenAmountA.raw, tokenAmountB.raw)
         this.referenceMidPrices = []
-        this.type = 'StablePairWrapper'
+        this.type = PoolType.StablePairWrapper
         this.status = 'NOT PRICED'
     }
 
