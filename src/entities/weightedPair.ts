@@ -27,9 +27,7 @@ import { PoolType } from './pool'
 let PAIR_ADDRESS_CACHE: {
   [token0Address: string]: {
     [token1Address: string]: {
-      [weight0: string]: {
-        [fee: string]: string
-      }
+      [weight0_fee: string]: string
     }
   }
 } = {}
@@ -49,16 +47,14 @@ export class WeightedPair {
   public static getAddress(tokenA: Token, tokenB: Token, weightA: JSBI, fee: JSBI): string {
     const tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA] // does safety checks
     const weights = tokenA.sortsBefore(tokenB) ? [weightA.toString(), JSBI.subtract(_100, weightA).toString()] : [JSBI.subtract(_100, weightA).toString(), weightA.toString()] // does safety checks
-    if (PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address]?.[weights[0]]?.[fee.toString()] === undefined) {
+    if (PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address]?.[`${weights[0]}-${fee.toString()}`] === undefined) {
       PAIR_ADDRESS_CACHE = {
         ...PAIR_ADDRESS_CACHE,
         [tokens[0].address]: {
           ...PAIR_ADDRESS_CACHE?.[tokens[0].address],
           [tokens[1].address]: {
             ...PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address],
-            [weights[0]]: {
-              ...PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address]?.[weights[0]],
-              [fee.toString()]: getCreate2Address(
+            [`${weights[0]}-${fee.toString()}`]: getCreate2Address(
                 WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId],
                 keccak256(
                   ['bytes'],
@@ -69,13 +65,12 @@ export class WeightedPair {
                 ),
                 INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]
               )
-            }
           },
         },
       }
     }
 
-    return PAIR_ADDRESS_CACHE[tokens[0].address][tokens[1].address][weights[0]][fee.toString()]
+    return PAIR_ADDRESS_CACHE[tokens[0].address][tokens[1].address][`${weights[0]}-${fee.toString()}`]
   }
 
   public constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount, weightA: JSBI, fee: JSBI) {
