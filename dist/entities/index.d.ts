@@ -12,3 +12,6 @@ export * from './stablePool';
 export * from './swapStorage';
 export * from './tradeV3';
 export * from './routeV3';
+export * from './tradeV4';
+export * from './routeV4';
+export * from './pool';

@@ -4787,6 +4787,459 @@ var TradeV3 = /*#__PURE__*/function () {
   return TradeV3;
 }();
 
+// the first verion to include the stable pool for less friction
+
+var RouteV4 = /*#__PURE__*/function () {
+  function RouteV4(pools, stablePool, input, output) {
+    !(pools.length > 0) ?  invariant(false, 'poolS')  : void 0;
+    !pools.every(function (pool) {
+      return pool.chainId === pools[0].chainId;
+    }) ?  invariant(false, 'CHAIN_IDS')  : void 0;
+    !(input instanceof Token && pools[0].involvesToken(input) || input === NETWORK_CCY[pools[0].chainId] && pools[0].involvesToken(WRAPPED_NETWORK_TOKENS[pools[0].chainId])) ?  invariant(false, 'INPUT')  : void 0;
+    !(typeof output === 'undefined' || output instanceof Token && pools[pools.length - 1].involvesToken(output) || output === NETWORK_CCY[pools[0].chainId] && pools[pools.length - 1].involvesToken(WRAPPED_NETWORK_TOKENS[pools[0].chainId])) ?  invariant(false, 'OUTPUT')  : void 0;
+    var path = [input instanceof Token ? input : WRAPPED_NETWORK_TOKENS[pools[0].chainId]];
+
+    for (var _iterator = _createForOfIteratorHelperLoose(pools.entries()), _step; !(_step = _iterator()).done;) {
+      var _step$value = _step.value,
+          i = _step$value[0],
+          pool = _step$value[1];
+      var currentInput = path[i];
+      !(currentInput.equals(pool.token0) || currentInput.equals(pool.token1)) ?  invariant(false, 'PATH')  : void 0;
+
+      var _output = currentInput.equals(pool.token0) ? pool.token1 : pool.token0;
+
+      path.push(_output);
+    }
+
+    this.stablePool = stablePool;
+    this.pools = pools;
+    this.path = path;
+    this.midPrice = Price.fromRouteV4(this);
+    this.input = input;
+    this.output = output !== null && output !== void 0 ? output : path[path.length - 1];
+  }
+
+  _createClass(RouteV4, [{
+    key: "chainId",
+    get: function get() {
+      return this.pools[0].chainId;
+    }
+  }]);
+
+  return RouteV4;
+}();
+
+/**
+ * Returns the percent difference between the mid price and the execution price, i.e. price impact.
+ * @param midPrice mid price before the trade
+ * @param inputAmount the input amount of the trade
+ * @param outputAmount the output amount of the trade
+ */
+
+function computePriceImpact$2(midPrice, inputAmount, outputAmount) {
+  var exactQuote = midPrice.raw.multiply(inputAmount.raw); // calculate slippage := (exactQuote - outputAmount) / exactQuote
+
+  var slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote);
+  return new Percent(slippage.numerator, slippage.denominator);
+} // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
+// in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
+
+
+function inputOutputComparatorV4(a, b) {
+  // must have same input and output token for comparison
+  !currencyEquals(a.inputAmount.currency, b.inputAmount.currency) ?  invariant(false, 'INPUT_CURRENCY')  : void 0;
+  !currencyEquals(a.outputAmount.currency, b.outputAmount.currency) ?  invariant(false, 'OUTPUT_CURRENCY')  : void 0;
+
+  if (a.outputAmount.equalTo(b.outputAmount)) {
+    if (a.inputAmount.equalTo(b.inputAmount)) {
+      return 0;
+    } // trade A requires less input than trade B, so A should come first
+
+
+    if (a.inputAmount.lessThan(b.inputAmount)) {
+      return -1;
+    } else {
+      return 1;
+    }
+  } else {
+    // tradeA has less output than trade B, so should come second
+    if (a.outputAmount.lessThan(b.outputAmount)) {
+      return 1;
+    } else {
+      return -1;
+    }
+  }
+} // extension of the input output comparator that also considers other dimensions of the trade in ranking them
+
+function tradeComparatorV4(a, b) {
+  var ioComp = inputOutputComparatorV4(a, b);
+
+  if (ioComp !== 0) {
+    return ioComp;
+  } // consider lowest slippage next, since these are less likely to fail
+
+
+  if (a.priceImpact.lessThan(b.priceImpact)) {
+    return -1;
+  } else if (a.priceImpact.greaterThan(b.priceImpact)) {
+    return 1;
+  } // finally consider the number of hops since each hop costs gas
+
+
+  return a.route.path.length - b.route.path.length;
+}
+/**
+ * Given a currency amount and a chain ID, returns the equivalent representation as the token amount.
+ * In other words, if the currency is ETHER, returns the WETH token amount for the given chain. Otherwise, returns
+ * the input currency amount.
+ */
+
+function wrappedAmount$2(currencyAmount, chainId) {
+  if (currencyAmount instanceof TokenAmount) return currencyAmount;
+  if (currencyAmount.currency === NETWORK_CCY[chainId]) return new TokenAmount(WRAPPED_NETWORK_TOKENS[chainId], currencyAmount.raw);
+    invariant(false, 'CURRENCY')  ;
+}
+
+function wrappedCurrency$2(currency, chainId) {
+  if (currency instanceof Token) return currency;
+  if (currency === NETWORK_CCY[chainId]) return WRAPPED_NETWORK_TOKENS[chainId];
+    invariant(false, 'CURRENCY')  ;
+}
+/**
+ * Represents a trade executed against a list of pairs.
+ * Does not account for slippage, i.e. trades that front run this trade and move the price.
+ */
+
+
+var TradeV4 = /*#__PURE__*/function () {
+  function TradeV4(route, amount, tradeType) {
+    var amounts = new Array(route.path.length);
+    var nextpools = new Array(route.pools.length);
+    var stablePool = route.stablePool.clone();
+
+    if (tradeType === exports.TradeType.EXACT_INPUT) {
+      !currencyEquals(amount.currency, route.input) ?  invariant(false, 'INPUT')  : void 0;
+      amounts[0] = wrappedAmount$2(amount, route.chainId);
+
+      for (var i = 0; i < route.path.length - 1; i++) {
+        var pool = route.pools[i];
+
+        var _ref = pool instanceof Pair ? pool.getOutputAmount(amounts[i]) : pool.getOutputAmount(amounts[i], stablePool),
+            outputAmount = _ref[0],
+            nextpool = _ref[1];
+
+        amounts[i + 1] = outputAmount;
+        nextpools[i] = nextpool;
+      }
+    } else {
+      !currencyEquals(amount.currency, route.output) ?  invariant(false, 'OUTPUT')  : void 0;
+      amounts[amounts.length - 1] = wrappedAmount$2(amount, route.chainId);
+
+      for (var _i = route.path.length - 1; _i > 0; _i--) {
+        var _pool = route.pools[_i - 1];
+
+        var _ref2 = _pool instanceof Pair ? _pool.getInputAmount(amounts[_i]) : _pool.getInputAmount(amounts[_i], stablePool),
+            inputAmount = _ref2[0],
+            _nextpool = _ref2[1];
+
+        amounts[_i - 1] = inputAmount;
+        nextpools[_i - 1] = _nextpool;
+      }
+    }
+
+    this.route = route;
+    this.tradeType = tradeType;
+    this.inputAmount = tradeType === exports.TradeType.EXACT_INPUT ? amount : route.input === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw) : amounts[0];
+    this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
+    this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
+    this.nextMidPrice = Price.fromRouteV4(new RouteV4(nextpools, stablePool.clone(), route.input));
+    this.priceImpact = computePriceImpact$2(route.midPrice, this.inputAmount, this.outputAmount);
+  }
+  /**
+   * Constructs an exact in trade with the given amount in and route
+   * @param route route of the exact in trade
+   * @param amountIn the amount being passed in
+   */
+
+
+  TradeV4.exactIn = function exactIn(route, amountIn) {
+    return new TradeV4(route, amountIn, exports.TradeType.EXACT_INPUT);
+  }
+  /**
+   * Constructs an exact out trade with the given amount out and route
+   * @param route route of the exact out trade
+   * @param amountOut the amount returned by the trade
+   */
+  ;
+
+  TradeV4.exactOut = function exactOut(route, amountOut) {
+    return new TradeV4(route, amountOut, exports.TradeType.EXACT_OUTPUT);
+  }
+  /**
+   * Get the minimum amount that must be received from this trade for the given slippage tolerance
+   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
+   */
+  ;
+
+  var _proto = TradeV4.prototype;
+
+  _proto.minimumAmountOut = function minimumAmountOut(slippageTolerance) {
+    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
+
+    if (this.tradeType === exports.TradeType.EXACT_OUTPUT) {
+      return this.outputAmount;
+    } else {
+      var slippageAdjustedAmountOut = new Fraction(ONE).add(slippageTolerance).invert().multiply(this.outputAmount.raw).quotient;
+      return this.outputAmount instanceof TokenAmount ? new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountOut);
+    }
+  }
+  /**
+   * Get the maximum amount in that can be spent via this trade for the given slippage tolerance
+   * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
+   */
+  ;
+
+  _proto.maximumAmountIn = function maximumAmountIn(slippageTolerance) {
+    !!slippageTolerance.lessThan(ZERO) ?  invariant(false, 'SLIPPAGE_TOLERANCE')  : void 0;
+
+    if (this.tradeType === exports.TradeType.EXACT_INPUT) {
+      return this.inputAmount;
+    } else {
+      var slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient;
+      return this.inputAmount instanceof TokenAmount ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn);
+    }
+  }
+  /**
+   * Given a list of pairs, and a fixed amount in, returns the top `maxNumResults` trades that go from an input token
+   * amount to an output token, making at most `maxHops` hops.
+   * Note this does not consider aggregation, as routes are linear. It's possible a better route exists by splitting
+   * the amount in among multiple routes.
+   * @param pairs the pairs to consider in finding the best trade
+   * @param currencyAmountIn exact amount of input currency to spend
+   * @param currencyOut the desired currency out
+   * @param maxNumResults maximum number of results to return
+   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
+   * @param currentPairs used in recursion; the current list of pairs
+   * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
+   * @param bestTrades used in recursion; the current list of best trades
+   */
+  ;
+
+  TradeV4.bestTradeExactInIteration = function bestTradeExactInIteration(originalStablePool, stablePool, pools, currencyAmountIn, currencyOut, _temp, // used in recursion.
+  currentpools, originalAmountIn, bestTrades) {
+    var _ref3 = _temp === void 0 ? {} : _temp,
+        _ref3$maxNumResults = _ref3.maxNumResults,
+        maxNumResults = _ref3$maxNumResults === void 0 ? 3 : _ref3$maxNumResults,
+        _ref3$maxHops = _ref3.maxHops,
+        maxHops = _ref3$maxHops === void 0 ? 3 : _ref3$maxHops;
+
+    if (currentpools === void 0) {
+      currentpools = [];
+    }
+
+    if (originalAmountIn === void 0) {
+      originalAmountIn = currencyAmountIn;
+    }
+
+    if (bestTrades === void 0) {
+      bestTrades = [];
+    }
+
+    !(pools.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
+    !(originalAmountIn === currencyAmountIn || currentpools.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
+    var chainId = currencyAmountIn instanceof TokenAmount ? currencyAmountIn.token.chainId : currencyOut instanceof Token ? currencyOut.chainId : undefined;
+    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0; // create copy of stablePool object no not change the original one
+    // const stablePoolForIteration = stablePool.clone()
+
+    var amountIn = wrappedAmount$2(currencyAmountIn, chainId);
+    var tokenOut = wrappedCurrency$2(currencyOut, chainId);
+
+    if ( // check if it can be only a single stable swap trade
+    currencyAmountIn instanceof TokenAmount && currencyOut instanceof Token && Object.values(stablePool.tokens).includes(currencyAmountIn.token) && Object.values(stablePool.tokens).includes(currencyOut)) {
+      var pool = StablePairWrapper.wrapSinglePairFromPool(stablePool, stablePool.indexFromToken(currencyAmountIn.token), stablePool.indexFromToken(currencyOut)); // write pricings into the pool
+
+      pool.getOutputAmount(currencyAmountIn, stablePool);
+      var stableTrade = new TradeV4(new RouteV4([pool], originalStablePool, currencyAmountIn.token, currencyOut), currencyAmountIn, exports.TradeType.EXACT_INPUT);
+      return [stableTrade];
+    }
+
+    for (var i = 0; i < pools.length; i++) {
+      var _pool2 = pools[i];
+      if (!_pool2.token0.equals(amountIn.token) && !_pool2.token1.equals(amountIn.token)) continue;
+      if (_pool2.reserve0.equalTo(ZERO) || _pool2.reserve1.equalTo(ZERO)) continue;
+      var amountOut = void 0; // if( pool instanceof WeightedPair)  {console.log("out": pool.getInputAmount(amountOut) }
+
+      try {
+        if (_pool2.type === exports.PoolType.Pair) {
+          ;
+
+          var _pool2$getOutputAmoun = _pool2.getOutputAmount(amountIn);
+
+          amountOut = _pool2$getOutputAmoun[0];
+        } else if (_pool2.type === exports.PoolType.WeightedPair) {
+          ;
+
+          var _pool2$clone$getOutpu = _pool2.clone().getOutputAmount(amountIn);
+
+          amountOut = _pool2$clone$getOutpu[0];
+          // ;[amountOut] = (pool as WeightedPair).getOutputAmount(amountIn)
+          console.log("out weighted", amountOut.raw); // const [amountOut1,] = ((pool).clone() as any as Pair).getOutputAmount(amountIn)
+          // console.log("out PAIR", amountOut1.raw)
+        } else {
+          var _pool2$getOutputAmoun2 = _pool2.getOutputAmount(amountIn, stablePool);
+
+          amountOut = _pool2$getOutputAmoun2[0];
+        } // ;[amountOut] = pool instanceof Pair || pool instanceof WeightedPair ? pool.getOutputAmount(amountIn) : pool.getOutputAmount(amountIn, stablePool)
+
+      } catch (error) {
+        // input too low
+        if (error.isInsufficientInputAmountError) {
+          continue;
+        }
+
+        throw error;
+      } // we have arrived at the output token, so this is the final trade of one of the paths
+
+
+      if (amountOut.token.equals(tokenOut)) {
+        sortedInsert(bestTrades, new TradeV4(new RouteV4([].concat(currentpools, [_pool2]), originalStablePool, originalAmountIn.currency, currencyOut), originalAmountIn, exports.TradeType.EXACT_INPUT), maxNumResults, tradeComparatorV4);
+      } else if (maxHops > 1 && pools.length > 1) {
+        var poolsExcludingThispool = pools.slice(0, i).concat(pools.slice(i + 1, pools.length)); // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
+
+        TradeV4.bestTradeExactInIteration(originalStablePool, stablePool, poolsExcludingThispool, amountOut, currencyOut, {
+          maxNumResults: maxNumResults,
+          maxHops: maxHops - 1
+        }, [].concat(currentpools, [_pool2]), originalAmountIn, bestTrades);
+      }
+    }
+
+    return bestTrades;
+  }
+  /**
+   * similar to the above method but instead targets a fixed output amount
+   * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
+   * to an output token amount, making at most `maxHops` hops
+   * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
+   * the amount in among multiple routes.
+   * @param stablePool the stalePool used for the iteration - it will undergo changes
+   * @param pools the pairs / wrapped pairs to consider in finding the best trade
+   * @param currencyIn the currency to spend
+   * @param currencyAmountOut the exact amount of currency out
+   * @param maxNumResults maximum number of results to return
+   * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
+   * @param currentpools used in recursion; the current list of pairs
+   * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
+   * @param bestTrades used in recursion; the current list of best trades
+   */
+  ;
+
+  TradeV4.bestTradeExactOutIteration = function bestTradeExactOutIteration(originalStablePool, stablePool, pools, currencyIn, currencyAmountOut, _temp2, // used in recursion.
+  currentpools, originalAmountOut, bestTrades) {
+    var _ref4 = _temp2 === void 0 ? {} : _temp2,
+        _ref4$maxNumResults = _ref4.maxNumResults,
+        maxNumResults = _ref4$maxNumResults === void 0 ? 3 : _ref4$maxNumResults,
+        _ref4$maxHops = _ref4.maxHops,
+        maxHops = _ref4$maxHops === void 0 ? 3 : _ref4$maxHops;
+
+    if (currentpools === void 0) {
+      currentpools = [];
+    }
+
+    if (originalAmountOut === void 0) {
+      originalAmountOut = currencyAmountOut;
+    }
+
+    if (bestTrades === void 0) {
+      bestTrades = [];
+    }
+
+    !(pools.length > 0) ?  invariant(false, 'PAIRS')  : void 0;
+    !(maxHops > 0) ?  invariant(false, 'MAX_HOPS')  : void 0;
+    !(originalAmountOut === currencyAmountOut || currentpools.length > 0) ?  invariant(false, 'INVALID_RECURSION')  : void 0;
+    var chainId = currencyAmountOut instanceof TokenAmount ? currencyAmountOut.token.chainId : currencyIn instanceof Token ? currencyIn.chainId : undefined;
+    !(chainId !== undefined) ?  invariant(false, 'CHAIN_ID')  : void 0; // create copy of stablePool object
+    // const stablePoolForIteration = stablePool.clone()
+
+    var amountOut = wrappedAmount$2(currencyAmountOut, chainId);
+    var tokenIn = wrappedCurrency$2(currencyIn, chainId);
+
+    if ( // check ifit can be only a single stable swap trade
+    currencyAmountOut instanceof TokenAmount && currencyIn instanceof Token && Object.values(stablePool.tokens).includes(currencyAmountOut.token) && Object.values(stablePool.tokens).includes(currencyIn)) {
+      var pool = StablePairWrapper.wrapSinglePairFromPool(stablePool, stablePool.indexFromToken(currencyAmountOut.token), stablePool.indexFromToken(currencyIn)); // return value does not matter, we just need the stablePool pricing to be stored in the pair
+
+      pool.getInputAmount(amountOut, stablePool);
+      var stableTrade = new TradeV4(new RouteV4([pool], originalStablePool, currencyIn, currencyAmountOut.token), currencyAmountOut, exports.TradeType.EXACT_OUTPUT);
+      return [stableTrade];
+    }
+
+    for (var i = 0; i < pools.length; i++) {
+      var _pool3 = pools[i]; // pool irrelevant
+
+      if (!_pool3.token0.equals(amountOut.token) && !_pool3.token1.equals(amountOut.token)) continue;
+      if (_pool3.reserve0.equalTo(ZERO) || _pool3.reserve1.equalTo(ZERO)) continue;
+      var amountIn = void 0;
+
+      try {
+        ;
+
+        var _ref5 = _pool3 instanceof Pair || _pool3 instanceof WeightedPair ? _pool3.getInputAmount(amountOut) : _pool3.getInputAmount(amountOut, stablePool);
+
+        amountIn = _ref5[0];
+      } catch (error) {
+        // not enough liquidity in this pool
+        if (error.isInsufficientReservesError) {
+          continue;
+        }
+
+        throw error;
+      } // we have arrived at the input token, so this is the first trade of one of the paths
+
+
+      if (amountIn.token.equals(tokenIn)) {
+        sortedInsert(bestTrades, new TradeV4(new RouteV4([_pool3].concat(currentpools), originalStablePool, currencyIn, originalAmountOut.currency), originalAmountOut, exports.TradeType.EXACT_OUTPUT), maxNumResults, tradeComparatorV4);
+      } else if (maxHops > 1 && pools.length > 1) {
+        var poolsExcludingThispool = pools.slice(0, i).concat(pools.slice(i + 1, pools.length)); // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
+
+        TradeV4.bestTradeExactOutIteration(originalStablePool, stablePool, poolsExcludingThispool, currencyIn, amountIn, {
+          maxNumResults: maxNumResults,
+          maxHops: maxHops - 1
+        }, [_pool3].concat(currentpools), originalAmountOut, bestTrades);
+      }
+    }
+
+    return bestTrades;
+  };
+
+  TradeV4.bestTradeExactOut = function bestTradeExactOut(stablePool, pools, currencyIn, currencyAmountOut, _temp3) {
+    var _ref6 = _temp3 === void 0 ? {} : _temp3,
+        _ref6$maxNumResults = _ref6.maxNumResults,
+        maxNumResults = _ref6$maxNumResults === void 0 ? 3 : _ref6$maxNumResults,
+        _ref6$maxHops = _ref6.maxHops,
+        maxHops = _ref6$maxHops === void 0 ? 3 : _ref6$maxHops;
+
+    return this.bestTradeExactOutIteration(stablePool, stablePool.clone(), pools, currencyIn, currencyAmountOut, {
+      maxNumResults: maxNumResults,
+      maxHops: maxHops
+    }, [], currencyAmountOut, []);
+  };
+
+  TradeV4.bestTradeExactIn = function bestTradeExactIn(stablePool, pools, currencyAmountIn, currencyOut, _temp4) {
+    var _ref7 = _temp4 === void 0 ? {} : _temp4,
+        _ref7$maxNumResults = _ref7.maxNumResults,
+        maxNumResults = _ref7$maxNumResults === void 0 ? 3 : _ref7$maxNumResults,
+        _ref7$maxHops = _ref7.maxHops,
+        maxHops = _ref7$maxHops === void 0 ? 3 : _ref7$maxHops;
+
+    return this.bestTradeExactInIteration(stablePool, stablePool.clone(), pools, currencyAmountIn, currencyOut, {
+      maxNumResults: maxNumResults,
+      maxHops: maxHops
+    }, [], currencyAmountIn, []);
+  };
+
+  return TradeV4;
+}();
+
 function toHex(currencyAmount) {
   return "0x" + currencyAmount.raw.toString(16);
 }
@@ -5369,6 +5822,7 @@ exports.REQUIEM_PAIR_MANAGER = REQUIEM_PAIR_MANAGER;
 exports.REQUIEM_WEIGHTED_PAIR_FACTORY = REQUIEM_WEIGHTED_PAIR_FACTORY;
 exports.Route = Route;
 exports.RouteV3 = RouteV3;
+exports.RouteV4 = RouteV4;
 exports.Router = Router;
 exports.RouterV3 = RouterV3;
 exports.RouterV4 = RouterV4;
@@ -5385,12 +5839,15 @@ exports.Token = Token;
 exports.TokenAmount = TokenAmount;
 exports.Trade = Trade;
 exports.TradeV3 = TradeV3;
+exports.TradeV4 = TradeV4;
 exports.WETH = WETH;
 exports.WRAPPED_NETWORK_TOKENS = WRAPPED_NETWORK_TOKENS;
 exports.WeightedPair = WeightedPair;
 exports.currencyEquals = currencyEquals;
 exports.inputOutputComparator = inputOutputComparator;
 exports.inputOutputComparatorV3 = inputOutputComparatorV3;
+exports.inputOutputComparatorV4 = inputOutputComparatorV4;
 exports.tradeComparator = tradeComparator;
 exports.tradeComparatorV3 = tradeComparatorV3;
+exports.tradeComparatorV4 = tradeComparatorV4;
 //# sourceMappingURL=sdk.cjs.development.js.map
