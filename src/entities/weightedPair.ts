@@ -68,7 +68,7 @@ export class WeightedPair {
     this.fee = fee
     this.liquidityToken = new Token(
       tokenAmounts[0].token.chainId,
-      WeightedPair.getAddress(tokenAmounts[0].token, tokenAmounts[1].token, JSBI.BigInt(50), fee),
+      WeightedPair.getAddress(tokenAmounts[0].token, tokenAmounts[1].token, weightA, fee),
       18,
       'Requiem-LP',
       'Requiem LPs'

@@ -27,7 +27,7 @@ export interface TradeV4Options {
      */
     multiSwap?: boolean;
 }
-export interface TradeV3OptionsDeadline extends Omit<TradeV4Options, 'ttl'> {
+export interface TradeV4OptionsDeadline extends Omit<TradeV4Options, 'ttl'> {
     /**
      * When the transaction expires.
      * This is an atlernate to specifying the ttl, for when you do not want to use local time.
@@ -64,5 +64,5 @@ export declare abstract class RouterV4 {
      * @param trade to produce call parameters for
      * @param options options for the call parameters
      */
-    static swapCallParameters(trade: TradeV4, options: TradeV4Options | TradeV3OptionsDeadline): SwapV4Parameters;
+    static swapCallParameters(trade: TradeV4, options: TradeV4Options | TradeV4OptionsDeadline): SwapV4Parameters;
 }
