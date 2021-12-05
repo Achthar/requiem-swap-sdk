@@ -16,6 +16,7 @@ export declare class StablePairWrapper implements Source {
     readonly liquidityToken: Token;
     status: string;
     constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount, indexA: number, indexB: number);
+    getAddressForRouter(): string;
     /**
      * Returns the chain ID of the tokens in the pair.
      */

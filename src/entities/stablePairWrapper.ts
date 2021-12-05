@@ -5,7 +5,7 @@ import { TokenAmount } from "./fractions/tokenAmount";
 import invariant from "tiny-invariant";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Source } from './source';
-import { ChainId, STABLE_POOL_LP_ADDRESS } from "./../constants";
+import { ChainId, STABLE_POOL_LP_ADDRESS, STABLE_POOL_ADDRESS } from "./../constants";
 import { PoolType } from "./pool";
 
 // A class that wraps a stablePool to a pair-like structure
@@ -44,13 +44,19 @@ export class StablePairWrapper implements Source {
         this.tokenAmounts = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [tokenAmountA, tokenAmountB] : [tokenAmountB, tokenAmountA]
         this.stableIndexes = tokenAmountA.token.sortsBefore(tokenAmountB.token) ? [indexA, indexB] : [indexB, indexA]
 
-        this.pricingBasesIn =  this.tokenAmounts
-        this.pricingBasesOut =  this.tokenAmounts
+        this.pricingBasesIn = this.tokenAmounts
+        this.pricingBasesOut = this.tokenAmounts
         // this.executionPrice = new Price(tokenAmountA.token, tokenAmountB.token, tokenAmountA.raw, tokenAmountB.raw)
         this.referenceMidPrices = []
         this.type = PoolType.StablePairWrapper
         this.status = 'NOT PRICED'
     }
+
+
+    public getAddressForRouter(): string {
+        return STABLE_POOL_ADDRESS[this.tokenAmounts[0].token.chainId]
+    }
+
 
     /**
      * Returns the chain ID of the tokens in the pair.

@@ -140,7 +140,8 @@ export function calculateSwap(inIndex: number, outIndex: number, inAmount: BigNu
         inIndex,
         outIndex,
         newInBalance,
-        blockTimestamp, swapStorage,
+        blockTimestamp, 
+        swapStorage,
         normalizedBalances
     )
 
@@ -149,7 +150,29 @@ export function calculateSwap(inIndex: number, outIndex: number, inAmount: BigNu
     return outAmount.sub(_fee)
 }
 
+export function calculateSwapGivenOut(inIndex: number, outIndex: number, outAmount: BigNumber, // standard fields
+    balances: BigNumber[],
+    blockTimestamp: BigNumber,
+    swapStorage: SwapStorage
+): BigNumber {
 
+    let normalizedBalances = _xp(balances, swapStorage.tokenMultipliers)
+
+    let _amountOutInclFee = outAmount.mul(BigNumber.from(FEE_DENOMINATOR)).div( BigNumber.from(FEE_DENOMINATOR).sub(swapStorage.fee));
+    let newOutBalance = normalizedBalances[outIndex].sub(_amountOutInclFee.mul(swapStorage.tokenMultipliers[outIndex]));
+
+    let inBalance = _getY(
+        outIndex,
+        inIndex,
+        newOutBalance,
+        blockTimestamp, 
+        swapStorage,
+        normalizedBalances
+    )
+
+    let inAmount = (inBalance.sub(normalizedBalances[inIndex])).div(swapStorage.tokenMultipliers[inIndex])
+    return inAmount;
+}
 
 // function to calculate the amounts of stables from the amounts of LP
 export function _calculateRemoveLiquidity(

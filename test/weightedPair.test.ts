@@ -12,8 +12,8 @@ import JSBI from 'jsbi'
 import { BigNumber } from '@ethersproject/bignumber'
 
 describe('WeightedPair', () => {
-  const USDC = new Token(ChainId.BSC_MAINNET, '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 18, 'USDC', 'USD Coin')
-  const DAI = new Token(ChainId.BSC_MAINNET, '0x6B175474E89094C44Da98b954EedeAC495271d0F', 18, 'DAI', 'DAI Stablecoin')
+  const USDC = new Token(ChainId.AVAX_TESTNET, '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 18, 'USDC', 'USD Coin')
+  const DAI = new Token(ChainId.AVAX_TESTNET, '0x6B175474E89094C44Da98b954EedeAC495271d0F', 18, 'DAI', 'DAI Stablecoin')
   const weightA = JSBI.BigInt('44')
   const fee = JSBI.BigInt('14')
   describe('constructor', () => {
@@ -93,7 +93,7 @@ describe('WeightedPair', () => {
     })
 
     it('throws if invalid token', () => {
-      expect(() => pair.priceOf(WETH[ChainId.BSC_MAINNET])).toThrow('TOKEN')
+      expect(() => pair.priceOf(WETH[ChainId.AVAX_TESTNET])).toThrow('TOKEN')
     })
   })
 
@@ -109,22 +109,22 @@ describe('WeightedPair', () => {
 
     it('throws if not in the pair', () => {
       expect(() =>
-        new WeightedPair(new TokenAmount(DAI, '101'), new TokenAmount(USDC, '100'), weightA, fee).reserveOf(WETH[ChainId.BSC_MAINNET])
+        new WeightedPair(new TokenAmount(DAI, '101'), new TokenAmount(USDC, '100'), weightA, fee).reserveOf(WETH[ChainId.AVAX_TESTNET])
       ).toThrow('TOKEN')
     })
   })
 
   describe('#chainId', () => {
     it('returns the token0 chainId', () => {
-      expect(new WeightedPair(new TokenAmount(USDC, '100'), new TokenAmount(DAI, '100'), weightA, fee).chainId).toEqual(ChainId.BSC_MAINNET)
-      expect(new WeightedPair(new TokenAmount(DAI, '100'), new TokenAmount(USDC, '100'), weightA, fee).chainId).toEqual(ChainId.BSC_MAINNET)
+      expect(new WeightedPair(new TokenAmount(USDC, '100'), new TokenAmount(DAI, '100'), weightA, fee).chainId).toEqual(ChainId.AVAX_TESTNET)
+      expect(new WeightedPair(new TokenAmount(DAI, '100'), new TokenAmount(USDC, '100'), weightA, fee).chainId).toEqual(ChainId.AVAX_TESTNET)
     })
   })
   describe('#involvesToken', () => {
     expect(new WeightedPair(new TokenAmount(USDC, '100'), new TokenAmount(DAI, '100'), weightA, fee).involvesToken(USDC)).toEqual(true)
     expect(new WeightedPair(new TokenAmount(USDC, '100'), new TokenAmount(DAI, '100'), weightA, fee).involvesToken(DAI)).toEqual(true)
     expect(
-      new WeightedPair(new TokenAmount(USDC, '100'), new TokenAmount(DAI, '100'), weightA, fee).involvesToken(WETH[ChainId.BSC_MAINNET])
+      new WeightedPair(new TokenAmount(USDC, '100'), new TokenAmount(DAI, '100'), weightA, fee).involvesToken(WETH[ChainId.AVAX_TESTNET])
     ).toEqual(false)
   })
 

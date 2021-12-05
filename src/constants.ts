@@ -49,19 +49,23 @@ export const INIT_CODE_HASH: { [chainId: number]: string } = {
 }
 
 export const INIT_CODE_HASH_WEIGHTED: { [chainId: number]: string } = {
-  56: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
-  97: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
-  80001: '0xc2b3644608b464a0df0eb711ce9c6ce7535d1bd4d0154b8389738a3e7fbb1a61',
-  43113: '0x197a29e2e90d809812f533e62529432f8e2741455e49d25365a66b4be2a453dd',
+  43113: '0x4df8067145d0a795d56b39c1ba240740a830ae545df3b51d3d8552b02e265c75',
 }
 
+export const REQUIEM_PAIR_MANAGER:{[chainId:number]:string} ={
+  43113:'0x3dDD991c30Af1f7E40946006B83C9a82D0f8dFd6'
+}
+
+export const REQUIEM_WEIGHTED_PAIR_FACTORY:{[chainId:number]:string} = {
+  43113:'0x2F1e1e45F396d119A55e0FA5B30B664Ce78835C7'
+}
 
 export const STABLE_POOL_ADDRESS: { [chainId: number]: string } = {
-  43113: '0x9067e2C2bf8531283AB97C34EaA74599E0004842',
+  43113: '0xb76c5C977F48C45d3f3234798D0051bdcA6dc656',
 }
 
 export const STABLE_POOL_LP_ADDRESS: { [chainId: number]: string } = {
-  43113: '0xDf65aC8079A71f5174A35dE3D29e5458d03D5787'
+  43113: '0x6a3a5f06aaa453b56ac44e84d87d9e3e3a3d6ab2'
 }
 
 export const MINIMUM_LIQUIDITY = JSBI.BigInt(1000)

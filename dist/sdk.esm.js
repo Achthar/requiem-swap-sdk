@@ -63,16 +63,13 @@ var INIT_CODE_HASH = {
   43113: '0x197a29e2e90d809812f533e62529432f8e2741455e49d25365a66b4be2a453dd'
 };
 var INIT_CODE_HASH_WEIGHTED = {
-  56: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
-  97: '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5',
-  80001: '0xc2b3644608b464a0df0eb711ce9c6ce7535d1bd4d0154b8389738a3e7fbb1a61',
-  43113: '0x197a29e2e90d809812f533e62529432f8e2741455e49d25365a66b4be2a453dd'
+  43113: '0x4df8067145d0a795d56b39c1ba240740a830ae545df3b51d3d8552b02e265c75'
 };
 var STABLE_POOL_ADDRESS = {
-  43113: '0x9067e2C2bf8531283AB97C34EaA74599E0004842'
+  43113: '0xb76c5C977F48C45d3f3234798D0051bdcA6dc656'
 };
 var STABLE_POOL_LP_ADDRESS = {
-  43113: '0xDf65aC8079A71f5174A35dE3D29e5458d03D5787'
+  43113: '0x6a3a5f06aaa453b56ac44e84d87d9e3e3a3d6ab2'
 };
 var MINIMUM_LIQUIDITY = /*#__PURE__*/JSBI.BigInt(1000); // exports for internal consumption
 
@@ -930,14 +927,18 @@ var Pair = /*#__PURE__*/function () {
     }
 
     return PAIR_ADDRESS_CACHE[tokens[0].address][tokens[1].address];
+  };
+
+  var _proto = Pair.prototype;
+
+  _proto.getAddressForRouter = function getAddressForRouter() {
+    return this.liquidityToken.address;
   }
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check
    */
   ;
-
-  var _proto = Pair.prototype;
 
   _proto.involvesToken = function involvesToken(token) {
     return token.equals(this.token0) || token.equals(this.token1);
@@ -2152,14 +2153,18 @@ var WeightedPair = /*#__PURE__*/function () {
     }
 
     return PAIR_ADDRESS_CACHE$1[tokens[0].address][tokens[1].address];
+  };
+
+  var _proto = WeightedPair.prototype;
+
+  _proto.getAddressForRouter = function getAddressForRouter() {
+    return this.liquidityToken.address;
   }
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check
    */
   ;
-
-  var _proto = WeightedPair.prototype;
 
   _proto.involvesToken = function involvesToken(token) {
     return token.equals(this.token0) || token.equals(this.token1);
@@ -2202,16 +2207,9 @@ var WeightedPair = /*#__PURE__*/function () {
     var inputReserve = this.reserveOf(inputAmount.token);
     var outputReserve = this.reserveOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0);
     var inputWeight = this.weightOf(inputAmount.token);
-    var outputWeight = this.weightOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0); // const inA = inputAmount.toBigNumber()
-    // const inRes=  inputReserve.toBigNumber()
-    // const outRes =  outputReserve.toBigNumber()
-    // const inWeight =  BigNumber.from(inputWeight.toString())
-    // const outWeight=  BigNumber.from(outputWeight.toString())
-    // const f =  BigNumber.from(this.fee.toString())
-
+    var outputWeight = this.weightOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0);
     var outputAmount = new TokenAmount(inputAmount.token.equals(this.token0) ? this.token1 : this.token0, // getAmountOut(inputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
-    JSBI.BigInt(getAmountOut(inputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString()) // JSBI.BigInt(getAmountOut(inA, inRes, outRes, inWeight, outWeight, f).toString())
-    ); // console.log("OA", outputAmount.raw.toString())
+    JSBI.BigInt(getAmountOut(inputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString())); // console.log("OA", outputAmount.raw.toString())
 
     if (JSBI.equal(outputAmount.raw, ZERO)) {
       throw new InsufficientInputAmountError();
@@ -2689,6 +2687,19 @@ balances, blockTimestamp, swapStorage) {
   var _fee = swapStorage.fee.mul(outAmount).div(FEE_DENOMINATOR);
 
   return outAmount.sub(_fee);
+}
+function calculateSwapGivenOut(inIndex, outIndex, outAmount, // standard fields
+balances, blockTimestamp, swapStorage) {
+  var normalizedBalances = _xp(balances, swapStorage.tokenMultipliers);
+
+  var _amountOutInclFee = outAmount.mul(BigNumber$1.from(FEE_DENOMINATOR)).div(BigNumber$1.from(FEE_DENOMINATOR).sub(swapStorage.fee));
+
+  var newOutBalance = normalizedBalances[outIndex].sub(_amountOutInclFee.mul(swapStorage.tokenMultipliers[outIndex]));
+
+  var inBalance = _getY(outIndex, inIndex, newOutBalance, blockTimestamp, swapStorage, normalizedBalances);
+
+  var inAmount = inBalance.sub(normalizedBalances[inIndex]).div(swapStorage.tokenMultipliers[inIndex]);
+  return inAmount;
 } // function to calculate the amounts of stables from the amounts of LP
 
 function _calculateRemoveLiquidity(amount, swapStorage, totalSupply, currentWithdrawFee, balances) {
@@ -4114,14 +4125,18 @@ var StablePool = /*#__PURE__*/function () {
     return new StablePool({
       0: new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')
     }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy);
+  };
+
+  var _proto = StablePool.prototype;
+
+  _proto.getAddressForRouter = function getAddressForRouter() {
+    return STABLE_POOL_ADDRESS[this.tokens[0].chainId];
   }
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check
    */
   ;
-
-  var _proto = StablePool.prototype;
 
   _proto.involvesToken = function involvesToken(token) {
     var res = false;
@@ -4173,6 +4188,14 @@ var StablePool = /*#__PURE__*/function () {
     var outAmount = calculateSwap(inIndex, outIndex, inAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
 
     return outAmount;
+  } // calculates the swap output amount without
+  // pinging the blockchain for data
+  ;
+
+  _proto.calculateSwapGivenOut = function calculateSwapGivenOut$1(inIndex, outIndex, inAmount) {
+    var outAmount = calculateSwapGivenOut(inIndex, outIndex, inAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
+
+    return outAmount;
   };
 
   _proto.getOutputAmount = function getOutputAmount(inputAmount, outIndex) {
@@ -4181,7 +4204,7 @@ var StablePool = /*#__PURE__*/function () {
   };
 
   _proto.getInputAmount = function getInputAmount(outputAmount, inIndex) {
-    var swap = this.calculateSwap(this.indexFromToken(outputAmount.token), inIndex, outputAmount.toBigNumber());
+    var swap = this.calculateSwapGivenOut(this.indexFromToken(outputAmount.token), inIndex, outputAmount.toBigNumber());
     return new TokenAmount(this.tokenFromIndex(inIndex), swap.toBigInt());
   }
   /**
@@ -4537,12 +4560,16 @@ var StablePairWrapper = /*#__PURE__*/function () {
     this.type = PoolType.StablePairWrapper;
     this.status = 'NOT PRICED';
   }
+
+  var _proto = StablePairWrapper.prototype;
+
+  _proto.getAddressForRouter = function getAddressForRouter() {
+    return STABLE_POOL_ADDRESS[this.tokenAmounts[0].token.chainId];
+  }
   /**
    * Returns the chain ID of the tokens in the pair.
    */
-
-
-  var _proto = StablePairWrapper.prototype;
+  ;
 
   // this gets the reserve of the respectve (stable) token
   _proto.reserveOf = function reserveOf(token) {
@@ -5163,5 +5190,5 @@ var TradeV3 = /*#__PURE__*/function () {
   return TradeV3;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, Price, Rounding, Route, RouteV3, Router, RouterV3, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, tradeComparator, tradeComparatorV3 };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, Router, RouterV3, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, tradeComparator, tradeComparatorV3 };
 //# sourceMappingURL=sdk.esm.js.map

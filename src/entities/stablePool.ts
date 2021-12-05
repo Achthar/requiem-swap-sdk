@@ -5,7 +5,8 @@ import {
   calculateSwap,
   _calculateRemoveLiquidity,
   _calculateRemoveLiquidityOneToken,
-  _calculateTokenAmount
+  _calculateTokenAmount,
+  calculateSwapGivenOut
 } from './stableCalc'
 import { Contract } from '@ethersproject/contracts'
 import { ethers } from 'ethers'
@@ -84,6 +85,10 @@ export class StablePool {
     return new StablePool({ 0: new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC') }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy)
   }
 
+  public getAddressForRouter(): string {
+    return STABLE_POOL_ADDRESS[this.tokens[0].chainId]
+  }
+
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check
@@ -153,13 +158,32 @@ export class StablePool {
     return outAmount
   }
 
+
+  // calculates the swap output amount without
+  // pinging the blockchain for data
+  public calculateSwapGivenOut(
+    inIndex: number,
+    outIndex: number,
+    inAmount: BigNumber): BigNumber {
+
+    const outAmount: BigNumber = calculateSwapGivenOut(
+      inIndex,
+      outIndex,
+      inAmount,
+      this.getBalances(),
+      this.blockTimestamp,
+      this.swapStorage)
+
+    return outAmount
+  }
+
   public getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount {
     const swap = this.calculateSwap(this.indexFromToken(inputAmount.token), outIndex, inputAmount.toBigNumber())
     return new TokenAmount(this.tokenFromIndex(outIndex), swap.toBigInt())
   }
 
   public getInputAmount(outputAmount: TokenAmount, inIndex: number): TokenAmount {
-    const swap = this.calculateSwap(this.indexFromToken(outputAmount.token), inIndex, outputAmount.toBigNumber())
+    const swap = this.calculateSwapGivenOut(this.indexFromToken(outputAmount.token), inIndex, outputAmount.toBigNumber())
     return new TokenAmount(this.tokenFromIndex(inIndex), swap.toBigInt())
   }
   /**

@@ -31,6 +31,12 @@ export declare const INIT_CODE_HASH: {
 export declare const INIT_CODE_HASH_WEIGHTED: {
     [chainId: number]: string;
 };
+export declare const REQUIEM_PAIR_MANAGER: {
+    [chainId: number]: string;
+};
+export declare const REQUIEM_WEIGHTED_PAIR_FACTORY: {
+    [chainId: number]: string;
+};
 export declare const STABLE_POOL_ADDRESS: {
     [chainId: number]: string;
 };

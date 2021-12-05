@@ -13,6 +13,8 @@ export declare function _getD(xp: BigNumber[], amp: BigNumber): BigNumber;
 export declare function _getY(inIndex: number, outIndex: number, inBalance: BigNumber, blockTimestamp: BigNumber, swapStorage: SwapStorage, normalizedBalances: BigNumber[]): BigNumber;
 export declare function calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber, // standard fields
 balances: BigNumber[], blockTimestamp: BigNumber, swapStorage: SwapStorage): BigNumber;
+export declare function calculateSwapGivenOut(inIndex: number, outIndex: number, outAmount: BigNumber, // standard fields
+balances: BigNumber[], blockTimestamp: BigNumber, swapStorage: SwapStorage): BigNumber;
 export declare function _calculateRemoveLiquidity(amount: BigNumber, swapStorage: SwapStorage, totalSupply: BigNumber, currentWithdrawFee: BigNumber, balances: BigNumber[]): BigNumber[];
 export declare function _calculateRemoveLiquidityOneToken(swapStorage: SwapStorage, tokenAmount: BigNumber, index: number, blockTimestamp: BigNumber, balances: BigNumber[], totalSupply: BigNumber, currentWithdrawFee: BigNumber): {
     [returnVal: string]: BigNumber;

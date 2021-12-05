@@ -67,6 +67,10 @@ export class Pair implements Source {
     this.tokenAmounts = tokenAmounts as [TokenAmount, TokenAmount]
   }
 
+  public getAddressForRouter(): string {
+    return this.liquidityToken.address
+  }
+  
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check

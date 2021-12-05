@@ -1,5 +1,5 @@
 import { Percent } from './entities';
-import { TradeV3 } from './entities/tradeV3';
+import { TradeV4 } from './entities/tradeV4';
 /**
  * Options for producing the arguments to send call to the router.
  */
@@ -64,5 +64,5 @@ export declare abstract class RouterV4 {
      * @param trade to produce call parameters for
      * @param options options for the call parameters
      */
-    static swapCallParameters(trade: TradeV3, options: TradeV4Options | TradeV3OptionsDeadline): SwapV4Parameters;
+    static swapCallParameters(trade: TradeV4, options: TradeV4Options | TradeV3OptionsDeadline): SwapV4Parameters;
 }

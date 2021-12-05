@@ -2,7 +2,7 @@ import { TradeType } from './constants'
 import invariant from 'tiny-invariant'
 import { validateAndParseAddress } from './utils'
 import { CurrencyAmount, NETWORK_CCY, Percent } from './entities'
-import { TradeV3 } from './entities/tradeV3'
+import { TradeV4 } from './entities/tradeV4'
 
 /**
  * Options for producing the arguments to send call to the router.
@@ -79,7 +79,7 @@ export abstract class RouterV4 {
    * @param trade to produce call parameters for
    * @param options options for the call parameters
    */
-  public static swapCallParameters(trade: TradeV3, options: TradeV4Options | TradeV3OptionsDeadline): SwapV4Parameters {
+  public static swapCallParameters(trade: TradeV4, options: TradeV4Options | TradeV3OptionsDeadline): SwapV4Parameters {
     const etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId]
     const etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]
     // the router does not support both ether in and out
@@ -100,7 +100,7 @@ export abstract class RouterV4 {
         ? `0x${(Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16)}`
         : `0x${options.deadline.toString(16)}`
 
-    if (!options.multiSwap && (trade.route.routerIds.length === 1 && trade.route.routerIds[0] === 1)) {
+    if (!options.multiSwap) {
       const path: string[] = trade.route.path.map((token) => token.address)
       const useFeeOnTransfer = Boolean(options.feeOnTransfer)
       switch (trade.tradeType) {
@@ -145,49 +145,53 @@ export abstract class RouterV4 {
           break
       }
     } else {
-      const path = []
-      for (let i = 0; i < trade.route.pathMatrix.length; i++)
-      path.push(trade.route.pathMatrix[i].map(token => token.address))
-      const routerId = trade.route.routerIds.map(id => id.toString())
+      const path = trade.route.path.map(token =>token.address)
+      const pools = trade.route.pools.map(pool=>pool.getAddressForRouter())
+      
       switch (trade.tradeType) {
         case TradeType.EXACT_INPUT:
           if (etherIn) {
-            methodName = 'multiSwapExactETHForTokens'
+            methodName = 'onSwapExactETHForTokens'
             // function multiSwapExactETHForTokens( address[][] calldata path, uint256[] memory routerId,
             // uint256 amountOutMin, uint256 deadline )
-            args = [path, routerId, amountOut, deadline]
+            args = [pools, path, amountOut, to, deadline]
             value = amountIn
           } else if (etherOut) {
-            methodName = 'multiSwapExactTokensForETH'
-            // multiSwapExactTokensForETH( address[][] calldata path, uint256[] memory routerId, uint256 amountIn,
+            methodName = 'onSwapExactTokensForETH'
+            // multiSwapExactTokensForETH( address[][] calldata path, uint256[] memory pools, uint256 amountIn,
             // uint256 amountOutMin, uint256 deadline )
-            args = [path, routerId, amountIn, amountOut, deadline]
+            args = [pools, path, amountIn, amountOut, deadline]
             value = ZERO_HEX
           } else {
-            methodName = 'multiSwapExactTokensForTokens'
-            // multiSwapExactTokensForTokens( address[][] calldata path, uint256[] memory routerId, 
-            // uint256 amountIn, uint256 amountOutMin, uint256 deadline )
-            args = [path, routerId, amountIn, amountOut, deadline]
+            methodName = 'onSwapExactTokensForTokens'
+            // function onSwapExactTokensForTokens(
+            //   address[] memory pools,
+            //   address[] memory tokens,
+            //   uint256 amountIn,
+            //   uint256 amountOutMin,
+            //   address to,
+            //   uint256 deadline
+            args = [pools, path, amountIn, amountOut, to, deadline]
             value = ZERO_HEX
           }
           break
         case TradeType.EXACT_OUTPUT:
           if (etherIn) {
-            methodName = 'multiSwapETHForExactTokens'
-            // multiSwapETHForExactTokens( address[][] calldata path, uint256[] memory routerId, uint256 amountOut, uint256 deadline )
-            args = [path, routerId, amountOut, deadline]
+            methodName = 'onSwapETHForExactTokens'
+            // multiSwapETHForExactTokens( address[][] calldata path, uint256[] memory pools, uint256 amountOut, uint256 deadline )
+            args = [pools, path, amountOut, to, deadline]
             value = amountIn
           } else if (etherOut) {
-            methodName = 'multiSwapTokensForExactETH'
-            // multiSwapTokensForExactETH( address[][] calldata path, uint256[] memory routerId,
+            methodName = 'onSwapTokensForExactETH'
+            // multiSwapTokensForExactETH( address[][] calldata path, uint256[] memory pools,
             // uint256 amountOut, uint256 amountInMax, uint256 deadline )
-            args = [path, routerId, amountOut, amountIn, deadline]
+            args = [pools, path, amountOut, amountIn, to, deadline]
             value = ZERO_HEX
           } else {
-            methodName = 'multiSwapTokensForExactTokens'
-            // multiSwapTokensForExactTokens( address[][] calldata path, uint256[] memory routerId, 
+            methodName = 'onSwapTokensForExactTokens'
+            // multiSwapTokensForExactTokens( address[][] calldata path, uint256[] memory pools, 
             // uint256 amountOut, uint256 amountInMax,  uint256 deadline )
-            args = [path, routerId, amountOut, amountIn, deadline]
+            args = [pools, path, amountOut, amountIn, to, deadline]
             value = ZERO_HEX
           }
           break

@@ -10,6 +10,7 @@ export declare class Pair implements Source {
     readonly type: PoolType;
     static getAddress(tokenA: Token, tokenB: Token): string;
     constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount);
+    getAddressForRouter(): string;
     /**
      * Returns true if the token is either token0 or token1
      * @param token to check

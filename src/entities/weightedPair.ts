@@ -82,6 +82,10 @@ export class WeightedPair {
     this.tokenAmounts = tokenAmounts as [TokenAmount, TokenAmount]
   }
 
+  public getAddressForRouter(): string {
+    return this.liquidityToken.address
+  }
+
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check
@@ -165,18 +169,20 @@ export class WeightedPair {
     const inputWeight = this.weightOf(inputAmount.token)
     const outputWeight = this.weightOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0)
 
-    // const inA = inputAmount.toBigNumber()
-    // const inRes=  inputReserve.toBigNumber()
-    // const outRes =  outputReserve.toBigNumber()
-    // const inWeight =  BigNumber.from(inputWeight.toString())
-    // const outWeight=  BigNumber.from(outputWeight.toString())
-    // const f =  BigNumber.from(this.fee.toString())
 
     const outputAmount = new TokenAmount(
       inputAmount.token.equals(this.token0) ? this.token1 : this.token0,
       // getAmountOut(inputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
-      JSBI.BigInt(getAmountOut(inputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString())
-      // JSBI.BigInt(getAmountOut(inA, inRes, outRes, inWeight, outWeight, f).toString())
+      JSBI.BigInt(
+        getAmountOut(
+          inputAmount.toBigNumber(),
+          inputReserve.toBigNumber(),
+          outputReserve.toBigNumber(),
+          BigNumber.from(inputWeight.toString()),
+          BigNumber.from(outputWeight.toString()),
+          BigNumber.from(this.fee.toString())
+        ).toString()
+      )
     )
     // console.log("OA", outputAmount.raw.toString())
     if (JSBI.equal(outputAmount.raw, ZERO)) {

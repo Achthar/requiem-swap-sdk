@@ -14,6 +14,7 @@ export declare class WeightedPair {
     readonly type: PoolType;
     static getAddress(tokenA: Token, tokenB: Token, weightA: JSBI, fee: JSBI): string;
     constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount, weightA: JSBI, fee: JSBI);
+    getAddressForRouter(): string;
     /**
      * Returns true if the token is either token0 or token1
      * @param token to check

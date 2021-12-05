@@ -27,6 +27,7 @@ export declare class StablePool {
         [index: number]: Token;
     }, tokenBalances: BigNumber[], _A: BigNumber, swapStorage: SwapStorage, blockTimestamp: number, lpTotalSupply: BigNumber, currentWithdrawFee: BigNumber);
     static mock(): StablePool;
+    getAddressForRouter(): string;
     /**
      * Returns true if the token is either token0 or token1
      * @param token to check
@@ -38,6 +39,7 @@ export declare class StablePool {
     getBalances(): BigNumber[];
     calculateSwapViaPing(inIndex: number, outIndex: number, inAmount: BigNumber | BigintIsh, chainId: number, provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh>;
     calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber): BigNumber;
+    calculateSwapGivenOut(inIndex: number, outIndex: number, inAmount: BigNumber): BigNumber;
     getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount;
     getInputAmount(outputAmount: TokenAmount, inIndex: number): TokenAmount;
     /**
