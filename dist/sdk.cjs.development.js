@@ -65,6 +65,12 @@ var INIT_CODE_HASH = {
 var INIT_CODE_HASH_WEIGHTED = {
   43113: '0x4df8067145d0a795d56b39c1ba240740a830ae545df3b51d3d8552b02e265c75'
 };
+var REQUIEM_PAIR_MANAGER = {
+  43113: '0x3dDD991c30Af1f7E40946006B83C9a82D0f8dFd6'
+};
+var REQUIEM_WEIGHTED_PAIR_FACTORY = {
+  43113: '0x2F1e1e45F396d119A55e0FA5B30B664Ce78835C7'
+};
 var STABLE_POOL_ADDRESS = {
   43113: '0xb76c5C977F48C45d3f3234798D0051bdcA6dc656'
 };
@@ -5805,6 +5811,7 @@ exports.FACTORY_ADDRESS = FACTORY_ADDRESS;
 exports.Fetcher = Fetcher;
 exports.Fraction = Fraction;
 exports.INIT_CODE_HASH = INIT_CODE_HASH;
+exports.INIT_CODE_HASH_WEIGHTED = INIT_CODE_HASH_WEIGHTED;
 exports.InsufficientInputAmountError = InsufficientInputAmountError;
 exports.InsufficientReservesError = InsufficientReservesError;
 exports.MINIMUM_LIQUIDITY = MINIMUM_LIQUIDITY;
@@ -5812,6 +5819,8 @@ exports.NETWORK_CCY = NETWORK_CCY;
 exports.Pair = Pair;
 exports.Percent = Percent;
 exports.Price = Price;
+exports.REQUIEM_PAIR_MANAGER = REQUIEM_PAIR_MANAGER;
+exports.REQUIEM_WEIGHTED_PAIR_FACTORY = REQUIEM_WEIGHTED_PAIR_FACTORY;
 exports.Route = Route;
 exports.RouteV3 = RouteV3;
 exports.RouteV4 = RouteV4;

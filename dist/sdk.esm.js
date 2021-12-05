@@ -65,6 +65,12 @@ var INIT_CODE_HASH = {
 var INIT_CODE_HASH_WEIGHTED = {
   43113: '0x4df8067145d0a795d56b39c1ba240740a830ae545df3b51d3d8552b02e265c75'
 };
+var REQUIEM_PAIR_MANAGER = {
+  43113: '0x3dDD991c30Af1f7E40946006B83C9a82D0f8dFd6'
+};
+var REQUIEM_WEIGHTED_PAIR_FACTORY = {
+  43113: '0x2F1e1e45F396d119A55e0FA5B30B664Ce78835C7'
+};
 var STABLE_POOL_ADDRESS = {
   43113: '0xb76c5C977F48C45d3f3234798D0051bdcA6dc656'
 };
@@ -5799,5 +5805,5 @@ var TradeV4 = /*#__PURE__*/function () {
   return TradeV4;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, tradeComparator, tradeComparatorV3, tradeComparatorV4 };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, REQUIEM_PAIR_MANAGER, REQUIEM_WEIGHTED_PAIR_FACTORY, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, tradeComparator, tradeComparatorV3, tradeComparatorV4 };
 //# sourceMappingURL=sdk.esm.js.map
