@@ -2143,19 +2143,19 @@ var WeightedPair = /*#__PURE__*/function () {
   }
 
   WeightedPair.getAddress = function getAddress(tokenA, tokenB, weightA, fee) {
-    var _PAIR_ADDRESS_CACHE, _PAIR_ADDRESS_CACHE$t;
+    var _PAIR_ADDRESS_CACHE, _PAIR_ADDRESS_CACHE$t, _PAIR_ADDRESS_CACHE$t2, _PAIR_ADDRESS_CACHE$t3;
 
     var tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA]; // does safety checks
 
-    var weights = tokenA.sortsBefore(tokenB) ? [bignumber.BigNumber.from(weightA.toString()), bignumber.BigNumber.from(JSBI.subtract(_100, weightA).toString())] : [bignumber.BigNumber.from(JSBI.subtract(_100, weightA).toString()), bignumber.BigNumber.from(weightA.toString())]; // does safety checks
+    var weights = tokenA.sortsBefore(tokenB) ? [weightA.toString(), JSBI.subtract(_100, weightA).toString()] : [JSBI.subtract(_100, weightA).toString(), weightA.toString()]; // does safety checks
 
-    if (((_PAIR_ADDRESS_CACHE = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t = _PAIR_ADDRESS_CACHE[tokens[0].address]) === null || _PAIR_ADDRESS_CACHE$t === void 0 ? void 0 : _PAIR_ADDRESS_CACHE$t[tokens[1].address]) === undefined) {
-      var _PAIR_ADDRESS_CACHE2, _extends2, _extends3;
+    if (((_PAIR_ADDRESS_CACHE = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t = _PAIR_ADDRESS_CACHE[tokens[0].address]) === null || _PAIR_ADDRESS_CACHE$t === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t2 = _PAIR_ADDRESS_CACHE$t[tokens[1].address]) === null || _PAIR_ADDRESS_CACHE$t2 === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t3 = _PAIR_ADDRESS_CACHE$t2[weights[0]]) === null || _PAIR_ADDRESS_CACHE$t3 === void 0 ? void 0 : _PAIR_ADDRESS_CACHE$t3[fee.toString()]) === undefined) {
+      var _PAIR_ADDRESS_CACHE2, _PAIR_ADDRESS_CACHE3, _PAIR_ADDRESS_CACHE3$, _PAIR_ADDRESS_CACHE4, _PAIR_ADDRESS_CACHE4$, _PAIR_ADDRESS_CACHE4$2, _extends2, _extends3, _extends4, _extends5;
 
-      PAIR_ADDRESS_CACHE$1 = _extends({}, PAIR_ADDRESS_CACHE$1, (_extends3 = {}, _extends3[tokens[0].address] = _extends({}, (_PAIR_ADDRESS_CACHE2 = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE2 === void 0 ? void 0 : _PAIR_ADDRESS_CACHE2[tokens[0].address], (_extends2 = {}, _extends2[tokens[1].address] = address.getCreate2Address(WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId], solidity.keccak256(['bytes'], [solidity.pack(['address', 'address', 'uint32', 'uint32'], [tokens[0].address, tokens[1].address, weights[0], bignumber.BigNumber.from(fee)])]), INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]), _extends2)), _extends3));
+      PAIR_ADDRESS_CACHE$1 = _extends({}, PAIR_ADDRESS_CACHE$1, (_extends5 = {}, _extends5[tokens[0].address] = _extends({}, (_PAIR_ADDRESS_CACHE2 = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE2 === void 0 ? void 0 : _PAIR_ADDRESS_CACHE2[tokens[0].address], (_extends4 = {}, _extends4[tokens[1].address] = _extends({}, (_PAIR_ADDRESS_CACHE3 = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE3 === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE3$ = _PAIR_ADDRESS_CACHE3[tokens[0].address]) === null || _PAIR_ADDRESS_CACHE3$ === void 0 ? void 0 : _PAIR_ADDRESS_CACHE3$[tokens[1].address], (_extends3 = {}, _extends3[weights[0]] = _extends({}, (_PAIR_ADDRESS_CACHE4 = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE4 === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE4$ = _PAIR_ADDRESS_CACHE4[tokens[0].address]) === null || _PAIR_ADDRESS_CACHE4$ === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE4$2 = _PAIR_ADDRESS_CACHE4$[tokens[1].address]) === null || _PAIR_ADDRESS_CACHE4$2 === void 0 ? void 0 : _PAIR_ADDRESS_CACHE4$2[weights[0]], (_extends2 = {}, _extends2[fee.toString()] = address.getCreate2Address(WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId], solidity.keccak256(['bytes'], [solidity.pack(['address', 'address', 'uint32', 'uint32'], [tokens[0].address, tokens[1].address, weights[0], fee.toString()])]), INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]), _extends2)), _extends3)), _extends4)), _extends5));
     }
 
-    return PAIR_ADDRESS_CACHE$1[tokens[0].address][tokens[1].address];
+    return PAIR_ADDRESS_CACHE$1[tokens[0].address][tokens[1].address][weights[0]][fee.toString()];
   };
 
   var _proto = WeightedPair.prototype;

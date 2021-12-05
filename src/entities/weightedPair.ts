@@ -24,7 +24,15 @@ import { Token } from './token'
 import { getAmountOut, getAmountIn } from './weightedPairCalc'
 import { PoolType } from './pool'
 
-let PAIR_ADDRESS_CACHE: { [token0Address: string]: { [token1Address: string]: string } } = {}
+let PAIR_ADDRESS_CACHE: {
+  [token0Address: string]: {
+    [token1Address: string]: {
+      [weight0: string]: {
+        [fee: string]: string
+      }
+    }
+  }
+} = {}
 
 export class WeightedPair {
   public readonly liquidityToken: Token
@@ -40,28 +48,34 @@ export class WeightedPair {
 
   public static getAddress(tokenA: Token, tokenB: Token, weightA: JSBI, fee: JSBI): string {
     const tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA] // does safety checks
-    const weights = tokenA.sortsBefore(tokenB) ? [BigNumber.from(weightA.toString()), BigNumber.from(JSBI.subtract(_100, weightA).toString())] : [BigNumber.from(JSBI.subtract(_100, weightA).toString()), BigNumber.from(weightA.toString())] // does safety checks
-    if (PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address] === undefined) {
+    const weights = tokenA.sortsBefore(tokenB) ? [weightA.toString(), JSBI.subtract(_100, weightA).toString()] : [JSBI.subtract(_100, weightA).toString(), weightA.toString()] // does safety checks
+    if (PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address]?.[weights[0]]?.[fee.toString()] === undefined) {
       PAIR_ADDRESS_CACHE = {
         ...PAIR_ADDRESS_CACHE,
         [tokens[0].address]: {
           ...PAIR_ADDRESS_CACHE?.[tokens[0].address],
-          [tokens[1].address]: getCreate2Address(
-            WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId],
-            keccak256(
-              ['bytes'],
-              [pack(
-                ['address', 'address', 'uint32', 'uint32'],
-                [tokens[0].address, tokens[1].address, weights[0], BigNumber.from(fee)]
-              )]
-            ),
-            INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]
-          ),
+          [tokens[1].address]: {
+            ...PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address],
+            [weights[0]]: {
+              ...PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address]?.[weights[0]],
+              [fee.toString()]: getCreate2Address(
+                WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId],
+                keccak256(
+                  ['bytes'],
+                  [pack(
+                    ['address', 'address', 'uint32', 'uint32'],
+                    [tokens[0].address, tokens[1].address, weights[0], fee.toString()]
+                  )]
+                ),
+                INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]
+              )
+            }
+          },
         },
       }
     }
 
-    return PAIR_ADDRESS_CACHE[tokens[0].address][tokens[1].address]
+    return PAIR_ADDRESS_CACHE[tokens[0].address][tokens[1].address][weights[0]][fee.toString()]
   }
 
   public constructor(tokenAmountA: TokenAmount, tokenAmountB: TokenAmount, weightA: JSBI, fee: JSBI) {

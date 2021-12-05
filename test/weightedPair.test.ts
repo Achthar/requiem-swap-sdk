@@ -135,7 +135,7 @@ describe('WeightedPair', () => {
 
   describe('#calcualtes', () => {
     const weight50 = JSBI.BigInt(50)
-    const fee20 = JSBI.BigInt(2)
+    const fee20 = JSBI.BigInt(20)
     const pair = new WeightedPair(new TokenAmount(USDC, '100000000000'), new TokenAmount(DAI, '100000000000'), weight50, fee20)
     const amountIn = new TokenAmount(DAI, '20000')
     console.log("In1: ", amountIn.raw.toString())
