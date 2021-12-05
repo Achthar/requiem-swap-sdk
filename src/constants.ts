@@ -32,9 +32,6 @@ export const FACTORY_ADDRESS: { [chainId: number]: string } = {
 }
 
 export const WEIGHTED_FACTORY_ADDRESS: { [chainId: number]: string } = {
-  56: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
-  97: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
-  80001: '0xf10Bd0dA1f0e69c3334D7F8116C9082746EBC1B4',
   43113: '0x73622a125accA39410EdC159E04692014E79b82f',
 }
 

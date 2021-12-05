@@ -42,7 +42,13 @@ export class Pair implements Source {
           ...PAIR_ADDRESS_CACHE?.[tokens[0].address],
           [tokens[1].address]: getCreate2Address(
             FACTORY_ADDRESS[chainId],
-            keccak256(['bytes'], [pack(['address', 'address'], [tokens[0].address, tokens[1].address])]),
+            keccak256(
+              ['bytes'],
+              [pack(
+                ['address', 'address'],
+                [tokens[0].address, tokens[1].address]
+              )]
+            ),
             INIT_CODE_HASH[chainId]
           ),
         },
@@ -70,7 +76,7 @@ export class Pair implements Source {
   public getAddressForRouter(): string {
     return this.liquidityToken.address
   }
-  
+
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check

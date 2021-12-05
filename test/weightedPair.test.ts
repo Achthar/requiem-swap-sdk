@@ -1,4 +1,4 @@
-import { ChainId, Token, WeightedPair, TokenAmount, WETH, Price } from '../src'
+import { ChainId, Token, TokenAmount, WETH, Price, WeightedPair } from '../src'
 import {
   //  getAmountIn, 
   //  getAmountOut,
@@ -14,8 +14,13 @@ import { BigNumber } from '@ethersproject/bignumber'
 describe('WeightedPair', () => {
   const USDC = new Token(ChainId.AVAX_TESTNET, '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 18, 'USDC', 'USD Coin')
   const DAI = new Token(ChainId.AVAX_TESTNET, '0x6B175474E89094C44Da98b954EedeAC495271d0F', 18, 'DAI', 'DAI Stablecoin')
+
+  const REQT = new Token(ChainId.AVAX_TESTNET, '0x78e418385153177cB1c49e58eAB5997192998bf7', 18,'REQT', 'RequiemToken')
+  const WAVAX = new Token(ChainId.AVAX_TESTNET, '0xd00ae08403b9bbb9124bb305c09058e32c39a48c', 10, "WAVAX", 'Wrapped AVAX')
   const weightA = JSBI.BigInt('44')
   const fee = JSBI.BigInt('14')
+  const weightA1 = JSBI.BigInt('20')
+  const fee1 = JSBI.BigInt('25')
   describe('constructor', () => {
     it('cannot be used for tokens on different chains', () => {
       expect(() => new WeightedPair(new TokenAmount(USDC, '100'), new TokenAmount(WETH[ChainId.BSC_TESTNET], '100'), weightA, fee)).toThrow(
@@ -26,7 +31,7 @@ describe('WeightedPair', () => {
 
   describe('#getAddress', () => {
     it('returns the correct address', () => {
-      expect(WeightedPair.getAddress(USDC, DAI, weightA, fee)).toEqual('0xAE461cA67B15dc8dc81CE7615e0320dA1A9aB8D5')
+      expect(WeightedPair.getAddress(WAVAX , REQT, weightA1, fee1)).toEqual('0xfcD5aB89AFB2280a9ff98DAaa2749C6D11aB4161')
     })
   })
 

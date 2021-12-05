@@ -40,8 +40,7 @@ export class WeightedPair {
 
   public static getAddress(tokenA: Token, tokenB: Token, weightA: JSBI, fee: JSBI): string {
     const tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA] // does safety checks
-    const weights = tokenA.sortsBefore(tokenB) ? [weightA, JSBI.subtract(_100, weightA)] : [JSBI.subtract(_100, weightA), weightA] // does safety checks
-
+    const weights = tokenA.sortsBefore(tokenB) ? [BigNumber.from(weightA.toString()), BigNumber.from(JSBI.subtract(_100, weightA).toString())] : [BigNumber.from(JSBI.subtract(_100, weightA).toString()), BigNumber.from(weightA.toString())] // does safety checks
     if (PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address] === undefined) {
       PAIR_ADDRESS_CACHE = {
         ...PAIR_ADDRESS_CACHE,
@@ -49,7 +48,13 @@ export class WeightedPair {
           ...PAIR_ADDRESS_CACHE?.[tokens[0].address],
           [tokens[1].address]: getCreate2Address(
             WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId],
-            keccak256(['bytes'], [pack(['address', 'address', 'uint32', 'uint32'], [tokens[0].address, tokens[1].address, weights[0], fee.toString()])]),
+            keccak256(
+              ['bytes'],
+              [pack(
+                ['address', 'address', 'uint32', 'uint32'],
+                [tokens[0].address, tokens[1].address, weights[0], BigNumber.from(fee)]
+              )]
+            ),
             INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]
           ),
         },
