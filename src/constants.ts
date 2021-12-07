@@ -54,7 +54,7 @@ export const REQUIEM_PAIR_MANAGER:{[chainId:number]:string} ={
 }
 
 export const REQUIEM_WEIGHTED_PAIR_FACTORY:{[chainId:number]:string} = {
-  43113:'0x2F1e1e45F396d119A55e0FA5B30B664Ce78835C7'
+  43113:'0x73622a125accA39410EdC159E04692014E79b82f'
 }
 
 export const STABLE_POOL_ADDRESS: { [chainId: number]: string } = {
