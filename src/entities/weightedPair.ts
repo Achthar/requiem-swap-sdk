@@ -124,6 +124,10 @@ export class WeightedPair {
     return new Price(this.token1, this.token0, this.tokenAmounts[1].raw, this.tokenAmounts[0].raw)
   }
 
+  public get fee0():JSBI{
+    return this.fee
+  }
+
   /**
    * Return the price of the given token in terms of the other token in the pair.
    * @param token token to return price of

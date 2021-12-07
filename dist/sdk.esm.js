@@ -2327,6 +2327,11 @@ var WeightedPair = /*#__PURE__*/function () {
       return new Price(this.token1, this.token0, this.tokenAmounts[1].raw, this.tokenAmounts[0].raw);
     }
   }, {
+    key: "fee0",
+    get: function get() {
+      return this.fee;
+    }
+  }, {
     key: "chainId",
     get: function get() {
       return this.token0.chainId;

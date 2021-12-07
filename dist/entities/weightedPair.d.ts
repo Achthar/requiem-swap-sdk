@@ -28,6 +28,7 @@ export declare class WeightedPair {
      * Returns the current mid price of the pair in terms of token1, i.e. the ratio of reserve0 to reserve1
      */
     get token1Price(): Price;
+    get fee0(): JSBI;
     /**
      * Return the price of the given token in terms of the other token in the pair.
      * @param token token to return price of
