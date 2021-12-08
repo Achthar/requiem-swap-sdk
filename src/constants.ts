@@ -62,7 +62,7 @@ export const STABLE_POOL_ADDRESS: { [chainId: number]: string } = {
 }
 
 export const STABLE_POOL_LP_ADDRESS: { [chainId: number]: string } = {
-  43113: '0x6a3a5f06aaa453b56ac44e84d87d9e3e3a3d6ab2'
+  43113: '0x6A3a5F06AAa453b56AC44e84d87d9E3E3A3D6aB2'
 }
 
 export const MINIMUM_LIQUIDITY = JSBI.BigInt(1000)
