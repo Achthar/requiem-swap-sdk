@@ -158,7 +158,7 @@ export class TradeV4 {
       amounts[0] = wrappedAmount(amount, route.chainId)
       for (let i = 0; i < route.path.length - 1; i++) {
         const pool = route.pools[i]
-        const [outputAmount, nextpool] = pool instanceof Pair ?
+        const [outputAmount, nextpool] = pool instanceof Pair || pool instanceof WeightedPair ?
           pool.getOutputAmount(amounts[i]) :
           pool.getOutputAmount(amounts[i], stablePool)
         amounts[i + 1] = outputAmount
@@ -169,7 +169,7 @@ export class TradeV4 {
       amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId)
       for (let i = route.path.length - 1; i > 0; i--) {
         const pool = route.pools[i - 1]
-        const [inputAmount, nextpool] = pool instanceof Pair ?
+        const [inputAmount, nextpool] = pool instanceof Pair || pool instanceof WeightedPair ?
           pool.getInputAmount(amounts[i]) :
           pool.getInputAmount(amounts[i], stablePool)
         amounts[i - 1] = inputAmount

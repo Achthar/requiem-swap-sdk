@@ -5105,7 +5105,7 @@ var TradeV4 = /*#__PURE__*/function () {
       for (var i = 0; i < route.path.length - 1; i++) {
         var pool = route.pools[i];
 
-        var _ref = pool instanceof Pair ? pool.getOutputAmount(amounts[i]) : pool.getOutputAmount(amounts[i], stablePool),
+        var _ref = pool instanceof Pair || pool instanceof WeightedPair ? pool.getOutputAmount(amounts[i]) : pool.getOutputAmount(amounts[i], stablePool),
             outputAmount = _ref[0],
             nextpool = _ref[1];
 
@@ -5119,7 +5119,7 @@ var TradeV4 = /*#__PURE__*/function () {
       for (var _i = route.path.length - 1; _i > 0; _i--) {
         var _pool = route.pools[_i - 1];
 
-        var _ref2 = _pool instanceof Pair ? _pool.getInputAmount(amounts[_i]) : _pool.getInputAmount(amounts[_i], stablePool),
+        var _ref2 = _pool instanceof Pair || _pool instanceof WeightedPair ? _pool.getInputAmount(amounts[_i]) : _pool.getInputAmount(amounts[_i], stablePool),
             inputAmount = _ref2[0],
             _nextpool = _ref2[1];
 
