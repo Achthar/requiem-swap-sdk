@@ -2565,6 +2565,7 @@ var StablePairWrapper = /*#__PURE__*/function () {
 var MAX_ITERATION = 256;
 var A_PRECISION = /*#__PURE__*/ethers.BigNumber.from(100);
 var FEE_DENOMINATOR = /*#__PURE__*/ethers.BigNumber.from(1e10);
+var ONE$2 = /*#__PURE__*/ethers.BigNumber.from(1);
 function _xp(balances, rates) {
   var result = [];
 
@@ -2680,7 +2681,7 @@ balances, blockTimestamp, swapStorage) {
 
   var outBalance = _getY(inIndex, outIndex, newInBalance, blockTimestamp, swapStorage, normalizedBalances);
 
-  var outAmount = normalizedBalances[outIndex].sub(outBalance).sub(1).div(swapStorage.tokenMultipliers[outIndex]);
+  var outAmount = normalizedBalances[outIndex].sub(outBalance).sub(ONE$2).div(swapStorage.tokenMultipliers[outIndex]);
 
   var _fee = swapStorage.fee.mul(outAmount).div(FEE_DENOMINATOR);
 
@@ -2690,13 +2691,13 @@ function calculateSwapGivenOut(inIndex, outIndex, outAmount, // standard fields
 balances, blockTimestamp, swapStorage) {
   var normalizedBalances = _xp(balances, swapStorage.tokenMultipliers);
 
-  var _amountOutInclFee = outAmount.mul(ethers.BigNumber.from(FEE_DENOMINATOR)).div(ethers.BigNumber.from(FEE_DENOMINATOR).sub(swapStorage.fee));
+  var _amountOutInclFee = outAmount.mul(FEE_DENOMINATOR).div(FEE_DENOMINATOR.sub(swapStorage.fee));
 
   var newOutBalance = normalizedBalances[outIndex].sub(_amountOutInclFee.mul(swapStorage.tokenMultipliers[outIndex]));
 
   var inBalance = _getY(outIndex, inIndex, newOutBalance, blockTimestamp, swapStorage, normalizedBalances);
 
-  var inAmount = inBalance.sub(normalizedBalances[inIndex]).div(swapStorage.tokenMultipliers[inIndex]);
+  var inAmount = inBalance.sub(normalizedBalances[inIndex]).sub(ONE$2).div(swapStorage.tokenMultipliers[inIndex]).add(ONE$2);
   return inAmount;
 } // function to calculate the amounts of stables from the amounts of LP
 
@@ -3400,6 +3401,64 @@ var StableSwap = [
 	{
 		inputs: [
 			{
+				internalType: "address",
+				name: "tokenIn",
+				type: "address"
+			},
+			{
+				internalType: "address",
+				name: "tokenOut",
+				type: "address"
+			},
+			{
+				internalType: "uint256",
+				name: "amountIn",
+				type: "uint256"
+			}
+		],
+		name: "calculateSwapGivenIn",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "tokenIn",
+				type: "address"
+			},
+			{
+				internalType: "address",
+				name: "tokenOut",
+				type: "address"
+			},
+			{
+				internalType: "uint256",
+				name: "amountOut",
+				type: "uint256"
+			}
+		],
+		name: "calculateSwapGivenOut",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "view",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
 				internalType: "uint256[]",
 				name: "amounts",
 				type: "uint256[]"
@@ -3707,6 +3766,118 @@ var StableSwap = [
 	},
 	{
 		inputs: [
+			{
+				internalType: "address",
+				name: "tokenIn",
+				type: "address"
+			},
+			{
+				internalType: "address",
+				name: "tokenOut",
+				type: "address"
+			},
+			{
+				internalType: "uint256",
+				name: "amountIn",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			},
+			{
+				internalType: "address",
+				name: "to",
+				type: "address"
+			}
+		],
+		name: "onSwap",
+		outputs: [
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "tokenIn",
+				type: "address"
+			},
+			{
+				internalType: "address",
+				name: "tokenOut",
+				type: "address"
+			},
+			{
+				internalType: "uint256",
+				name: "amountIn",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "amountOutMin",
+				type: "uint256"
+			},
+			{
+				internalType: "address",
+				name: "to",
+				type: "address"
+			}
+		],
+		name: "onSwapGivenIn",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
+			{
+				internalType: "address",
+				name: "tokenIn",
+				type: "address"
+			},
+			{
+				internalType: "address",
+				name: "tokenOut",
+				type: "address"
+			},
+			{
+				internalType: "uint256",
+				name: "amountOut",
+				type: "uint256"
+			},
+			{
+				internalType: "uint256",
+				name: "amountInMax",
+				type: "uint256"
+			},
+			{
+				internalType: "address",
+				name: "to",
+				type: "address"
+			}
+		],
+		name: "onSwapGivenOut",
+		outputs: [
+			{
+				internalType: "uint256",
+				name: "",
+				type: "uint256"
+			}
+		],
+		stateMutability: "nonpayable",
+		type: "function"
+	},
+	{
+		inputs: [
 		],
 		name: "owner",
 		outputs: [
@@ -3944,6 +4115,11 @@ var StableSwap = [
 				internalType: "uint256",
 				name: "minOutAmount",
 				type: "uint256"
+			},
+			{
+				internalType: "address",
+				name: "to",
+				type: "address"
 			},
 			{
 				internalType: "uint256",
@@ -4202,7 +4378,7 @@ var StablePool = /*#__PURE__*/function () {
   };
 
   _proto.getInputAmount = function getInputAmount(outputAmount, inIndex) {
-    var swap = this.calculateSwapGivenOut(this.indexFromToken(outputAmount.token), inIndex, outputAmount.toBigNumber());
+    var swap = this.calculateSwapGivenOut(inIndex, this.indexFromToken(outputAmount.token), outputAmount.toBigNumber());
     return new TokenAmount(this.tokenFromIndex(inIndex), swap.toBigInt());
   }
   /**

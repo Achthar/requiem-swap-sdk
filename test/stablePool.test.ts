@@ -179,6 +179,22 @@ describe('StablePool', () => {
 
       console.log("real Benchmark from chain", bench1.toString())
 
+      console.log("---- calulate swap given out")
+      const y = stablePool.calculateSwapGivenOut(0, 1, BigNumber.from("1239123"))
+
+      const bench5 = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateSwapGivenOut(
+        '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA',
+        '0xffB3ed4960Cac85372e6838fbc9ce47bcF2D073E',
+        BigNumber.from("1239123"))
+      console.log("GIVEN OUT", y.toString(), bench5.toString())
+
+      const y1 = stablePool.calculateSwapGivenOut(1, 2, BigNumber.from("1239123"))
+
+      console.log("IN", BigNumber.from("0xf4240").toString())
+      const bench6 = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateSwapGivenOut(
+        '0xffB3ed4960Cac85372e6838fbc9ce47bcF2D073E', '0xaEA51E4FEe50a980928B4353E852797b54deacd8',
+        BigNumber.from("0xf4240"))
+      console.log("GIVEN OUT", y1.toString(), bench6.toString())
 
 
       // const bench2 = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv)

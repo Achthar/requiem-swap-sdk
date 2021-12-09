@@ -183,7 +183,7 @@ export class StablePool {
   }
 
   public getInputAmount(outputAmount: TokenAmount, inIndex: number): TokenAmount {
-    const swap = this.calculateSwapGivenOut(this.indexFromToken(outputAmount.token), inIndex, outputAmount.toBigNumber())
+    const swap = this.calculateSwapGivenOut(inIndex, this.indexFromToken(outputAmount.token), outputAmount.toBigNumber())
     return new TokenAmount(this.tokenFromIndex(inIndex), swap.toBigInt())
   }
   /**

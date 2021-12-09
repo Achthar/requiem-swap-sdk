@@ -5,7 +5,7 @@ import { SwapStorage } from './swapStorage'
 const MAX_ITERATION = 256
 export const A_PRECISION = BigNumber.from(100)
 const FEE_DENOMINATOR = BigNumber.from(1e10)
-
+const ONE = BigNumber.from(1)
 
 export function _xp(balances: BigNumber[], rates: BigNumber[]): BigNumber[] {
     let result = []
@@ -140,12 +140,12 @@ export function calculateSwap(inIndex: number, outIndex: number, inAmount: BigNu
         inIndex,
         outIndex,
         newInBalance,
-        blockTimestamp, 
+        blockTimestamp,
         swapStorage,
         normalizedBalances
     )
 
-    let outAmount = ((normalizedBalances[outIndex].sub(outBalance)).sub(1)).div(swapStorage.tokenMultipliers[outIndex])
+    let outAmount = ((normalizedBalances[outIndex].sub(outBalance)).sub(ONE)).div(swapStorage.tokenMultipliers[outIndex])
     let _fee = swapStorage.fee.mul(outAmount).div(FEE_DENOMINATOR)
     return outAmount.sub(_fee)
 }
@@ -158,19 +158,19 @@ export function calculateSwapGivenOut(inIndex: number, outIndex: number, outAmou
 
     let normalizedBalances = _xp(balances, swapStorage.tokenMultipliers)
 
-    let _amountOutInclFee = outAmount.mul(BigNumber.from(FEE_DENOMINATOR)).div( BigNumber.from(FEE_DENOMINATOR).sub(swapStorage.fee));
+    let _amountOutInclFee = outAmount.mul(FEE_DENOMINATOR).div(FEE_DENOMINATOR.sub(swapStorage.fee));
     let newOutBalance = normalizedBalances[outIndex].sub(_amountOutInclFee.mul(swapStorage.tokenMultipliers[outIndex]));
 
     let inBalance = _getY(
         outIndex,
         inIndex,
         newOutBalance,
-        blockTimestamp, 
+        blockTimestamp,
         swapStorage,
         normalizedBalances
     )
 
-    let inAmount = (inBalance.sub(normalizedBalances[inIndex])).div(swapStorage.tokenMultipliers[inIndex])
+    const inAmount = ((inBalance.sub(normalizedBalances[inIndex]).sub(ONE)).div(swapStorage.tokenMultipliers[inIndex])).add(ONE)
     return inAmount;
 }
 
