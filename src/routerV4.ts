@@ -160,7 +160,7 @@ export abstract class RouterV4 {
             methodName = 'onSwapExactTokensForETH'
             // multiSwapExactTokensForETH( address[][] calldata path, uint256[] memory pools, uint256 amountIn,
             // uint256 amountOutMin, uint256 deadline )
-            args = [pools, path, amountIn, amountOut, deadline]
+            args = [pools, path, amountIn, amountOut, to, deadline]
             value = ZERO_HEX
           } else {
             methodName = 'onSwapExactTokensForTokens'

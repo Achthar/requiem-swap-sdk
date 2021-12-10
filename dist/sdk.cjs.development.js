@@ -5983,7 +5983,7 @@ var RouterV4 = /*#__PURE__*/function () {
             methodName = 'onSwapExactTokensForETH'; // multiSwapExactTokensForETH( address[][] calldata path, uint256[] memory pools, uint256 amountIn,
             // uint256 amountOutMin, uint256 deadline )
 
-            args = [pools, _path, amountIn, amountOut, deadline];
+            args = [pools, _path, amountIn, amountOut, to, deadline];
             value = ZERO_HEX$2;
           } else {
             methodName = 'onSwapExactTokensForTokens'; // function onSwapExactTokensForTokens(
