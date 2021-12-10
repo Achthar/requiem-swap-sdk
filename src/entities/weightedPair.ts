@@ -47,6 +47,7 @@ export class WeightedPair {
   public static getAddress(tokenA: Token, tokenB: Token, weightA: JSBI, fee: JSBI): string {
     const tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA] // does safety checks
     const weights = tokenA.sortsBefore(tokenB) ? [weightA.toString(), JSBI.subtract(_100, weightA).toString()] : [JSBI.subtract(_100, weightA).toString(), weightA.toString()] // does safety checks
+    console.log(PAIR_ADDRESS_CACHE, tokens, weights)
     if (PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address]?.[`${weights[0]}-${fee.toString()}`] === undefined) {
       PAIR_ADDRESS_CACHE = {
         ...PAIR_ADDRESS_CACHE,
@@ -55,16 +56,16 @@ export class WeightedPair {
           [tokens[1].address]: {
             ...PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address],
             [`${weights[0]}-${fee.toString()}`]: getCreate2Address(
-                WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId],
-                keccak256(
-                  ['bytes'],
-                  [pack(
-                    ['address', 'address', 'uint32', 'uint32'],
-                    [tokens[0].address, tokens[1].address, weights[0], fee.toString()]
-                  )]
-                ),
-                INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]
-              )
+              WEIGHTED_FACTORY_ADDRESS[tokens[0].chainId],
+              keccak256(
+                ['bytes'],
+                [pack(
+                  ['address', 'address', 'uint32', 'uint32'],
+                  [tokens[0].address, tokens[1].address, weights[0], fee.toString()]
+                )]
+              ),
+              INIT_CODE_HASH_WEIGHTED[tokens[0].chainId]
+            )
           },
         },
       }
@@ -124,7 +125,7 @@ export class WeightedPair {
     return new Price(this.token1, this.token0, this.tokenAmounts[1].raw, this.tokenAmounts[0].raw)
   }
 
-  public get fee0():JSBI{
+  public get fee0(): JSBI {
     return this.fee
   }
 
@@ -220,6 +221,7 @@ export class WeightedPair {
 
   public getInputAmount(outputAmount: TokenAmount): [TokenAmount, WeightedPair] {
     invariant(this.involvesToken(outputAmount.token), 'TOKEN')
+    console.log("-- this 0", this.reserve0.raw, "1", this.reserve1.raw, "out", outputAmount.raw)
     if (
       JSBI.equal(this.reserve0.raw, ZERO) ||
       JSBI.equal(this.reserve1.raw, ZERO) ||
@@ -237,7 +239,16 @@ export class WeightedPair {
     const inputAmount = new TokenAmount(
       outputAmount.token.equals(this.token0) ? this.token1 : this.token0,
       // getAmountIn(outputAmount.raw, inputReserve.raw, outputReserve.raw, inputWeight, outputWeight, this.fee)
-      JSBI.BigInt(getAmountIn(outputAmount.toBigNumber(), inputReserve.toBigNumber(), outputReserve.toBigNumber(), BigNumber.from(inputWeight.toString()), BigNumber.from(outputWeight.toString()), BigNumber.from(this.fee.toString())).toString())
+      JSBI.BigInt(
+        getAmountIn(
+          outputAmount.toBigNumber(),
+          inputReserve.toBigNumber(),
+          outputReserve.toBigNumber(),
+          BigNumber.from(inputWeight.toString()),
+          BigNumber.from(outputWeight.toString()),
+          BigNumber.from(this.fee.toString())
+        ).toString()
+      )
     )
     // here we save the pricing results if it is called
     const inIndex = inputAmount.token.equals(this.token0) ? 0 : 1

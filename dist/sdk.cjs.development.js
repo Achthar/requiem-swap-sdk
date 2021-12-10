@@ -2149,6 +2149,8 @@ var WeightedPair = /*#__PURE__*/function () {
 
     var weights = tokenA.sortsBefore(tokenB) ? [weightA.toString(), JSBI.subtract(_100, weightA).toString()] : [JSBI.subtract(_100, weightA).toString(), weightA.toString()]; // does safety checks
 
+    console.log(PAIR_ADDRESS_CACHE$1, tokens, weights);
+
     if (((_PAIR_ADDRESS_CACHE = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t = _PAIR_ADDRESS_CACHE[tokens[0].address]) === null || _PAIR_ADDRESS_CACHE$t === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t2 = _PAIR_ADDRESS_CACHE$t[tokens[1].address]) === null || _PAIR_ADDRESS_CACHE$t2 === void 0 ? void 0 : _PAIR_ADDRESS_CACHE$t2[weights[0] + "-" + fee.toString()]) === undefined) {
       var _PAIR_ADDRESS_CACHE2, _PAIR_ADDRESS_CACHE3, _PAIR_ADDRESS_CACHE3$, _extends2, _extends3, _extends4;
 
@@ -2228,6 +2230,7 @@ var WeightedPair = /*#__PURE__*/function () {
 
   _proto.getInputAmount = function getInputAmount(outputAmount) {
     !this.involvesToken(outputAmount.token) ?  invariant(false, 'TOKEN')  : void 0;
+    console.log("-- this 0", this.reserve0.raw, "1", this.reserve1.raw, "out", outputAmount.raw);
 
     if (JSBI.equal(this.reserve0.raw, ZERO) || JSBI.equal(this.reserve1.raw, ZERO) || JSBI.greaterThanOrEqual(outputAmount.raw, this.reserveOf(outputAmount.token).raw)) {
       throw new InsufficientReservesError();
@@ -5264,9 +5267,6 @@ var TradeV4 = /*#__PURE__*/function () {
           var _pool2$clone$getOutpu = _pool2.clone().getOutputAmount(amountIn);
 
           amountOut = _pool2$clone$getOutpu[0];
-          // ;[amountOut] = (pool as WeightedPair).getOutputAmount(amountIn)
-          console.log("out weighted", amountOut.raw); // const [amountOut1,] = ((pool).clone() as any as Pair).getOutputAmount(amountIn)
-          // console.log("out PAIR", amountOut1.raw)
         } else {
           var _pool2$getOutputAmoun2 = _pool2.getOutputAmount(amountIn, stablePool);
 
@@ -5345,7 +5345,7 @@ var TradeV4 = /*#__PURE__*/function () {
     var amountOut = wrappedAmount$2(currencyAmountOut, chainId);
     var tokenIn = wrappedCurrency$2(currencyIn, chainId);
 
-    if ( // check ifit can be only a single stable swap trade
+    if ( // check if it can be only a single stable swap trade
     currencyAmountOut instanceof TokenAmount && currencyIn instanceof Token && Object.values(stablePool.tokens).includes(currencyAmountOut.token) && Object.values(stablePool.tokens).includes(currencyIn)) {
       var pool = StablePairWrapper.wrapSinglePairFromPool(stablePool, stablePool.indexFromToken(currencyAmountOut.token), stablePool.indexFromToken(currencyIn)); // return value does not matter, we just need the stablePool pricing to be stored in the pair
 
@@ -5362,11 +5362,25 @@ var TradeV4 = /*#__PURE__*/function () {
       var amountIn = void 0;
 
       try {
-        ;
+        if (_pool3.type === exports.PoolType.Pair) {
+          ;
 
-        var _ref5 = _pool3 instanceof Pair || _pool3 instanceof WeightedPair ? _pool3.getInputAmount(amountOut) : _pool3.getInputAmount(amountOut, stablePool);
+          var _pool3$getInputAmount = _pool3.getInputAmount(amountOut);
 
-        amountIn = _ref5[0];
+          amountIn = _pool3$getInputAmount[0];
+        } else if (_pool3.type === exports.PoolType.WeightedPair) {
+          ;
+
+          var _pool3$clone$getInput = _pool3.clone().getInputAmount(amountOut);
+
+          amountIn = _pool3$clone$getInput[0];
+        } else {
+          ;
+
+          var _pool3$getInputAmount2 = _pool3.getInputAmount(amountOut, stablePool);
+
+          amountIn = _pool3$getInputAmount2[0];
+        }
       } catch (error) {
         // not enough liquidity in this pool
         if (error.isInsufficientReservesError) {
@@ -5393,11 +5407,11 @@ var TradeV4 = /*#__PURE__*/function () {
   };
 
   TradeV4.bestTradeExactOut = function bestTradeExactOut(stablePool, pools, currencyIn, currencyAmountOut, _temp3) {
-    var _ref6 = _temp3 === void 0 ? {} : _temp3,
-        _ref6$maxNumResults = _ref6.maxNumResults,
-        maxNumResults = _ref6$maxNumResults === void 0 ? 3 : _ref6$maxNumResults,
-        _ref6$maxHops = _ref6.maxHops,
-        maxHops = _ref6$maxHops === void 0 ? 3 : _ref6$maxHops;
+    var _ref5 = _temp3 === void 0 ? {} : _temp3,
+        _ref5$maxNumResults = _ref5.maxNumResults,
+        maxNumResults = _ref5$maxNumResults === void 0 ? 3 : _ref5$maxNumResults,
+        _ref5$maxHops = _ref5.maxHops,
+        maxHops = _ref5$maxHops === void 0 ? 3 : _ref5$maxHops;
 
     return this.bestTradeExactOutIteration(stablePool, stablePool.clone(), pools, currencyIn, currencyAmountOut, {
       maxNumResults: maxNumResults,
@@ -5406,11 +5420,11 @@ var TradeV4 = /*#__PURE__*/function () {
   };
 
   TradeV4.bestTradeExactIn = function bestTradeExactIn(stablePool, pools, currencyAmountIn, currencyOut, _temp4) {
-    var _ref7 = _temp4 === void 0 ? {} : _temp4,
-        _ref7$maxNumResults = _ref7.maxNumResults,
-        maxNumResults = _ref7$maxNumResults === void 0 ? 3 : _ref7$maxNumResults,
-        _ref7$maxHops = _ref7.maxHops,
-        maxHops = _ref7$maxHops === void 0 ? 3 : _ref7$maxHops;
+    var _ref6 = _temp4 === void 0 ? {} : _temp4,
+        _ref6$maxNumResults = _ref6.maxNumResults,
+        maxNumResults = _ref6$maxNumResults === void 0 ? 3 : _ref6$maxNumResults,
+        _ref6$maxHops = _ref6.maxHops,
+        maxHops = _ref6$maxHops === void 0 ? 3 : _ref6$maxHops;
 
     return this.bestTradeExactInIteration(stablePool, stablePool.clone(), pools, currencyAmountIn, currencyOut, {
       maxNumResults: maxNumResults,

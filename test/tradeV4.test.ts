@@ -22,7 +22,7 @@ import { TradeV4 } from '../src/entities/tradeV4'
 
 describe('TradeV4', () => {
 
-  const chainId = ChainId.BSC_MAINNET
+  const chainId = ChainId.AVAX_TESTNET
   const token0 = new Token(chainId, '0x0000000000000000000000000000000000000001', 18, 't0')
   const token1 = new Token(chainId, '0x0000000000000000000000000000000000000002', 18, 't1')
   const token2 = new Token(chainId, '0x0000000000000000000000000000000000000003', 18, 't2')
@@ -203,7 +203,7 @@ describe('TradeV4', () => {
     })
 
     it('provides best route with weightedPair', () => {
-      console.log('-----provides best route  WEIGHTED PAIR-----')
+      console.log('-----provides best route  WEIGHTED PAIR exact in-----')
       // console.log("stable balances before", stablePool.tokenBalances.map(value => value.toBigInt()))
       // console.log("PAIRS1S2 before", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
       const pools = [pair_t0_s1_w.clone(), pair_s1_s2, pair_s2_t2, pair_t0_t2]
@@ -220,9 +220,9 @@ describe('TradeV4', () => {
 
       const dummyStablePool = stablePool.clone()
 
-      const [s1Amount1,] = (pair_t0_s1_w.clone() as any as  Pair).getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
+      const [s1Amount1,] = (pair_t0_s1_w.clone() as any as Pair).getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
       console.log("obtained s1 from t0 regular pair", s1Amount1.raw)
-      const [s1Amount,] = (pair_t0_s1_w).getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
+      const [s1Amount,] = (pair_t0_s1_w).clone().getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
       console.log("obtained s1 from t0", s1Amount.raw)
       const [s2Amount,] = pair_s1_s2.getOutputAmount(s1Amount, dummyStablePool)
       console.log("obtained s2 from s1", s2Amount.raw)
@@ -272,15 +272,15 @@ describe('TradeV4', () => {
 
       // const dummyStablePool = stablePool.clone()
 
-      const [s1Amount1,] = (pair_t0_s1_w.clone() as any as  Pair).getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
+      const [s1Amount1,] = (pair_t0_s1_w.clone() as any as Pair).getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
       console.log("obtained s1 from t0 regular pair", s1Amount1.raw)
       const [s1Amount,] = (pair_t0_s1_w).getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
       console.log("obtained s1 from t0", s1Amount.raw)
       const [s1Amount2,] = (pair_t0_s1_w).getOutputAmount(new TokenAmount(token0, JSBI.BigInt(100)))
       console.log("obtained s1 from t0 after first ee", s1Amount2.raw)
-   
-   
-      
+
+
+
       console.log("result0", result[0].outputAmount.raw)
       // console.log("result1", result[1].outputAmount.raw)
       // console.log('provides best route result', result)
@@ -567,6 +567,61 @@ describe('TradeV4', () => {
       const [s1Amount,] = pair_s1_s2.getInputAmount(s2Amount, dummyStablePool)
       console.log("input s1 from s2", s1Amount.raw)
       const [t0Amount,] = pair_t0_s1.getInputAmount(s1Amount)
+      console.log("input t0 from s1", t0Amount.raw)
+
+      // const s2AmountTest = stablePool.clone().getInputAmount(s1Amount, 2)
+      // console.log("T2 through stablePool direct test", s2AmountTest.raw)
+
+      const [t0AmountDirect,] = pair_t0_t2.getInputAmount(t2Amount)
+
+      // console.log("PAIRS1S2", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
+      console.log("T2 through stablePool", t2Amount.raw) // should be 99
+      console.log("T2 via Pair", t0AmountDirect.raw) // should be 99
+      console.log("-- Wrapped pair calc for S2", s2Amount.raw)
+      console.log("-- direct SP calc for S2", stablePool.clone().getOutputAmount(s1Amount, 2).raw)
+      console.log("result0", result[0].outputAmount.raw)
+      console.log("result1", result[1].outputAmount.raw)
+
+      // for (let j = 0; j < result[1].route.pathMatrix.length; j++) {
+      //   console.log(result[1].route.pathMatrix[j].map(token => token.symbol))
+      // }
+      // console.log('provides best route result', result)
+      expect(result).toHaveLength(2)
+      expect(result[0].route.pools).toHaveLength(1) // 0 -> 2 at 10:11
+      expect(result[0].route.path).toEqual([token0, token2])
+      expect(result[0].inputAmount).toEqual(t0AmountDirect)
+      expect(result[0].outputAmount).toEqual(t2Amount)
+      expect(result[1].route.pools).toHaveLength(3) // 0 -> 1 -> 2 at 12:12:10
+      expect(result[1].route.path).toEqual([token0, stable1, stable2, token2])
+      expect(result[1].inputAmount).toEqual(t0Amount)
+      expect(result[1].outputAmount).toEqual(t2Amount)
+    })
+
+    it('provides best route exact OUT WITH WEIGHTED PAIR', () => {
+      console.log('-----provides best route exact OUT including a WEIGHTED PAIR-----')
+      console.log("stable balances before", stablePool.tokenBalances.map(value => value.toBigInt()))
+      // console.log("PAIRS1S2 before", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
+      const t2Amount = new TokenAmount(token2, JSBI.BigInt(100))
+      const result = TradeV4.bestTradeExactOut(
+        stablePool,
+
+        [pair_t0_s1, pair_s1_s2, pair_s2_t2, pair_t0_t2],
+        token0,
+        t2Amount
+      )
+      console.log("--------------------------------------")
+
+      // console.log("PAIRS1S2 afters", pair_s1_s2.token0, pair_s1_s2.token1, pair_s1_s2.tokenAmounts.map(amount => amount.raw))
+
+      const dummyStablePool = stablePool.clone()
+
+      const [s2Amount,] = pair_s2_t2.getInputAmount(t2Amount)
+      console.log("input s2 from t2", s2Amount.raw)
+      const [s1Amount,] = pair_s1_s2.getInputAmount(s2Amount, dummyStablePool)
+      console.log("input s1 from s2", s1Amount.raw)
+      console.log("RESERVES", pair_t0_s1_w.reserve0.raw.toString(), pair_t0_s1_w.reserve1.raw.toString())
+      console.log("OUT AMOUNT", s1Amount.raw.toString())
+      const [t0Amount,] = pair_t0_s1_w.clone().getInputAmount(s1Amount)
       console.log("input t0 from s1", t0Amount.raw)
 
       // const s2AmountTest = stablePool.clone().getInputAmount(s1Amount, 2)

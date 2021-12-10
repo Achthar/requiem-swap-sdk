@@ -615,7 +615,6 @@ export function getAmountIn(
         return (numerator.div(denominator)).add(1);
     }
 
-
     const baseD = reserveOut.sub(amountOut);
     const [result, precision] = power(reserveOut, baseD, tokenWeightOut, tokenWeightIn);
     const baseReserveIn = reserveIn.mul(TENK);

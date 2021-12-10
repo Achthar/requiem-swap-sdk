@@ -1,4 +1,5 @@
 import { ChainId, Token, TokenAmount, WETH, Price, WeightedPair } from '../src'
+import { getAmountIn, getAmountOut } from '../src/entities/weightedPairCalc'
 import {
   //  getAmountIn, 
   //  getAmountOut,
@@ -15,7 +16,7 @@ describe('WeightedPair', () => {
   const USDC = new Token(ChainId.AVAX_TESTNET, '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 18, 'USDC', 'USD Coin')
   const DAI = new Token(ChainId.AVAX_TESTNET, '0x6B175474E89094C44Da98b954EedeAC495271d0F', 18, 'DAI', 'DAI Stablecoin')
 
-  const REQT = new Token(ChainId.AVAX_TESTNET, '0x78e418385153177cB1c49e58eAB5997192998bf7', 18,'REQT', 'RequiemToken')
+  const REQT = new Token(ChainId.AVAX_TESTNET, '0x78e418385153177cB1c49e58eAB5997192998bf7', 18, 'REQT', 'RequiemToken')
   const WAVAX = new Token(ChainId.AVAX_TESTNET, '0xd00ae08403b9bbb9124bb305c09058e32c39a48c', 10, "WAVAX", 'Wrapped AVAX')
   const weightA = JSBI.BigInt('44')
   const fee = JSBI.BigInt('14')
@@ -31,7 +32,7 @@ describe('WeightedPair', () => {
 
   describe('#getAddress', () => {
     it('returns the correct address', () => {
-      expect(WeightedPair.getAddress(WAVAX , REQT, weightA1, fee1)).toEqual('0xfcD5aB89AFB2280a9ff98DAaa2749C6D11aB4161')
+      expect(WeightedPair.getAddress(WAVAX, REQT, weightA1, fee1)).toEqual('0xfcD5aB89AFB2280a9ff98DAaa2749C6D11aB4161')
     })
   })
 
@@ -134,6 +135,11 @@ describe('WeightedPair', () => {
   })
 
   describe('#calcualtes', () => {
+    const token0 = new Token(ChainId.AVAX_TESTNET, '0x0000000000000000000000000000000000000001', 18, 't0')
+
+    const stable1 = new Token(ChainId.AVAX_TESTNET, '0x0000000000000000000000000000000000000006', 18, 's1')
+    const pair_t0_s1_w = new WeightedPair(new TokenAmount(token0, JSBI.BigInt(1000)), new TokenAmount(stable1, JSBI.BigInt(1100)), JSBI.BigInt(40), JSBI.BigInt(15))
+    console.log(pair_t0_s1_w)
     const weight50 = JSBI.BigInt(50)
     const fee20 = JSBI.BigInt(20)
     const pair = new WeightedPair(new TokenAmount(USDC, '100000000000'), new TokenAmount(DAI, '100000000000'), weight50, fee20)
@@ -146,7 +152,7 @@ describe('WeightedPair', () => {
     const fee10 = JSBI.BigInt(10)
 
     // console.log("TST JSBI", JSBI.leftShift(weight50, JSBI.BigInt(4)), JSBI.multiply(weight50, JSBI.exponentiate(JSBI.BigInt(2), JSBI.BigInt(4))))
-    const pair2 = new WeightedPair(new TokenAmount(USDC, '100000000000'), new TokenAmount(DAI, '100000000000'), weight20, fee10)
+    const pair2 = new WeightedPair(new TokenAmount(USDC, '10000005400000'), new TokenAmount(DAI, '10000000540000'), weight20, fee10)
     const amountIn2 = new TokenAmount(USDC, '200234500')
     console.log("In2: ", amountIn2.raw.toString())
     const [out2,] = pair2.getOutputAmount(amountIn2)
@@ -154,6 +160,8 @@ describe('WeightedPair', () => {
 
     const [in1,] = pair2.getInputAmount(new TokenAmount(DAI, '216253170'))
     console.log("in: ", in1.raw.toString())
+    const [out1,] = pair2.getOutputAmount(in1)
+    console.log("in: ", in1.raw.toString(), "out orig", '216253170', "out calc", out1.raw.toString())
     const bN = BigNumber.from(120000)
     const bD = BigNumber.from(10000)
     console.log("div", bN.div(bD).toString())
@@ -163,9 +171,30 @@ describe('WeightedPair', () => {
     console.log("manual", (bN.div(bD)).pow(eN.div(eD)).toString())
     console.log("power", power(bN, bD, eN, eD).toString())
     console.log("glog", generalLog(BigNumber.from('21323433243224523433243242332432433435433')).toString())
-    console.log("gexp", generalExp(BigNumber.from('2353'),BigNumber.from(6)).toString())
+    console.log("gexp", generalExp(BigNumber.from('2353'), BigNumber.from(6)).toString())
     console.log("olog", optimalLog(BigNumber.from('17014118346046923173168730371588410572824324432')).toString())
     console.log("oexp", optimalExp(BigNumber.from('2353')).toString())
+
+    const tokenAmountOut = (new TokenAmount(DAI, '2162530'))
+    const amountOut = (tokenAmountOut).toBigNumber()
+    const reserveIn = pair2.reserveOf(USDC).toBigNumber()
+    const reserveOut = pair2.reserveOf(DAI).toBigNumber()
+    const weightIn = BigNumber.from(pair2.weightOf(USDC))
+    const weightOut = BigNumber.from(pair2.weightOf(DAI))
+    const fee = BigNumber.from(pair2.fee0.toString())
+    console.log(
+      "amountOut = ", amountOut.toString(),
+      "\n", "reserveIn=", reserveIn.toString(),
+      "\n", "reserveOut=", reserveOut.toString(),
+      "\nweightIn=", weightIn.toString(),
+      "\nweightOut=", weightOut.toString(),
+      "\nfee=", fee.toString()
+    )
+    const test = getAmountIn(amountOut, reserveIn, reserveOut, weightIn, weightOut, fee)
+    const [bench,] = pair2.getInputAmount(tokenAmountOut)
+    console.log("--- raw", test.toString(), "bench", bench.raw.toString())
+    const testOut = getAmountOut(bench.toBigNumber(), reserveIn, reserveOut, weightIn, weightOut, fee)
+    console.log("--- calculatd out", testOut.toString(), "bench", amountOut.toString())
     // new WeightedPair(new TokenAmount(USDC, '100'), new TokenAmount(DAI, '100'), weightA, fee)
 
     //   new WeightedPair(new TokenAmount(USDC, '100'), new TokenAmount(DAI, '100'), weightA, fee)

@@ -320,7 +320,7 @@ export class TradeV4 {
         } else if (pool.type === PoolType.WeightedPair) {
           ;[amountOut] = (pool as WeightedPair).clone().getOutputAmount(amountIn)
           // ;[amountOut] = (pool as WeightedPair).getOutputAmount(amountIn)
-          console.log("out weighted", amountOut.raw)
+          // console.log("out weighted", amountOut.raw)
           // const [amountOut1,] = ((pool).clone() as any as Pair).getOutputAmount(amountIn)
           // console.log("out PAIR", amountOut1.raw)
         } else {
@@ -414,7 +414,7 @@ export class TradeV4 {
     const amountOut = wrappedAmount(currencyAmountOut, chainId)
     const tokenIn = wrappedCurrency(currencyIn, chainId)
 
-    if ( // check ifit can be only a single stable swap trade
+    if ( // check if it can be only a single stable swap trade
       currencyAmountOut instanceof TokenAmount &&
       currencyIn instanceof Token &&
       Object.values(stablePool.tokens).includes(currencyAmountOut.token) &&
@@ -447,7 +447,16 @@ export class TradeV4 {
 
       let amountIn: TokenAmount
       try {
-        ;[amountIn] = pool instanceof Pair || pool instanceof WeightedPair ? pool.getInputAmount(amountOut) : pool.getInputAmount(amountOut, stablePool)
+        if (pool.type === PoolType.Pair) {
+          ;[amountIn] = (pool as Pair).getInputAmount(amountOut)
+        }
+        else if (pool.type === PoolType.WeightedPair) {
+          ;[amountIn] = (pool as WeightedPair).clone().getInputAmount(amountOut)
+        } else {
+          ;[amountIn] = (pool as StablePairWrapper).getInputAmount(amountOut, stablePool)
+        }
+
+
       } catch (error) {
         // not enough liquidity in this pool
         if ((error as any).isInsufficientReservesError) {
