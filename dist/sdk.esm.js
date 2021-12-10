@@ -5109,10 +5109,28 @@ var TradeV4 = /*#__PURE__*/function () {
 
       for (var i = 0; i < route.path.length - 1; i++) {
         var pool = route.pools[i];
+        var outputAmount = void 0;
+        var nextpool = void 0;
 
-        var _ref = pool instanceof Pair || pool instanceof WeightedPair ? pool.getOutputAmount(amounts[i]) : pool.getOutputAmount(amounts[i], stablePool),
-            outputAmount = _ref[0],
-            nextpool = _ref[1];
+        if (pool instanceof Pair) {
+          var _pool$getOutputAmount = pool.getOutputAmount(amounts[i]);
+
+          outputAmount = _pool$getOutputAmount[0];
+          nextpool = _pool$getOutputAmount[1];
+        } else if (pool instanceof WeightedPair) {
+          var _pool$clone$getOutput = pool.clone().getOutputAmount(amounts[i]);
+
+          outputAmount = _pool$clone$getOutput[0];
+          nextpool = _pool$clone$getOutput[1];
+        } else {
+          var _pool$getOutputAmount2 = pool.getOutputAmount(amounts[i], stablePool);
+
+          outputAmount = _pool$getOutputAmount2[0];
+          nextpool = _pool$getOutputAmount2[1];
+        } // const [outputAmount, nextpool] = pool instanceof Pair || pool instanceof WeightedPair ?
+        //   pool.getOutputAmount(amounts[i]) :
+        //   pool.getOutputAmount(amounts[i], stablePool)
+
 
         amounts[i + 1] = outputAmount;
         nextpools[i] = nextpool;
@@ -5123,10 +5141,29 @@ var TradeV4 = /*#__PURE__*/function () {
 
       for (var _i = route.path.length - 1; _i > 0; _i--) {
         var _pool = route.pools[_i - 1];
+        var inputAmount = void 0;
 
-        var _ref2 = _pool instanceof Pair || _pool instanceof WeightedPair ? _pool.getInputAmount(amounts[_i]) : _pool.getInputAmount(amounts[_i], stablePool),
-            inputAmount = _ref2[0],
-            _nextpool = _ref2[1];
+        var _nextpool = void 0;
+
+        if (_pool instanceof Pair) {
+          var _pool$getInputAmount = _pool.getInputAmount(amounts[_i]);
+
+          inputAmount = _pool$getInputAmount[0];
+          _nextpool = _pool$getInputAmount[1];
+        } else if (_pool instanceof WeightedPair) {
+          var _pool$clone$getInputA = _pool.clone().getInputAmount(amounts[_i]);
+
+          inputAmount = _pool$clone$getInputA[0];
+          _nextpool = _pool$clone$getInputA[1];
+        } else {
+          var _pool$getInputAmount2 = _pool.getInputAmount(amounts[_i], stablePool);
+
+          inputAmount = _pool$getInputAmount2[0];
+          _nextpool = _pool$getInputAmount2[1];
+        } // const [inputAmount, nextpool] = pool instanceof Pair || pool instanceof WeightedPair ?
+        //   pool.getInputAmount(amounts[i]) :
+        //   pool.getInputAmount(amounts[i], stablePool)
+
 
         amounts[_i - 1] = inputAmount;
         nextpools[_i - 1] = _nextpool;
@@ -5213,11 +5250,11 @@ var TradeV4 = /*#__PURE__*/function () {
 
   TradeV4.bestTradeExactInIteration = function bestTradeExactInIteration(originalStablePool, stablePool, pools, currencyAmountIn, currencyOut, _temp, // used in recursion.
   currentpools, originalAmountIn, bestTrades) {
-    var _ref3 = _temp === void 0 ? {} : _temp,
-        _ref3$maxNumResults = _ref3.maxNumResults,
-        maxNumResults = _ref3$maxNumResults === void 0 ? 3 : _ref3$maxNumResults,
-        _ref3$maxHops = _ref3.maxHops,
-        maxHops = _ref3$maxHops === void 0 ? 3 : _ref3$maxHops;
+    var _ref = _temp === void 0 ? {} : _temp,
+        _ref$maxNumResults = _ref.maxNumResults,
+        maxNumResults = _ref$maxNumResults === void 0 ? 3 : _ref$maxNumResults,
+        _ref$maxHops = _ref.maxHops,
+        maxHops = _ref$maxHops === void 0 ? 3 : _ref$maxHops;
 
     if (currentpools === void 0) {
       currentpools = [];
@@ -5319,11 +5356,11 @@ var TradeV4 = /*#__PURE__*/function () {
 
   TradeV4.bestTradeExactOutIteration = function bestTradeExactOutIteration(originalStablePool, stablePool, pools, currencyIn, currencyAmountOut, _temp2, // used in recursion.
   currentpools, originalAmountOut, bestTrades) {
-    var _ref4 = _temp2 === void 0 ? {} : _temp2,
-        _ref4$maxNumResults = _ref4.maxNumResults,
-        maxNumResults = _ref4$maxNumResults === void 0 ? 3 : _ref4$maxNumResults,
-        _ref4$maxHops = _ref4.maxHops,
-        maxHops = _ref4$maxHops === void 0 ? 3 : _ref4$maxHops;
+    var _ref2 = _temp2 === void 0 ? {} : _temp2,
+        _ref2$maxNumResults = _ref2.maxNumResults,
+        maxNumResults = _ref2$maxNumResults === void 0 ? 3 : _ref2$maxNumResults,
+        _ref2$maxHops = _ref2.maxHops,
+        maxHops = _ref2$maxHops === void 0 ? 3 : _ref2$maxHops;
 
     if (currentpools === void 0) {
       currentpools = [];
@@ -5409,11 +5446,11 @@ var TradeV4 = /*#__PURE__*/function () {
   };
 
   TradeV4.bestTradeExactOut = function bestTradeExactOut(stablePool, pools, currencyIn, currencyAmountOut, _temp3) {
-    var _ref5 = _temp3 === void 0 ? {} : _temp3,
-        _ref5$maxNumResults = _ref5.maxNumResults,
-        maxNumResults = _ref5$maxNumResults === void 0 ? 3 : _ref5$maxNumResults,
-        _ref5$maxHops = _ref5.maxHops,
-        maxHops = _ref5$maxHops === void 0 ? 3 : _ref5$maxHops;
+    var _ref3 = _temp3 === void 0 ? {} : _temp3,
+        _ref3$maxNumResults = _ref3.maxNumResults,
+        maxNumResults = _ref3$maxNumResults === void 0 ? 3 : _ref3$maxNumResults,
+        _ref3$maxHops = _ref3.maxHops,
+        maxHops = _ref3$maxHops === void 0 ? 3 : _ref3$maxHops;
 
     return this.bestTradeExactOutIteration(stablePool, stablePool.clone(), pools, currencyIn, currencyAmountOut, {
       maxNumResults: maxNumResults,
@@ -5422,11 +5459,11 @@ var TradeV4 = /*#__PURE__*/function () {
   };
 
   TradeV4.bestTradeExactIn = function bestTradeExactIn(stablePool, pools, currencyAmountIn, currencyOut, _temp4) {
-    var _ref6 = _temp4 === void 0 ? {} : _temp4,
-        _ref6$maxNumResults = _ref6.maxNumResults,
-        maxNumResults = _ref6$maxNumResults === void 0 ? 3 : _ref6$maxNumResults,
-        _ref6$maxHops = _ref6.maxHops,
-        maxHops = _ref6$maxHops === void 0 ? 3 : _ref6$maxHops;
+    var _ref4 = _temp4 === void 0 ? {} : _temp4,
+        _ref4$maxNumResults = _ref4.maxNumResults,
+        maxNumResults = _ref4$maxNumResults === void 0 ? 3 : _ref4$maxNumResults,
+        _ref4$maxHops = _ref4.maxHops,
+        maxHops = _ref4$maxHops === void 0 ? 3 : _ref4$maxHops;
 
     return this.bestTradeExactInIteration(stablePool, stablePool.clone(), pools, currencyAmountIn, currencyOut, {
       maxNumResults: maxNumResults,

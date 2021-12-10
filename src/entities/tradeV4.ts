@@ -158,9 +158,18 @@ export class TradeV4 {
       amounts[0] = wrappedAmount(amount, route.chainId)
       for (let i = 0; i < route.path.length - 1; i++) {
         const pool = route.pools[i]
-        const [outputAmount, nextpool] = pool instanceof Pair || pool instanceof WeightedPair ?
-          pool.getOutputAmount(amounts[i]) :
-          pool.getOutputAmount(amounts[i], stablePool)
+        let outputAmount: TokenAmount
+        let nextpool: Pool
+        if (pool instanceof Pair) {
+          [outputAmount, nextpool] = pool.getOutputAmount(amounts[i])
+        } else if (pool instanceof WeightedPair) {
+          [outputAmount, nextpool] = pool.clone().getOutputAmount(amounts[i])
+        } else {
+          [outputAmount, nextpool] = pool.getOutputAmount(amounts[i], stablePool)
+        }
+        // const [outputAmount, nextpool] = pool instanceof Pair || pool instanceof WeightedPair ?
+        //   pool.getOutputAmount(amounts[i]) :
+        //   pool.getOutputAmount(amounts[i], stablePool)
         amounts[i + 1] = outputAmount
         nextpools[i] = nextpool
       }
@@ -169,9 +178,18 @@ export class TradeV4 {
       amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId)
       for (let i = route.path.length - 1; i > 0; i--) {
         const pool = route.pools[i - 1]
-        const [inputAmount, nextpool] = pool instanceof Pair || pool instanceof WeightedPair ?
-          pool.getInputAmount(amounts[i]) :
-          pool.getInputAmount(amounts[i], stablePool)
+        let inputAmount: TokenAmount
+        let nextpool: Pool
+        if (pool instanceof Pair) {
+          [inputAmount, nextpool] = pool.getInputAmount(amounts[i])
+        } else if (pool instanceof WeightedPair) {
+          [inputAmount, nextpool] = pool.clone().getInputAmount(amounts[i])
+        } else {
+          [inputAmount, nextpool] = pool.getInputAmount(amounts[i], stablePool)
+        }
+        // const [inputAmount, nextpool] = pool instanceof Pair || pool instanceof WeightedPair ?
+        //   pool.getInputAmount(amounts[i]) :
+        //   pool.getInputAmount(amounts[i], stablePool)
         amounts[i - 1] = inputAmount
         nextpools[i - 1] = nextpool
       }
