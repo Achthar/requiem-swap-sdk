@@ -2149,8 +2149,6 @@ var WeightedPair = /*#__PURE__*/function () {
 
     var weights = tokenA.sortsBefore(tokenB) ? [weightA.toString(), JSBI.subtract(_100, weightA).toString()] : [JSBI.subtract(_100, weightA).toString(), weightA.toString()]; // does safety checks
 
-    console.log(PAIR_ADDRESS_CACHE$1, tokens, weights);
-
     if (((_PAIR_ADDRESS_CACHE = PAIR_ADDRESS_CACHE$1) === null || _PAIR_ADDRESS_CACHE === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t = _PAIR_ADDRESS_CACHE[tokens[0].address]) === null || _PAIR_ADDRESS_CACHE$t === void 0 ? void 0 : (_PAIR_ADDRESS_CACHE$t2 = _PAIR_ADDRESS_CACHE$t[tokens[1].address]) === null || _PAIR_ADDRESS_CACHE$t2 === void 0 ? void 0 : _PAIR_ADDRESS_CACHE$t2[weights[0] + "-" + fee.toString()]) === undefined) {
       var _PAIR_ADDRESS_CACHE2, _PAIR_ADDRESS_CACHE3, _PAIR_ADDRESS_CACHE3$, _extends2, _extends3, _extends4;
 

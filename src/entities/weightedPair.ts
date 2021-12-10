@@ -47,7 +47,6 @@ export class WeightedPair {
   public static getAddress(tokenA: Token, tokenB: Token, weightA: JSBI, fee: JSBI): string {
     const tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA] // does safety checks
     const weights = tokenA.sortsBefore(tokenB) ? [weightA.toString(), JSBI.subtract(_100, weightA).toString()] : [JSBI.subtract(_100, weightA).toString(), weightA.toString()] // does safety checks
-    console.log(PAIR_ADDRESS_CACHE, tokens, weights)
     if (PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address]?.[`${weights[0]}-${fee.toString()}`] === undefined) {
       PAIR_ADDRESS_CACHE = {
         ...PAIR_ADDRESS_CACHE,
