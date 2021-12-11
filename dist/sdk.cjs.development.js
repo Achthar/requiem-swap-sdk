@@ -5023,15 +5023,18 @@ function computePriceImpact$2(midPrice, inputAmount, outputAmount) {
 
   var slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote);
   return new Percent(slippage.numerator, slippage.denominator);
-}
-
-function computePriceImpactWeightedPair(pair, inputAmount, outputAmount) {
-  var artificialMidPrice = new Price(inputAmount.currency, outputAmount.currency, pair.reserveOf(wrappedCurrency$2(inputAmount.currency, pair.chainId)).raw, pair.reserveOf(wrappedCurrency$2(outputAmount.currency, pair.chainId)).raw);
-  var exactQuote = artificialMidPrice.raw.multiply(inputAmount.raw); // calculate slippage := (exactQuote - outputAmount) / exactQuote
-
-  var slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote);
-  return new Percent(slippage.numerator, slippage.denominator);
-} // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
+} // function computePriceImpactWeightedPair(pair: WeightedPair, inputAmount: CurrencyAmount, outputAmount: CurrencyAmount): Percent {
+//   const artificialMidPrice = new Price(
+//     inputAmount.currency,
+//     outputAmount.currency,
+//     pair.reserveOf(wrappedCurrency(inputAmount.currency, pair.chainId)).raw,
+//     pair.reserveOf(wrappedCurrency(outputAmount.currency, pair.chainId)).raw)
+//   const exactQuote = artificialMidPrice.raw.multiply(inputAmount.raw)
+//   // calculate slippage := (exactQuote - outputAmount) / exactQuote
+//   const slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote)
+//   return new Percent(slippage.numerator, slippage.denominator)
+// }
+// comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
 // in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
 
 
@@ -5180,7 +5183,9 @@ var TradeV4 = /*#__PURE__*/function () {
     this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
     this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
     this.nextMidPrice = Price.fromRouteV4(new RouteV4(nextpools, stablePool.clone(), route.input));
-    this.priceImpact = this.route.pools[this.route.pools.length - 1] instanceof WeightedPair ? computePriceImpactWeightedPair(this.route.pools[this.route.pools.length - 1].clone(), this.inputAmount, this.outputAmount) : computePriceImpact$2(route.midPrice, this.inputAmount, this.outputAmount);
+    this.priceImpact = computePriceImpact$2(route.midPrice, this.inputAmount, this.outputAmount); //   this.route.pools[this.route.pools.length - 1] instanceof WeightedPair
+    //     ? computePriceImpactWeightedPair((this.route.pools[this.route.pools.length - 1] as WeightedPair).clone(), this.inputAmount, this.outputAmount)
+    //     : computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount)
   }
   /**
    * Constructs an exact in trade with the given amount in and route
