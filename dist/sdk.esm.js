@@ -50,7 +50,7 @@ var FACTORY_ADDRESS = {
   43113: '0xC07098cdCf93b2dc5c20E749cDd1ba69cB9AcEBe'
 };
 var WEIGHTED_FACTORY_ADDRESS = {
-  43113: '0x73622a125accA39410EdC159E04692014E79b82f'
+  43113: '0xacd3602152763C3AAFA705D8a90C36661ecD7d46'
 }; // export const INIT_CODE_HASH = '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5'
 
 var INIT_CODE_HASH = {
@@ -64,9 +64,6 @@ var INIT_CODE_HASH_WEIGHTED = {
 };
 var REQUIEM_PAIR_MANAGER = {
   43113: '0x4de697f41A2Da1c5a6a6905a95438E0aFbBa2382'
-};
-var REQUIEM_WEIGHTED_PAIR_FACTORY = {
-  43113: '0xacd3602152763C3AAFA705D8a90C36661ecD7d46'
 };
 var STABLE_POOL_ADDRESS = {
   43113: '0x1420e95763c97D8A8fA6AA32d1715074765812CD'
@@ -6047,5 +6044,5 @@ var RouterV4 = /*#__PURE__*/function () {
   return RouterV4;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, REQUIEM_PAIR_MANAGER, REQUIEM_WEIGHTED_PAIR_FACTORY, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, tradeComparator, tradeComparatorV3, tradeComparatorV4 };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, REQUIEM_PAIR_MANAGER, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, tradeComparator, tradeComparatorV3, tradeComparatorV4 };
 //# sourceMappingURL=sdk.esm.js.map

@@ -32,7 +32,7 @@ export const FACTORY_ADDRESS: { [chainId: number]: string } = {
 }
 
 export const WEIGHTED_FACTORY_ADDRESS: { [chainId: number]: string } = {
-  43113: '0x73622a125accA39410EdC159E04692014E79b82f',
+  43113: '0xacd3602152763C3AAFA705D8a90C36661ecD7d46',
 }
 
 // export const INIT_CODE_HASH = '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5'
@@ -51,10 +51,6 @@ export const INIT_CODE_HASH_WEIGHTED: { [chainId: number]: string } = {
 
 export const REQUIEM_PAIR_MANAGER:{[chainId:number]:string} ={
   43113:'0x4de697f41A2Da1c5a6a6905a95438E0aFbBa2382'
-}
-
-export const REQUIEM_WEIGHTED_PAIR_FACTORY:{[chainId:number]:string} = {
-  43113:'0xacd3602152763C3AAFA705D8a90C36661ecD7d46'
 }
 
 export const STABLE_POOL_ADDRESS: { [chainId: number]: string } = {
