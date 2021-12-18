@@ -46,7 +46,7 @@ export const INIT_CODE_HASH: { [chainId: number]: string } = {
 }
 
 export const INIT_CODE_HASH_WEIGHTED: { [chainId: number]: string } = {
-  43113: '0x4df8067145d0a795d56b39c1ba240740a830ae545df3b51d3d8552b02e265c75',
+  43113: '0xbeec252b6527ff023d9f20fa336f9f131a002be662ce64ef7f9ed17b5ea8b591',
 }
 
 export const REQUIEM_PAIR_MANAGER:{[chainId:number]:string} ={
