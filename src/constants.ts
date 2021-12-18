@@ -50,19 +50,19 @@ export const INIT_CODE_HASH_WEIGHTED: { [chainId: number]: string } = {
 }
 
 export const REQUIEM_PAIR_MANAGER:{[chainId:number]:string} ={
-  43113:'0x47859E1deca75773C31408eDFDC45CF765EfAa18'
+  43113:'0x4de697f41A2Da1c5a6a6905a95438E0aFbBa2382'
 }
 
 export const REQUIEM_WEIGHTED_PAIR_FACTORY:{[chainId:number]:string} = {
-  43113:'0x73622a125accA39410EdC159E04692014E79b82f'
+  43113:'0xacd3602152763C3AAFA705D8a90C36661ecD7d46'
 }
 
 export const STABLE_POOL_ADDRESS: { [chainId: number]: string } = {
-  43113: '0xb76c5C977F48C45d3f3234798D0051bdcA6dc656',
+  43113: '0x1420e95763c97D8A8fA6AA32d1715074765812CD',
 }
 
 export const STABLE_POOL_LP_ADDRESS: { [chainId: number]: string } = {
-  43113: '0x6A3a5F06AAa453b56AC44e84d87d9E3E3A3D6aB2'
+  43113: '0x5a42f231cb718a646cec2f73882760b4e67128b3'
 }
 
 export const MINIMUM_LIQUIDITY = JSBI.BigInt(1000)
