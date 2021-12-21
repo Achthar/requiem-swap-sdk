@@ -11,6 +11,8 @@ export enum ChainId {
   ARBITRUM_TETSNET_RINKEBY = 421611,
   MATIC_MAINNET = 137,
   MATIC_TESTNET = 80001,
+  OASIS_TESTNET = 42261,
+  OASIS_MAINNET = 42262
 }
 
 export enum TradeType {
@@ -55,10 +57,12 @@ export const REQUIEM_PAIR_MANAGER:{[chainId:number]:string} ={
 
 export const STABLE_POOL_ADDRESS: { [chainId: number]: string } = {
   43113: '0x1420e95763c97D8A8fA6AA32d1715074765812CD',
+  42261: '0x2a90276992ddC21C3585FE50f5B43D0Cf62aDe03'
 }
 
 export const STABLE_POOL_LP_ADDRESS: { [chainId: number]: string } = {
-  43113: '0x5a42f231cb718a646cec2f73882760b4e67128b3'
+  43113: '0x5a42f231cb718a646cec2f73882760b4e67128b3',
+  42261: '0x9364E91ca784ca51f88dE2a76a35Ba2665bdad04'
 }
 
 export const MINIMUM_LIQUIDITY = JSBI.BigInt(1000)

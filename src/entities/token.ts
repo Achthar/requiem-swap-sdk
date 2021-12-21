@@ -200,5 +200,21 @@ export const WRAPPED_NETWORK_TOKENS = {
     'Wrapped MATIC',
     'https://www.binance.org'
   ),
+  [ChainId.OASIS_TESTNET]:
+  new Token( ChainId.OASIS_TESTNET,
+    '0xfb40cd35C0cF322fA3cfB8D67b533Bd9ad7df056',
+    18,
+    'wROSE',
+    'Wrapped ROSE',
+    'https://docs.oasis.dev/'
+  ),
+  [ChainId.OASIS_MAINNET]:
+  new Token( ChainId.OASIS_MAINNET,
+    '0xfb40cd35C0cF322fA3cfB8D67b533Bd9ad7df056',
+    18,
+    'wROSE',
+    'Wrapped ROSE',
+    'https://docs.oasis.dev/'
+  ),
 
 }

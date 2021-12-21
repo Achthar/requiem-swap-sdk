@@ -26,6 +26,8 @@ var ChainId;
   ChainId[ChainId["ARBITRUM_TETSNET_RINKEBY"] = 421611] = "ARBITRUM_TETSNET_RINKEBY";
   ChainId[ChainId["MATIC_MAINNET"] = 137] = "MATIC_MAINNET";
   ChainId[ChainId["MATIC_TESTNET"] = 80001] = "MATIC_TESTNET";
+  ChainId[ChainId["OASIS_TESTNET"] = 42261] = "OASIS_TESTNET";
+  ChainId[ChainId["OASIS_MAINNET"] = 42262] = "OASIS_MAINNET";
 })(ChainId || (ChainId = {}));
 
 var TradeType;
@@ -66,10 +68,12 @@ var REQUIEM_PAIR_MANAGER = {
   43113: '0x4de697f41A2Da1c5a6a6905a95438E0aFbBa2382'
 };
 var STABLE_POOL_ADDRESS = {
-  43113: '0x1420e95763c97D8A8fA6AA32d1715074765812CD'
+  43113: '0x1420e95763c97D8A8fA6AA32d1715074765812CD',
+  42261: '0x2a90276992ddC21C3585FE50f5B43D0Cf62aDe03'
 };
 var STABLE_POOL_LP_ADDRESS = {
-  43113: '0x5a42f231cb718a646cec2f73882760b4e67128b3'
+  43113: '0x5a42f231cb718a646cec2f73882760b4e67128b3',
+  42261: '0x9364E91ca784ca51f88dE2a76a35Ba2665bdad04'
 };
 var MINIMUM_LIQUIDITY = /*#__PURE__*/JSBI.BigInt(1000); // exports for internal consumption
 
@@ -402,7 +406,7 @@ function Currency(decimals, symbol, name) {
  */
 
 Currency.ETHER = /*#__PURE__*/new Currency(18, 'BNB', 'BNB');
-Currency.NETWORK_CCY = (_Currency$NETWORK_CCY = {}, _Currency$NETWORK_CCY[ChainId.BSC_MAINNET] = /*#__PURE__*/new Currency(18, 'BNB', 'BNB'), _Currency$NETWORK_CCY[ChainId.BSC_TESTNET] = /*#__PURE__*/new Currency(18, 'BNB', 'BNB'), _Currency$NETWORK_CCY[ChainId.ARBITRUM_MAINNET] = /*#__PURE__*/new Currency(18, 'ETH', 'ETH'), _Currency$NETWORK_CCY[ChainId.ARBITRUM_TETSNET_RINKEBY] = /*#__PURE__*/new Currency(18, 'ETH', 'ETH'), _Currency$NETWORK_CCY[ChainId.AVAX_MAINNET] = /*#__PURE__*/new Currency(18, 'AVAX', 'AVAX'), _Currency$NETWORK_CCY[ChainId.AVAX_TESTNET] = /*#__PURE__*/new Currency(18, 'AVAX', 'AVAX'), _Currency$NETWORK_CCY[ChainId.MATIC_MAINNET] = /*#__PURE__*/new Currency(18, 'MATIC', 'MATIC'), _Currency$NETWORK_CCY[ChainId.MATIC_TESTNET] = /*#__PURE__*/new Currency(18, 'MATIC', 'MATIC'), _Currency$NETWORK_CCY);
+Currency.NETWORK_CCY = (_Currency$NETWORK_CCY = {}, _Currency$NETWORK_CCY[ChainId.BSC_MAINNET] = /*#__PURE__*/new Currency(18, 'BNB', 'BNB'), _Currency$NETWORK_CCY[ChainId.BSC_TESTNET] = /*#__PURE__*/new Currency(18, 'BNB', 'BNB'), _Currency$NETWORK_CCY[ChainId.ARBITRUM_MAINNET] = /*#__PURE__*/new Currency(18, 'ETH', 'ETH'), _Currency$NETWORK_CCY[ChainId.ARBITRUM_TETSNET_RINKEBY] = /*#__PURE__*/new Currency(18, 'ETH', 'ETH'), _Currency$NETWORK_CCY[ChainId.AVAX_MAINNET] = /*#__PURE__*/new Currency(18, 'AVAX', 'AVAX'), _Currency$NETWORK_CCY[ChainId.AVAX_TESTNET] = /*#__PURE__*/new Currency(18, 'AVAX', 'AVAX'), _Currency$NETWORK_CCY[ChainId.MATIC_MAINNET] = /*#__PURE__*/new Currency(18, 'MATIC', 'MATIC'), _Currency$NETWORK_CCY[ChainId.MATIC_TESTNET] = /*#__PURE__*/new Currency(18, 'MATIC', 'MATIC'), _Currency$NETWORK_CCY[ChainId.OASIS_MAINNET] = /*#__PURE__*/new Currency(10, 'ROSE', 'ROSE'), _Currency$NETWORK_CCY[ChainId.OASIS_TESTNET] = /*#__PURE__*/new Currency(10, 'ROSE', 'ROSE'), _Currency$NETWORK_CCY);
 var NETWORK_CCY = Currency.NETWORK_CCY;
 var ETHER = Currency.ETHER;
 
@@ -474,7 +478,7 @@ var WETH = (_WETH = {}, _WETH[ChainId.BSC_MAINNET] = /*#__PURE__*/new Token(Chai
 // these are the respective wrapped network tokens, e.g. WBNB for Binance
 // or WMATIC for Polygon
 
-var WRAPPED_NETWORK_TOKENS = (_WRAPPED_NETWORK_TOKE = {}, _WRAPPED_NETWORK_TOKE[ChainId.BSC_MAINNET] = /*#__PURE__*/new Token(ChainId.BSC_MAINNET, '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.BSC_TESTNET] = /*#__PURE__*/new Token(ChainId.BSC_TESTNET, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.ARBITRUM_MAINNET] = /*#__PURE__*/new Token(ChainId.ARBITRUM_MAINNET, '0xc778417E063141139Fce010982780140Aa0cD5Ab', 18, 'WETH', 'Wrapped ETH', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.ARBITRUM_TETSNET_RINKEBY] = /*#__PURE__*/new Token(ChainId.ARBITRUM_TETSNET_RINKEBY, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.AVAX_MAINNET] = /*#__PURE__*/new Token(ChainId.AVAX_MAINNET, '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.AVAX_TESTNET] = /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xd00ae08403B9bbb9124bB305C09058E32C39A48c', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.MATIC_MAINNET] = /*#__PURE__*/new Token(ChainId.MATIC_MAINNET, '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.MATIC_TESTNET] = /*#__PURE__*/new Token(ChainId.MATIC_TESTNET, '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE);
+var WRAPPED_NETWORK_TOKENS = (_WRAPPED_NETWORK_TOKE = {}, _WRAPPED_NETWORK_TOKE[ChainId.BSC_MAINNET] = /*#__PURE__*/new Token(ChainId.BSC_MAINNET, '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.BSC_TESTNET] = /*#__PURE__*/new Token(ChainId.BSC_TESTNET, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.ARBITRUM_MAINNET] = /*#__PURE__*/new Token(ChainId.ARBITRUM_MAINNET, '0xc778417E063141139Fce010982780140Aa0cD5Ab', 18, 'WETH', 'Wrapped ETH', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.ARBITRUM_TETSNET_RINKEBY] = /*#__PURE__*/new Token(ChainId.ARBITRUM_TETSNET_RINKEBY, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.AVAX_MAINNET] = /*#__PURE__*/new Token(ChainId.AVAX_MAINNET, '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.AVAX_TESTNET] = /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xd00ae08403B9bbb9124bB305C09058E32C39A48c', 18, 'WAVAX', 'Wrapped AVAX', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.MATIC_MAINNET] = /*#__PURE__*/new Token(ChainId.MATIC_MAINNET, '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.MATIC_TESTNET] = /*#__PURE__*/new Token(ChainId.MATIC_TESTNET, '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889', 18, 'WMATIC', 'Wrapped MATIC', 'https://www.binance.org'), _WRAPPED_NETWORK_TOKE[ChainId.OASIS_TESTNET] = /*#__PURE__*/new Token(ChainId.OASIS_TESTNET, '0xfb40cd35C0cF322fA3cfB8D67b533Bd9ad7df056', 18, 'wROSE', 'Wrapped ROSE', 'https://docs.oasis.dev/'), _WRAPPED_NETWORK_TOKE[ChainId.OASIS_MAINNET] = /*#__PURE__*/new Token(ChainId.OASIS_MAINNET, '0xfb40cd35C0cF322fA3cfB8D67b533Bd9ad7df056', 18, 'wROSE', 'Wrapped ROSE', 'https://docs.oasis.dev/'), _WRAPPED_NETWORK_TOKE);
 
 var _toSignificantRoundin, _toFixedRounding;
 var Decimal = /*#__PURE__*/toFormat(_Decimal);
@@ -2371,6 +2375,7 @@ var WeightedPair = /*#__PURE__*/function () {
 
 var STABLECOINS = {
   43113: [/*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xca9ec7085ed564154a9233e1e7d8fef460438eea', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xffb3ed4960cac85372e6838fbc9ce47bcf2d073e', 6, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xaea51e4fee50a980928b4353e852797b54deacd8', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(ChainId.AVAX_TESTNET, '0xccf7ed44c5a0f3cb5c9a9b9f765f8d836fb93ba1', 18, 'TUSD', 'True USD')],
+  42261: [/*#__PURE__*/new Token(ChainId.OASIS_TESTNET, '0x9aEeeD65aE87e3b28793aefAeED59c3f10ef956b', 6, 'USDC', 'USD Coin'), /*#__PURE__*/new Token(ChainId.OASIS_TESTNET, '0xfA0D8065755Fb3b6520149e86Ac5A3Dc3ee5Dc92', 6, 'USDT', 'Tether USD'), /*#__PURE__*/new Token(ChainId.OASIS_TESTNET, '0xf10Bd0dA1f0e69c3334D7F8116C9082746EBC1B4', 18, 'DAI', 'Dai Stablecoin'), /*#__PURE__*/new Token(ChainId.OASIS_TESTNET, '0x4e8848da06E40E866b82f6b52417494936c9509b', 18, 'TUSD', 'True USD')],
   0: [/*#__PURE__*/new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin')]
 };
 var STABLES_INDEX_MAP = {
@@ -2379,6 +2384,12 @@ var STABLES_INDEX_MAP = {
     1: STABLECOINS[43113][1],
     2: STABLECOINS[43113][2],
     3: STABLECOINS[43113][3]
+  },
+  42261: {
+    0: STABLECOINS[42261][0],
+    1: STABLECOINS[42261][1],
+    2: STABLECOINS[42261][2],
+    3: STABLECOINS[42261][3]
   }
 };
 var STABLES_LP_TOKEN = {
