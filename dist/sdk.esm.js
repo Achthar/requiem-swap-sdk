@@ -52,7 +52,8 @@ var FACTORY_ADDRESS = {
   43113: '0xC07098cdCf93b2dc5c20E749cDd1ba69cB9AcEBe'
 };
 var WEIGHTED_FACTORY_ADDRESS = {
-  43113: '0xacd3602152763C3AAFA705D8a90C36661ecD7d46'
+  43113: '0xacd3602152763C3AAFA705D8a90C36661ecD7d46',
+  42261: '0x274B1F7F8e66B044B2DC773E017750957f70490c'
 }; // export const INIT_CODE_HASH = '0x00fb7f630766e6a796048ea87d01acd3068e8ff67d078148a3fa3f4a84f69bd5'
 
 var INIT_CODE_HASH = {
@@ -62,10 +63,8 @@ var INIT_CODE_HASH = {
   43113: '0x197a29e2e90d809812f533e62529432f8e2741455e49d25365a66b4be2a453dd'
 };
 var INIT_CODE_HASH_WEIGHTED = {
-  43113: '0xbeec252b6527ff023d9f20fa336f9f131a002be662ce64ef7f9ed17b5ea8b591'
-};
-var REQUIEM_PAIR_MANAGER = {
-  43113: '0x4de697f41A2Da1c5a6a6905a95438E0aFbBa2382'
+  43113: '0xbeec252b6527ff023d9f20fa336f9f131a002be662ce64ef7f9ed17b5ea8b591',
+  42261: '0x6a869d7b57f2343c50f107424e084e4fd94b6a55e3cb98b6a396730db3ab5363'
 };
 var STABLE_POOL_ADDRESS = {
   43113: '0x1420e95763c97D8A8fA6AA32d1715074765812CD',
@@ -6055,5 +6054,5 @@ var RouterV4 = /*#__PURE__*/function () {
   return RouterV4;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, REQUIEM_PAIR_MANAGER, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, tradeComparator, tradeComparatorV3, tradeComparatorV4 };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, tradeComparator, tradeComparatorV3, tradeComparatorV4 };
 //# sourceMappingURL=sdk.esm.js.map
