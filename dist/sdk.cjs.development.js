@@ -5490,6 +5490,52 @@ var TradeV4 = /*#__PURE__*/function () {
   return TradeV4;
 }();
 
+var ONE$3 = /*#__PURE__*/ethers.BigNumber.from(1);
+var TWO$2 = /*#__PURE__*/ethers.BigNumber.from(2);
+function sqrrt(a) {
+  var c = ONE$3;
+
+  if (a.gt(3)) {
+    c = a;
+    var b = a.div(TWO$2).add(ONE$3);
+
+    while (b < c) {
+      c = b;
+      b = a.div(b).add(b).div(TWO$2);
+    }
+  } else if (!a.eq(0)) {
+    c = ONE$3;
+  }
+
+  return c;
+}
+function getTotalValue(pair, reqt) {
+  var reserve0 = pair.reserve0;
+  var reserve1 = pair.reserve1;
+
+  var _ref = reqt.equals(pair.token0) ? [pair.token1, reserve1] : [pair.token0, reserve0],
+      otherToken = _ref[0],
+      reservesOther = _ref[1];
+
+  var decimals = otherToken.decimals + reqt.decimals - pair.liquidityToken.decimals - 4;
+
+  var _pair$clone$getOutput = pair.clone().getOutputAmount(new TokenAmount(otherToken, JSBI.divide(reservesOther.raw, JSBI.BigInt(10000)))),
+      syntReserveREQT = _pair$clone$getOutput[0];
+
+  return sqrrt(syntReserveREQT.toBigNumber().mul(reservesOther.toBigNumber()).div(ethers.BigNumber.from(Math.pow(10, decimals)))).mul(TWO$2);
+}
+/**
+* - calculates the value in reqt of the input LP amount provided
+* @param _pair general pair that has the RequiemSwap interface implemented
+* @param amount_ the amount of LP to price in REQT
+*  - is consistent with the uniswapV2-type case
+*/
+
+function valuation(pair, totalSupply, amount, reqt) {
+  var totalValue = getTotalValue(pair, reqt);
+  return totalValue.mul(amount).div(totalSupply);
+}
+
 function toHex(currencyAmount) {
   return "0x" + currencyAmount.raw.toString(16);
 }
@@ -6093,10 +6139,13 @@ exports.WETH = WETH;
 exports.WRAPPED_NETWORK_TOKENS = WRAPPED_NETWORK_TOKENS;
 exports.WeightedPair = WeightedPair;
 exports.currencyEquals = currencyEquals;
+exports.getTotalValue = getTotalValue;
 exports.inputOutputComparator = inputOutputComparator;
 exports.inputOutputComparatorV3 = inputOutputComparatorV3;
 exports.inputOutputComparatorV4 = inputOutputComparatorV4;
+exports.sqrrt = sqrrt;
 exports.tradeComparator = tradeComparator;
 exports.tradeComparatorV3 = tradeComparatorV3;
 exports.tradeComparatorV4 = tradeComparatorV4;
+exports.valuation = valuation;
 //# sourceMappingURL=sdk.cjs.development.js.map

@@ -5492,6 +5492,52 @@ var TradeV4 = /*#__PURE__*/function () {
   return TradeV4;
 }();
 
+var ONE$3 = /*#__PURE__*/BigNumber$1.from(1);
+var TWO$2 = /*#__PURE__*/BigNumber$1.from(2);
+function sqrrt(a) {
+  var c = ONE$3;
+
+  if (a.gt(3)) {
+    c = a;
+    var b = a.div(TWO$2).add(ONE$3);
+
+    while (b < c) {
+      c = b;
+      b = a.div(b).add(b).div(TWO$2);
+    }
+  } else if (!a.eq(0)) {
+    c = ONE$3;
+  }
+
+  return c;
+}
+function getTotalValue(pair, reqt) {
+  var reserve0 = pair.reserve0;
+  var reserve1 = pair.reserve1;
+
+  var _ref = reqt.equals(pair.token0) ? [pair.token1, reserve1] : [pair.token0, reserve0],
+      otherToken = _ref[0],
+      reservesOther = _ref[1];
+
+  var decimals = otherToken.decimals + reqt.decimals - pair.liquidityToken.decimals - 4;
+
+  var _pair$clone$getOutput = pair.clone().getOutputAmount(new TokenAmount(otherToken, JSBI.divide(reservesOther.raw, JSBI.BigInt(10000)))),
+      syntReserveREQT = _pair$clone$getOutput[0];
+
+  return sqrrt(syntReserveREQT.toBigNumber().mul(reservesOther.toBigNumber()).div(BigNumber$1.from(Math.pow(10, decimals)))).mul(TWO$2);
+}
+/**
+* - calculates the value in reqt of the input LP amount provided
+* @param _pair general pair that has the RequiemSwap interface implemented
+* @param amount_ the amount of LP to price in REQT
+*  - is consistent with the uniswapV2-type case
+*/
+
+function valuation(pair, totalSupply, amount, reqt) {
+  var totalValue = getTotalValue(pair, reqt);
+  return totalValue.mul(amount).div(totalSupply);
+}
+
 function toHex(currencyAmount) {
   return "0x" + currencyAmount.raw.toString(16);
 }
@@ -6054,5 +6100,5 @@ var RouterV4 = /*#__PURE__*/function () {
   return RouterV4;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, tradeComparator, tradeComparatorV3, tradeComparatorV4 };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, getTotalValue, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, sqrrt, tradeComparator, tradeComparatorV3, tradeComparatorV4, valuation };
 //# sourceMappingURL=sdk.esm.js.map
