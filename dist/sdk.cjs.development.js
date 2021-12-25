@@ -2067,7 +2067,8 @@ function findPositionInMaxExpArray(_x) {
 
 function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
   // validate input
-  !amountIn.gt(ZERO$1) ?  invariant(false, "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT")  : void 0;
+  // invariant(amountIn.gt(ZERO), "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT");
+  if (amountIn.lte(ZERO$1)) return ZERO$1;
   !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ?  invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY")  : void 0;
   var amountInWithFee = amountIn.mul(TENK.sub(swapFee)); // special case for equal weights
 
@@ -2105,7 +2106,8 @@ function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeigh
 
 function getAmountIn(amountOut, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
   // validate input
-  !amountOut.gt(ZERO$1) ?  invariant(false, "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT")  : void 0;
+  // invariant(amountOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT");
+  if (amountOut.gte(ZERO$1)) return ZERO$1;
   !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ?  invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY")  : void 0; // special case for equal weights
 
   if (tokenWeightIn.eq(tokenWeightOut)) {
@@ -6143,10 +6145,18 @@ exports.WETH = WETH;
 exports.WRAPPED_NETWORK_TOKENS = WRAPPED_NETWORK_TOKENS;
 exports.WeightedPair = WeightedPair;
 exports.currencyEquals = currencyEquals;
+exports.findPositionInMaxExpArray = findPositionInMaxExpArray;
+exports.generalExp = generalExp;
+exports.generalLog = generalLog;
+exports.getAmountIn = getAmountIn;
+exports.getAmountOut = getAmountOut;
 exports.getTotalValue = getTotalValue;
 exports.inputOutputComparator = inputOutputComparator;
 exports.inputOutputComparatorV3 = inputOutputComparatorV3;
 exports.inputOutputComparatorV4 = inputOutputComparatorV4;
+exports.optimalExp = optimalExp;
+exports.optimalLog = optimalLog;
+exports.power = power;
 exports.sqrrt = sqrrt;
 exports.tradeComparator = tradeComparator;
 exports.tradeComparatorV3 = tradeComparatorV3;

@@ -6,6 +6,7 @@ export * from './currency'
 export * from './fractions'
 
 export * from './weightedPair'
+export * from './weightedPairCalc'
 export * from './pool'
 export * from './stables'
 export * from './stablePairWrapper'

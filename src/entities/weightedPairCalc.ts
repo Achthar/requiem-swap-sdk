@@ -197,7 +197,7 @@ function floorLog2(_n: BigNumber): BigNumber {
             }
         }
     }
-    
+
     return res;
 }
 
@@ -401,7 +401,7 @@ export function optimalExp(x: BigNumber): BigNumber {
     // multiply by e^2^(+2)
     if (!(x.and(BigNumber.from('0x400000000000000000000000000000000')).isZero())) res = (res.mul(BigNumber.from('0x0002bf84208204f5977f9a8cf01fdc307'))).div(BigNumber.from('0x0000003c6ab775dd0b95b4cbee7e65d11'));
     // multiply by e^2^(+3)
-    
+
     return res;
 }
 
@@ -513,7 +513,7 @@ export function generalExp(_x: BigNumber, _precision: BigNumber) {
     res = res.add(xi.mul('0x0000000000000000000000000000001'));
     // add x^33 * (33! / 33!)
 
-    
+
     return (res.div(BigNumber.from('0x688589cc0e9505e2f2fee5580000000'))).add(_x).add(leftShift(ONE, _precision));
     // divide by 33! and then add x^1 / 1! + x^0 / 0!
 }
@@ -563,7 +563,10 @@ export function getAmountOut(
     swapFee: BigNumber
 ): BigNumber {
     // validate input
-    invariant(amountIn.gt(ZERO), "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT");
+    // invariant(amountIn.gt(ZERO), "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT");
+    if (amountIn.lte(ZERO))
+        return ZERO
+
     invariant(reserveIn.gt(ZERO) && reserveOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_LIQUIDITY");
     const amountInWithFee = amountIn.mul(TENK.sub(swapFee))
     // special case for equal weights
@@ -575,10 +578,10 @@ export function getAmountOut(
     // let precision: number;
     const baseN = (reserveIn.mul(TENK)).add(amountInWithFee)
     const [result, precision] = power(baseN, reserveIn.mul(TENK), tokenWeightIn, tokenWeightOut);
-    
+
     const temp1 = reserveOut.mul(result);
     const temp2 = leftShift(reserveOut, BigNumber.from(precision));
-    
+
     return (temp1.sub(temp2)).div(result)
 }
 
@@ -606,7 +609,11 @@ export function getAmountIn(
     swapFee: BigNumber
 ) {
     // validate input
-    invariant(amountOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT");
+    // invariant(amountOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT");
+
+    if (amountOut.gte(ZERO))
+        return ZERO
+
     invariant(reserveIn.gt(ZERO) && reserveOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_LIQUIDITY");
     // special case for equal weights
     if (tokenWeightIn.eq(tokenWeightOut)) {

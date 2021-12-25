@@ -2069,7 +2069,8 @@ function findPositionInMaxExpArray(_x) {
 
 function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
   // validate input
-  !amountIn.gt(ZERO$1) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT") : invariant(false) : void 0;
+  // invariant(amountIn.gt(ZERO), "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT");
+  if (amountIn.lte(ZERO$1)) return ZERO$1;
   !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY") : invariant(false) : void 0;
   var amountInWithFee = amountIn.mul(TENK.sub(swapFee)); // special case for equal weights
 
@@ -2107,7 +2108,8 @@ function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeigh
 
 function getAmountIn(amountOut, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
   // validate input
-  !amountOut.gt(ZERO$1) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT") : invariant(false) : void 0;
+  // invariant(amountOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT");
+  if (amountOut.gte(ZERO$1)) return ZERO$1;
   !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY") : invariant(false) : void 0; // special case for equal weights
 
   if (tokenWeightIn.eq(tokenWeightOut)) {
@@ -6104,5 +6106,5 @@ var RouterV4 = /*#__PURE__*/function () {
   return RouterV4;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, getTotalValue, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, sqrrt, tradeComparator, tradeComparatorV3, tradeComparatorV4, valuation };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, findPositionInMaxExpArray, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, optimalExp, optimalLog, power, sqrrt, tradeComparator, tradeComparatorV3, tradeComparatorV4, valuation };
 //# sourceMappingURL=sdk.esm.js.map
