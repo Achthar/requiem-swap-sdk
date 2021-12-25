@@ -563,9 +563,9 @@ export function getAmountOut(
     swapFee: BigNumber
 ): BigNumber {
     // validate input
-    // invariant(amountIn.gt(ZERO), "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT");
-    if (amountIn.lte(ZERO) || amountIn.eq(ZERO))
-        return ZERO
+    invariant(amountIn.gt(ZERO), "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT");
+    // if (amountIn.lte(ZERO) || amountIn.eq(ZERO))
+    //     return ZERO
 
     invariant(reserveIn.gt(ZERO) && reserveOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_LIQUIDITY");
     const amountInWithFee = amountIn.mul(TENK.sub(swapFee))
@@ -609,10 +609,10 @@ export function getAmountIn(
     swapFee: BigNumber
 ) {
     // validate input
-    // invariant(amountOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT");
+    invariant(amountOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT");
 
-    if (amountOut.gte(ZERO) || amountOut.eq(ZERO))
-        return ZERO
+    // if (amountOut.gte(ZERO) || amountOut.eq(ZERO))
+    //     return ZERO
 
     invariant(reserveIn.gt(ZERO) && reserveOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_LIQUIDITY");
     // special case for equal weights
