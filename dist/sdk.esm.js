@@ -4369,6 +4369,8 @@ var StablePool = /*#__PURE__*/function () {
   ;
 
   _proto.calculateSwap = function calculateSwap$1(inIndex, outIndex, inAmount) {
+    if (this.getBalances()[inIndex].lte(inAmount)) return BigNumber$1.from(0);
+
     var outAmount = calculateSwap(inIndex, outIndex, inAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
 
     return outAmount;
@@ -4376,10 +4378,12 @@ var StablePool = /*#__PURE__*/function () {
   // pinging the blockchain for data
   ;
 
-  _proto.calculateSwapGivenOut = function calculateSwapGivenOut$1(inIndex, outIndex, inAmount) {
-    var outAmount = calculateSwapGivenOut(inIndex, outIndex, inAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
+  _proto.calculateSwapGivenOut = function calculateSwapGivenOut$1(inIndex, outIndex, outAmount) {
+    if (this.getBalances()[outIndex].lte(outAmount)) return BigNumber$1.from(0);
 
-    return outAmount;
+    var inAmount = calculateSwapGivenOut(inIndex, outIndex, outAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
+
+    return inAmount;
   };
 
   _proto.getOutputAmount = function getOutputAmount(inputAmount, outIndex) {

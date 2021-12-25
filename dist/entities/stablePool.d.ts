@@ -39,7 +39,7 @@ export declare class StablePool {
     getBalances(): BigNumber[];
     calculateSwapViaPing(inIndex: number, outIndex: number, inAmount: BigNumber | BigintIsh, chainId: number, provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh>;
     calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber): BigNumber;
-    calculateSwapGivenOut(inIndex: number, outIndex: number, inAmount: BigNumber): BigNumber;
+    calculateSwapGivenOut(inIndex: number, outIndex: number, outAmount: BigNumber): BigNumber;
     getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount;
     getInputAmount(outputAmount: TokenAmount, inIndex: number): TokenAmount;
     /**

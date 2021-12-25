@@ -147,6 +147,9 @@ export class StablePool {
     outIndex: number,
     inAmount: BigNumber): BigNumber {
 
+    if (this.getBalances()[inIndex].lte(inAmount))
+      return BigNumber.from(0)
+
     const outAmount: BigNumber = calculateSwap(
       inIndex,
       outIndex,
@@ -164,17 +167,20 @@ export class StablePool {
   public calculateSwapGivenOut(
     inIndex: number,
     outIndex: number,
-    inAmount: BigNumber): BigNumber {
+    outAmount: BigNumber): BigNumber {
 
-    const outAmount: BigNumber = calculateSwapGivenOut(
+    if (this.getBalances()[outIndex].lte(outAmount))
+      return BigNumber.from(0)
+
+    const inAmount: BigNumber = calculateSwapGivenOut(
       inIndex,
       outIndex,
-      inAmount,
+      outAmount,
       this.getBalances(),
       this.blockTimestamp,
       this.swapStorage)
 
-    return outAmount
+    return inAmount
   }
 
   public getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount {
