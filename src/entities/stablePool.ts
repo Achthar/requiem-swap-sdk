@@ -21,6 +21,8 @@ import StableSwap from '../abis/RequiemStableSwap.json'
 import { Token } from './token'
 import { TokenAmount } from './fractions/tokenAmount'
 
+const ZERO = BigNumber.from(0)
+
 /**
   * A class that contains relevant stablePool information
   * It is mainly designed to save the map between the indices
@@ -147,8 +149,8 @@ export class StablePool {
     outIndex: number,
     inAmount: BigNumber): BigNumber {
 
-    if (this.getBalances()[inIndex].lte(inAmount))
-      return BigNumber.from(0)
+    if (this.getBalances()[inIndex].lte(inAmount) || inAmount.eq(ZERO))
+      return ZERO
 
     const outAmount: BigNumber = calculateSwap(
       inIndex,
@@ -169,8 +171,8 @@ export class StablePool {
     outIndex: number,
     outAmount: BigNumber): BigNumber {
 
-    if (this.getBalances()[outIndex].lte(outAmount))
-      return BigNumber.from(0)
+    if (this.getBalances()[outIndex].lte(outAmount) || outAmount.eq(ZERO))
+      return ZERO
 
     const inAmount: BigNumber = calculateSwapGivenOut(
       inIndex,

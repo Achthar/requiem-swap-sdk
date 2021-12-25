@@ -2068,7 +2068,7 @@ function findPositionInMaxExpArray(_x) {
 function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
   // validate input
   // invariant(amountIn.gt(ZERO), "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT");
-  if (amountIn.lte(ZERO$1)) return ZERO$1;
+  if (amountIn.lte(ZERO$1) || amountIn.eq(ZERO$1)) return ZERO$1;
   !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ?  invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY")  : void 0;
   var amountInWithFee = amountIn.mul(TENK.sub(swapFee)); // special case for equal weights
 
@@ -2107,7 +2107,7 @@ function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeigh
 function getAmountIn(amountOut, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
   // validate input
   // invariant(amountOut.gt(ZERO), "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT");
-  if (amountOut.gte(ZERO$1)) return ZERO$1;
+  if (amountOut.gte(ZERO$1) || amountOut.eq(ZERO$1)) return ZERO$1;
   !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ?  invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY")  : void 0; // special case for equal weights
 
   if (tokenWeightIn.eq(tokenWeightOut)) {
@@ -4269,6 +4269,7 @@ var StableSwap = [
 	}
 ];
 
+var ZERO$2 = /*#__PURE__*/ethers.BigNumber.from(0);
 /**
   * A class that contains relevant stablePool information
   * It is mainly designed to save the map between the indices
@@ -4369,7 +4370,7 @@ var StablePool = /*#__PURE__*/function () {
   ;
 
   _proto.calculateSwap = function calculateSwap$1(inIndex, outIndex, inAmount) {
-    if (this.getBalances()[inIndex].lte(inAmount)) return ethers.BigNumber.from(0);
+    if (this.getBalances()[inIndex].lte(inAmount) || inAmount.eq(ZERO$2)) return ZERO$2;
 
     var outAmount = calculateSwap(inIndex, outIndex, inAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
 
@@ -4379,7 +4380,7 @@ var StablePool = /*#__PURE__*/function () {
   ;
 
   _proto.calculateSwapGivenOut = function calculateSwapGivenOut$1(inIndex, outIndex, outAmount) {
-    if (this.getBalances()[outIndex].lte(outAmount)) return ethers.BigNumber.from(0);
+    if (this.getBalances()[outIndex].lte(outAmount) || outAmount.eq(ZERO$2)) return ZERO$2;
 
     var inAmount = calculateSwapGivenOut(inIndex, outIndex, outAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
 
