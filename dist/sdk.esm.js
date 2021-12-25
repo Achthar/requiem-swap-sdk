@@ -4372,7 +4372,8 @@ var StablePool = /*#__PURE__*/function () {
   ;
 
   _proto.calculateSwap = function calculateSwap$1(inIndex, outIndex, inAmount) {
-    if (this.getBalances()[inIndex].lte(inAmount) || inAmount.eq(ZERO$2)) return ZERO$2;
+    if (this.getBalances()[inIndex].lte(inAmount)) // || inAmount.eq(ZERO))
+      return ZERO$2;
 
     var outAmount = calculateSwap(inIndex, outIndex, inAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
 
@@ -4382,7 +4383,8 @@ var StablePool = /*#__PURE__*/function () {
   ;
 
   _proto.calculateSwapGivenOut = function calculateSwapGivenOut$1(inIndex, outIndex, outAmount) {
-    if (this.getBalances()[outIndex].lte(outAmount) || outAmount.eq(ZERO$2)) return ZERO$2;
+    if (this.getBalances()[outIndex].lte(outAmount)) // || outAmount.eq(ZERO))
+      return ZERO$2;
 
     var inAmount = calculateSwapGivenOut(inIndex, outIndex, outAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
 

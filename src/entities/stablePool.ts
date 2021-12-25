@@ -149,7 +149,7 @@ export class StablePool {
     outIndex: number,
     inAmount: BigNumber): BigNumber {
 
-    if (this.getBalances()[inIndex].lte(inAmount) || inAmount.eq(ZERO))
+    if (this.getBalances()[inIndex].lte(inAmount)) // || inAmount.eq(ZERO))
       return ZERO
 
     const outAmount: BigNumber = calculateSwap(
@@ -171,7 +171,7 @@ export class StablePool {
     outIndex: number,
     outAmount: BigNumber): BigNumber {
 
-    if (this.getBalances()[outIndex].lte(outAmount) || outAmount.eq(ZERO))
+    if (this.getBalances()[outIndex].lte(outAmount)) // || outAmount.eq(ZERO))
       return ZERO
 
     const inAmount: BigNumber = calculateSwapGivenOut(
