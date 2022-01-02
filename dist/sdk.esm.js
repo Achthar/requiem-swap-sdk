@@ -2320,7 +2320,7 @@ var WeightedPair = /*#__PURE__*/function () {
   _createClass(WeightedPair, [{
     key: "token0Price",
     get: function get() {
-      return new Price(this.token0, this.token1, JSBI.multiply(this.tokenAmounts[0].raw, this.weight0), JSBI.multiply(this.tokenAmounts[1].raw, this.weight1));
+      return new Price(this.token0, this.token1, JSBI.multiply(this.tokenAmounts[0].raw, this.weight1), JSBI.multiply(this.tokenAmounts[1].raw, this.weight0));
     }
     /**
      * Returns the current mid price of the pair in terms of token1, i.e. the ratio of reserve0 to reserve1
@@ -2329,7 +2329,7 @@ var WeightedPair = /*#__PURE__*/function () {
   }, {
     key: "token1Price",
     get: function get() {
-      return new Price(this.token1, this.token0, JSBI.multiply(this.tokenAmounts[1].raw, this.weight1), JSBI.multiply(this.tokenAmounts[0].raw, this.weight0));
+      return new Price(this.token1, this.token0, JSBI.multiply(this.tokenAmounts[1].raw, this.weight0), JSBI.multiply(this.tokenAmounts[0].raw, this.weight1));
     }
   }, {
     key: "fee0",

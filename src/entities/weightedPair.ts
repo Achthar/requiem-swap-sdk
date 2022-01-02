@@ -117,8 +117,8 @@ export class WeightedPair {
     return new Price(
       this.token0,
       this.token1,
-      JSBI.multiply(this.tokenAmounts[0].raw, this.weight0),
-      JSBI.multiply(this.tokenAmounts[1].raw, this.weight1)
+      JSBI.multiply(this.tokenAmounts[0].raw, this.weight1),
+      JSBI.multiply(this.tokenAmounts[1].raw, this.weight0)
     )
   }
 
@@ -129,8 +129,8 @@ export class WeightedPair {
     return new Price(
       this.token1,
       this.token0,
-      JSBI.multiply(this.tokenAmounts[1].raw, this.weight1),
-      JSBI.multiply(this.tokenAmounts[0].raw, this.weight0)
+      JSBI.multiply(this.tokenAmounts[1].raw, this.weight0),
+      JSBI.multiply(this.tokenAmounts[0].raw, this.weight1)
     )
   }
 
