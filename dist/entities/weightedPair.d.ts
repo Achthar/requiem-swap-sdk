@@ -51,4 +51,17 @@ export declare class WeightedPair {
     getLiquidityMinted(totalSupply: TokenAmount, tokenAmountA: TokenAmount, tokenAmountB: TokenAmount): TokenAmount;
     getLiquidityValue(token: Token, totalSupply: TokenAmount, liquidity: TokenAmount, feeOn?: boolean, kLast?: BigintIsh): TokenAmount;
     clone(): WeightedPair;
+    /**
+   * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
+   */
+    get token0PriceRaw(): Price;
+    /**
+     * Returns the current mid price of the pair in terms of token1, i.e. the ratio of reserve0 to reserve1
+     */
+    get token1PriceRaw(): Price;
+    /**
+     * Return the price of the given token in terms of the other token in the pair.
+     * @param token token to return price of
+     */
+    priceRatioOf(token: Token): Price;
 }

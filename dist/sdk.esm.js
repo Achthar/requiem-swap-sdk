@@ -2315,6 +2315,20 @@ var WeightedPair = /*#__PURE__*/function () {
 
   _proto.clone = function clone() {
     return new WeightedPair(this.tokenAmounts[0], this.tokenAmounts[1], this.weight0, this.fee);
+  } // these are only supposed to be used for liquidity calculations
+
+  /**
+  * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
+  */
+  ;
+
+  /**
+   * Return the price of the given token in terms of the other token in the pair.
+   * @param token token to return price of
+   */
+  _proto.priceRatioOf = function priceRatioOf(token) {
+    !this.involvesToken(token) ? process.env.NODE_ENV !== "production" ? invariant(false, 'TOKEN') : invariant(false) : void 0;
+    return token.equals(this.token0) ? this.token0PriceRaw : this.token1PriceRaw;
   };
 
   _createClass(WeightedPair, [{
@@ -2370,6 +2384,20 @@ var WeightedPair = /*#__PURE__*/function () {
     key: "weight1",
     get: function get() {
       return this.weights[1];
+    }
+  }, {
+    key: "token0PriceRaw",
+    get: function get() {
+      return new Price(this.token0, this.token1, this.tokenAmounts[0].raw, this.tokenAmounts[1].raw);
+    }
+    /**
+     * Returns the current mid price of the pair in terms of token1, i.e. the ratio of reserve0 to reserve1
+     */
+
+  }, {
+    key: "token1PriceRaw",
+    get: function get() {
+      return new Price(this.token1, this.token0, this.tokenAmounts[1].raw, this.tokenAmounts[0].raw);
     }
   }]);
 
