@@ -216,5 +216,13 @@ export const WRAPPED_NETWORK_TOKENS = {
     'Wrapped ROSE',
     'https://docs.oasis.dev/'
   ),
+  [ChainId.QUARKCHAIN_DEV_S0]:
+  new Token( ChainId.OASIS_MAINNET,
+    '0x56fB4da0E246003DEc7dD108e47f5d8e8F4cC493',
+    18,
+    'wQKC',
+    'Wrapped QKC',
+    'https://docs.oasis.dev/'
+  ),
 
 }

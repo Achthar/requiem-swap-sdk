@@ -34,6 +34,7 @@ declare const NETWORK_CCY: {
     80001: Currency;
     42261: Currency;
     42262: Currency;
+    110001: Currency;
 };
 declare const ETHER: Currency;
 export { ETHER, NETWORK_CCY };

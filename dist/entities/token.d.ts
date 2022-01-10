@@ -46,4 +46,5 @@ export declare const WRAPPED_NETWORK_TOKENS: {
     80001: Token;
     42261: Token;
     42262: Token;
+    110001: Token;
 };

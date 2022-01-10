@@ -14,6 +14,12 @@ export const STABLECOINS: { [chainId: number]: Token[] } = {
     new Token(ChainId.OASIS_TESTNET, '0xf10Bd0dA1f0e69c3334D7F8116C9082746EBC1B4', 18, 'DAI', 'Dai Stablecoin'),
     new Token(ChainId.OASIS_TESTNET, '0x4e8848da06E40E866b82f6b52417494936c9509b', 18, 'TUSD', 'True USD'),
   ],
+  110001 :[
+    new Token(ChainId.QUARKCHAIN_DEV_S0, '0xE59c1Ddf4fAAC4Fa7C8c93d9392d4bBa55383268', 6, 'USDC', 'USD Coin'),
+    new Token(ChainId.QUARKCHAIN_DEV_S0, '0x1a69a6e206c680A8559c59b951527437CBCe6Ed7', 6, 'USDT', 'Tether USD'),
+    new Token(ChainId.QUARKCHAIN_DEV_S0, '0x51b90a5Bc99B7c76EDf3863E1d61ca6197a6e542', 18, 'DAI', 'Dai Stablecoin'),
+    new Token(ChainId.QUARKCHAIN_DEV_S0, '0xD71C821a373E16D607277DB6C1356c1209C7d866', 18, 'TUSD', 'True USD'),
+  ],
   0: [// dummy value
     new Token(-1, '0xCa9eC7085Ed564154a9233e1e7D8fEF460438EEA', 6, 'USDC', 'USD Coin')]
 }
@@ -31,6 +37,12 @@ export const STABLES_INDEX_MAP: { [chainId: number]: { [index: number]: Token } 
     1: STABLECOINS[42261][1],
     2: STABLECOINS[42261][2],
     3: STABLECOINS[42261][3]
+  },
+  110001: {
+    0: STABLECOINS[110001][0],
+    1: STABLECOINS[110001][1],
+    2: STABLECOINS[110001][2],
+    3: STABLECOINS[110001][3]
   }
 }
 

@@ -10,7 +10,8 @@ export declare enum ChainId {
     MATIC_MAINNET = 137,
     MATIC_TESTNET = 80001,
     OASIS_TESTNET = 42261,
-    OASIS_MAINNET = 42262
+    OASIS_MAINNET = 42262,
+    QUARKCHAIN_DEV_S0 = 110001
 }
 export declare enum TradeType {
     EXACT_INPUT = 0,
