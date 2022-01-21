@@ -1,7 +1,8 @@
 import { ChainId, Token, TokenAmount, WeightedPair } from '../src'
-import { valuation, sqrrt, getTotalValue } from '../src/entities/bonding'
+import { valuation, sqrrt, getTotalValue } from '../src/entities/bonds/bondCalculator'
 import JSBI from 'jsbi'
 import { BigNumber } from '@ethersproject/bignumber'
+import { payoutFor } from '../src/entities/bonds/bondDepository'
 
 describe('Bonding', () => {
 
@@ -27,6 +28,18 @@ describe('Bonding', () => {
 
     const y = valuation(reqtPair, totalSupply, amount, REQT)
     console.log("--valuation res", y.toString())
+
+    const val = BigNumber.from('325524309532532')
+
+    const bp = BigNumber.from('3618243645352728374')
+
+    const payout = payoutFor(val, bp)
+
+    const manual = JSBI.divide(
+      JSBI.BigInt(val.mul(BigNumber.from('1000000000000000000')).toString()),
+      JSBI.BigInt(bp.toString())
+    ).toString()
+    console.log("payout", payout.toString(), manual.toString())
     // expect(y).toEqual(BigNumber.from('39941507181798454000'))
 
   })

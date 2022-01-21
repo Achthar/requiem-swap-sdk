@@ -5541,7 +5541,10 @@ var TradeV4 = /*#__PURE__*/function () {
 }();
 
 var ONE$3 = /*#__PURE__*/BigNumber$1.from(1);
+var TEN$1 = /*#__PURE__*/JSBI.BigInt(10);
 var TWO$2 = /*#__PURE__*/BigNumber$1.from(2);
+var SQRT2x100 = /*#__PURE__*/BigNumber$1.from('141421356237309504880');
+var ONE_E18 = /*#__PURE__*/BigNumber$1.from('1000000000000000000');
 function sqrrt(a) {
   var c = ONE$3;
 
@@ -5563,16 +5566,12 @@ function getTotalValue(pair, reqt) {
   var reserve0 = pair.reserve0;
   var reserve1 = pair.reserve1;
 
-  var _ref = reqt.equals(pair.token0) ? [pair.token1, reserve1] : [pair.token0, reserve0],
-      otherToken = _ref[0],
-      reservesOther = _ref[1];
+  var _ref = reqt.equals(pair.token0) ? [reserve1, pair.weight0, pair.weight1] : [reserve0, pair.weight1, pair.weight0],
+      reservesOther = _ref[0],
+      weightReqt = _ref[1],
+      weightOther = _ref[2];
 
-  var decimals = otherToken.decimals + reqt.decimals - pair.liquidityToken.decimals - 4;
-
-  var _pair$clone$getOutput = pair.clone().getOutputAmount(new TokenAmount(otherToken, JSBI.divide(reservesOther.raw, JSBI.BigInt(10000)))),
-      syntReserveREQT = _pair$clone$getOutput[0];
-
-  return sqrrt(syntReserveREQT.toBigNumber().mul(reservesOther.toBigNumber()).div(BigNumber$1.from(Math.pow(10, decimals)))).mul(TWO$2);
+  return SQRT2x100.mul(reservesOther.toBigNumber()).div(sqrrt(BigNumber$1.from(JSBI.add(JSBI.multiply(weightOther, weightOther), JSBI.multiply(weightReqt, weightReqt)).toString()))).div(ONE_E18);
 }
 /**
 * - calculates the value in reqt of the input LP amount provided
@@ -5584,6 +5583,57 @@ function getTotalValue(pair, reqt) {
 function valuation(pair, totalSupply, amount, reqt) {
   var totalValue = getTotalValue(pair, reqt);
   return totalValue.mul(amount).div(totalSupply);
+} // markdown function for bond valuation
+
+function markdown(pair, reqt) {
+  var _ref2 = reqt.equals(pair.token0) ? [pair.reserve1.toBigNumber(), BigNumber$1.from(pair.weight1.toString()), BigNumber$1.from(pair.weight0.toString())] : [pair.reserve0.toBigNumber(), BigNumber$1.from(pair.weight0.toString()), BigNumber$1.from(pair.weight1.toString())],
+      reservesOther = _ref2[0],
+      weightOther = _ref2[1],
+      weightReqt = _ref2[2]; // adjusted markdown scaling up the reserve as the trading mechnism allows
+  // higher or lower valuation for reqt reserve
+
+
+  return reservesOther.add(weightOther.mul(reservesOther).div(weightReqt)).mul(BigNumber$1.from(JSBI.exponentiate(TEN$1, JSBI.BigInt(reqt.decimals))).div(getTotalValue(pair, reqt)));
+}
+
+var RESOLUTION = /*#__PURE__*/BigNumber$1.from(112);
+var resPrec = /*#__PURE__*/BigNumber$1.from(2).pow(RESOLUTION);
+var ZERO$2 = /*#__PURE__*/BigNumber$1.from(0); // const Q112 = BigNumber.from('0x10000000000000000000000000000');
+// const Q224 = BigNumber.from('0x100000000000000000000000000000000000000000000000000000000');
+// const LOWER_MASK = BigNumber.from('0xffffffffffffffffffffffffffff'); // decimal of UQ*x112 (lower 112 bits)
+
+function decode(x) {
+  return x.div(RESOLUTION);
+}
+function decode112with18(x) {
+  return x.div(BigNumber$1.from('5192296858534827'));
+}
+function fraction(numerator, denominator) {
+  !denominator.gt(ZERO$2) ? process.env.NODE_ENV !== "production" ? invariant(false, "FixedPoint::fraction: division by zero") : invariant(false) : void 0;
+  if (numerator.isZero()) return ZERO$2; // if (numerator.lte(BigNumber.) <= type(uint144).max) {
+
+  var result = numerator.mul(resPrec).div(denominator); //   require(result <= type(uint224).max, "FixedPoint::fraction: overflow");
+
+  return result; // } else {
+  //    return numerator.mul(Q112).div(denominator);
+  // }
+}
+
+var ONE_E16 = /*#__PURE__*/BigNumber$1.from('10000000000000000'); // const ONE_E18 = JSBI.BigInt('10000000000000000')
+
+var ONE_E18$1 = /*#__PURE__*/BigNumber$1.from('10000000000000000');
+function payoutFor(value, bondPrice) {
+  // return BigNumber.from(
+  //     JSBI.divide(
+  //         JSBI.multiply(JSBI.BigInt(value.toString()), ONE_E18),
+  //         JSBI.BigInt(bondPrice.toString())
+  //     ).toString()
+  // ).div(ONE_E16)
+  return decode112with18(fraction(value.mul(ONE_E18$1), bondPrice)).div(ONE_E16);
+}
+function fullPayoutFor(value, pair, totalSupply, amount, reqt) {
+  var bondPrice = valuation(pair, totalSupply, amount, reqt);
+  return payoutFor(value, bondPrice);
 }
 
 function toHex(currencyAmount) {
@@ -6148,5 +6198,5 @@ var RouterV4 = /*#__PURE__*/function () {
   return RouterV4;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, findPositionInMaxExpArray, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, optimalExp, optimalLog, power, sqrrt, tradeComparator, tradeComparatorV3, tradeComparatorV4, valuation };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, decode, decode112with18, findPositionInMaxExpArray, fraction, fullPayoutFor, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, markdown, optimalExp, optimalLog, payoutFor, power, sqrrt, tradeComparator, tradeComparatorV3, tradeComparatorV4, valuation };
 //# sourceMappingURL=sdk.esm.js.map

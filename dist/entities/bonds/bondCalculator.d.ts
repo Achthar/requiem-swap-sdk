@@ -9,3 +9,4 @@ export declare function getTotalValue(pair: WeightedPair, reqt: Token): BigNumbe
 *  - is consistent with the uniswapV2-type case
 */
 export declare function valuation(pair: WeightedPair, totalSupply: BigNumber, amount: BigNumber, reqt: Token): BigNumber;
+export declare function markdown(pair: WeightedPair, reqt: Token): BigNumber;

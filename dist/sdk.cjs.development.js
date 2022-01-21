@@ -5539,7 +5539,10 @@ var TradeV4 = /*#__PURE__*/function () {
 }();
 
 var ONE$3 = /*#__PURE__*/ethers.BigNumber.from(1);
+var TEN$1 = /*#__PURE__*/JSBI.BigInt(10);
 var TWO$2 = /*#__PURE__*/ethers.BigNumber.from(2);
+var SQRT2x100 = /*#__PURE__*/ethers.BigNumber.from('141421356237309504880');
+var ONE_E18 = /*#__PURE__*/ethers.BigNumber.from('1000000000000000000');
 function sqrrt(a) {
   var c = ONE$3;
 
@@ -5561,16 +5564,12 @@ function getTotalValue(pair, reqt) {
   var reserve0 = pair.reserve0;
   var reserve1 = pair.reserve1;
 
-  var _ref = reqt.equals(pair.token0) ? [pair.token1, reserve1] : [pair.token0, reserve0],
-      otherToken = _ref[0],
-      reservesOther = _ref[1];
+  var _ref = reqt.equals(pair.token0) ? [reserve1, pair.weight0, pair.weight1] : [reserve0, pair.weight1, pair.weight0],
+      reservesOther = _ref[0],
+      weightReqt = _ref[1],
+      weightOther = _ref[2];
 
-  var decimals = otherToken.decimals + reqt.decimals - pair.liquidityToken.decimals - 4;
-
-  var _pair$clone$getOutput = pair.clone().getOutputAmount(new TokenAmount(otherToken, JSBI.divide(reservesOther.raw, JSBI.BigInt(10000)))),
-      syntReserveREQT = _pair$clone$getOutput[0];
-
-  return sqrrt(syntReserveREQT.toBigNumber().mul(reservesOther.toBigNumber()).div(ethers.BigNumber.from(Math.pow(10, decimals)))).mul(TWO$2);
+  return SQRT2x100.mul(reservesOther.toBigNumber()).div(sqrrt(ethers.BigNumber.from(JSBI.add(JSBI.multiply(weightOther, weightOther), JSBI.multiply(weightReqt, weightReqt)).toString()))).div(ONE_E18);
 }
 /**
 * - calculates the value in reqt of the input LP amount provided
@@ -5582,6 +5581,57 @@ function getTotalValue(pair, reqt) {
 function valuation(pair, totalSupply, amount, reqt) {
   var totalValue = getTotalValue(pair, reqt);
   return totalValue.mul(amount).div(totalSupply);
+} // markdown function for bond valuation
+
+function markdown(pair, reqt) {
+  var _ref2 = reqt.equals(pair.token0) ? [pair.reserve1.toBigNumber(), ethers.BigNumber.from(pair.weight1.toString()), ethers.BigNumber.from(pair.weight0.toString())] : [pair.reserve0.toBigNumber(), ethers.BigNumber.from(pair.weight0.toString()), ethers.BigNumber.from(pair.weight1.toString())],
+      reservesOther = _ref2[0],
+      weightOther = _ref2[1],
+      weightReqt = _ref2[2]; // adjusted markdown scaling up the reserve as the trading mechnism allows
+  // higher or lower valuation for reqt reserve
+
+
+  return reservesOther.add(weightOther.mul(reservesOther).div(weightReqt)).mul(ethers.BigNumber.from(JSBI.exponentiate(TEN$1, JSBI.BigInt(reqt.decimals))).div(getTotalValue(pair, reqt)));
+}
+
+var RESOLUTION = /*#__PURE__*/ethers.BigNumber.from(112);
+var resPrec = /*#__PURE__*/ethers.BigNumber.from(2).pow(RESOLUTION);
+var ZERO$2 = /*#__PURE__*/ethers.BigNumber.from(0); // const Q112 = BigNumber.from('0x10000000000000000000000000000');
+// const Q224 = BigNumber.from('0x100000000000000000000000000000000000000000000000000000000');
+// const LOWER_MASK = BigNumber.from('0xffffffffffffffffffffffffffff'); // decimal of UQ*x112 (lower 112 bits)
+
+function decode(x) {
+  return x.div(RESOLUTION);
+}
+function decode112with18(x) {
+  return x.div(ethers.BigNumber.from('5192296858534827'));
+}
+function fraction(numerator, denominator) {
+  !denominator.gt(ZERO$2) ?  invariant(false, "FixedPoint::fraction: division by zero")  : void 0;
+  if (numerator.isZero()) return ZERO$2; // if (numerator.lte(BigNumber.) <= type(uint144).max) {
+
+  var result = numerator.mul(resPrec).div(denominator); //   require(result <= type(uint224).max, "FixedPoint::fraction: overflow");
+
+  return result; // } else {
+  //    return numerator.mul(Q112).div(denominator);
+  // }
+}
+
+var ONE_E16 = /*#__PURE__*/ethers.BigNumber.from('10000000000000000'); // const ONE_E18 = JSBI.BigInt('10000000000000000')
+
+var ONE_E18$1 = /*#__PURE__*/ethers.BigNumber.from('10000000000000000');
+function payoutFor(value, bondPrice) {
+  // return BigNumber.from(
+  //     JSBI.divide(
+  //         JSBI.multiply(JSBI.BigInt(value.toString()), ONE_E18),
+  //         JSBI.BigInt(bondPrice.toString())
+  //     ).toString()
+  // ).div(ONE_E16)
+  return decode112with18(fraction(value.mul(ONE_E18$1), bondPrice)).div(ONE_E16);
+}
+function fullPayoutFor(value, pair, totalSupply, amount, reqt) {
+  var bondPrice = valuation(pair, totalSupply, amount, reqt);
+  return payoutFor(value, bondPrice);
 }
 
 function toHex(currencyAmount) {
@@ -6187,7 +6237,11 @@ exports.WETH = WETH;
 exports.WRAPPED_NETWORK_TOKENS = WRAPPED_NETWORK_TOKENS;
 exports.WeightedPair = WeightedPair;
 exports.currencyEquals = currencyEquals;
+exports.decode = decode;
+exports.decode112with18 = decode112with18;
 exports.findPositionInMaxExpArray = findPositionInMaxExpArray;
+exports.fraction = fraction;
+exports.fullPayoutFor = fullPayoutFor;
 exports.generalExp = generalExp;
 exports.generalLog = generalLog;
 exports.getAmountIn = getAmountIn;
@@ -6196,8 +6250,10 @@ exports.getTotalValue = getTotalValue;
 exports.inputOutputComparator = inputOutputComparator;
 exports.inputOutputComparatorV3 = inputOutputComparatorV3;
 exports.inputOutputComparatorV4 = inputOutputComparatorV4;
+exports.markdown = markdown;
 exports.optimalExp = optimalExp;
 exports.optimalLog = optimalLog;
+exports.payoutFor = payoutFor;
 exports.power = power;
 exports.sqrrt = sqrrt;
 exports.tradeComparator = tradeComparator;
