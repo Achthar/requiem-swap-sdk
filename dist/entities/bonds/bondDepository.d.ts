@@ -20,3 +20,9 @@ export declare function debtRatio(totalSupply: BigNumber, currentDebt: BigNumber
  *  @return price_ uint
  */
 export declare function bondPrice(controlVariable: BigNumber, totalSupply: BigNumber, currentDebt: BigNumber, minimumPrice: BigNumber): BigNumber;
+/**
+ *  @notice calculate current bond premium
+ *  @return price_ uint
+ */
+export declare function bondPriceUsingDebtRatio(controlVariable: BigNumber, debtRatio: BigNumber, minimumPrice: BigNumber): BigNumber;
+export declare function fullPayoutForUsingDebtRatio(pair: WeightedPair, debtRatio: BigNumber, totalSupply: BigNumber, amount: BigNumber, payoutToken: Token, terms: BondTerms): BigNumber;

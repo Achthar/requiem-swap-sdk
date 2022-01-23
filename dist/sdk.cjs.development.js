@@ -5656,6 +5656,25 @@ function bondPrice(controlVariable, totalSupply, currentDebt, minimumPrice) {
 
   return price_;
 }
+/**
+ *  @notice calculate current bond premium
+ *  @return price_ uint
+ */
+
+function bondPriceUsingDebtRatio(controlVariable, debtRatio, minimumPrice) {
+  var price_ = controlVariable.mul(debtRatio).add(ONE_E18$1).div(ONE_E16);
+
+  if (price_.lt(minimumPrice)) {
+    price_ = minimumPrice;
+  }
+
+  return price_;
+}
+function fullPayoutForUsingDebtRatio(pair, debtRatio, totalSupply, amount, payoutToken, terms) {
+  var value = valuation(pair, totalSupply, amount, payoutToken);
+  var bondPrice_ = bondPriceUsingDebtRatio(terms.controlVariable, debtRatio, terms.minimumPrice);
+  return payoutFor(value, bondPrice_);
+}
 
 function toHex(currencyAmount) {
   return "0x" + currencyAmount.raw.toString(16);
@@ -6260,6 +6279,7 @@ exports.WETH = WETH;
 exports.WRAPPED_NETWORK_TOKENS = WRAPPED_NETWORK_TOKENS;
 exports.WeightedPair = WeightedPair;
 exports.bondPrice = bondPrice;
+exports.bondPriceUsingDebtRatio = bondPriceUsingDebtRatio;
 exports.currencyEquals = currencyEquals;
 exports.debtRatio = debtRatio;
 exports.decode = decode;
@@ -6267,6 +6287,7 @@ exports.decode112with18 = decode112with18;
 exports.findPositionInMaxExpArray = findPositionInMaxExpArray;
 exports.fraction = fraction;
 exports.fullPayoutFor = fullPayoutFor;
+exports.fullPayoutForUsingDebtRatio = fullPayoutForUsingDebtRatio;
 exports.generalExp = generalExp;
 exports.generalLog = generalLog;
 exports.getAmountIn = getAmountIn;

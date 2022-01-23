@@ -68,3 +68,29 @@ export function bondPrice(controlVariable: BigNumber, totalSupply: BigNumber, cu
     }
     return price_
 }
+
+
+/**
+ *  @notice calculate current bond premium
+ *  @return price_ uint
+ */
+export function bondPriceUsingDebtRatio(controlVariable: BigNumber, debtRatio: BigNumber, minimumPrice: BigNumber): BigNumber {
+    let price_ = (controlVariable.mul(debtRatio).add(ONE_E18)).div(ONE_E16);
+    if (price_.lt(minimumPrice)) {
+        price_ = minimumPrice;
+    }
+    return price_
+}
+
+export function fullPayoutForUsingDebtRatio(
+    pair: WeightedPair,
+    debtRatio: BigNumber,
+    totalSupply: BigNumber,
+    amount: BigNumber,
+    payoutToken: Token,
+    terms: BondTerms
+): BigNumber {
+    const value = valuation(pair, totalSupply, amount, payoutToken)
+    const bondPrice_ = bondPriceUsingDebtRatio(terms.controlVariable, debtRatio, terms.minimumPrice)
+    return payoutFor(value, bondPrice_)
+}

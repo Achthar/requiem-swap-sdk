@@ -5658,6 +5658,25 @@ function bondPrice(controlVariable, totalSupply, currentDebt, minimumPrice) {
 
   return price_;
 }
+/**
+ *  @notice calculate current bond premium
+ *  @return price_ uint
+ */
+
+function bondPriceUsingDebtRatio(controlVariable, debtRatio, minimumPrice) {
+  var price_ = controlVariable.mul(debtRatio).add(ONE_E18$1).div(ONE_E16);
+
+  if (price_.lt(minimumPrice)) {
+    price_ = minimumPrice;
+  }
+
+  return price_;
+}
+function fullPayoutForUsingDebtRatio(pair, debtRatio, totalSupply, amount, payoutToken, terms) {
+  var value = valuation(pair, totalSupply, amount, payoutToken);
+  var bondPrice_ = bondPriceUsingDebtRatio(terms.controlVariable, debtRatio, terms.minimumPrice);
+  return payoutFor(value, bondPrice_);
+}
 
 function toHex(currencyAmount) {
   return "0x" + currencyAmount.raw.toString(16);
@@ -6221,5 +6240,5 @@ var RouterV4 = /*#__PURE__*/function () {
   return RouterV4;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, bondPrice, currencyEquals, debtRatio, decode, decode112with18, findPositionInMaxExpArray, fraction, fullPayoutFor, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, markdown, optimalExp, optimalLog, payoutFor, power, sqrrt, tradeComparator, tradeComparatorV3, tradeComparatorV4, valuation };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, bondPrice, bondPriceUsingDebtRatio, currencyEquals, debtRatio, decode, decode112with18, findPositionInMaxExpArray, fraction, fullPayoutFor, fullPayoutForUsingDebtRatio, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, markdown, optimalExp, optimalLog, payoutFor, power, sqrrt, tradeComparator, tradeComparatorV3, tradeComparatorV4, valuation };
 //# sourceMappingURL=sdk.esm.js.map
