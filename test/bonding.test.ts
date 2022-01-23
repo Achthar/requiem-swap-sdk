@@ -2,7 +2,7 @@ import { ChainId, Token, TokenAmount, WeightedPair } from '../src'
 import { valuation, sqrrt, getTotalValue } from '../src/entities/bonds/bondCalculator'
 import JSBI from 'jsbi'
 import { BigNumber } from '@ethersproject/bignumber'
-import { payoutFor } from '../src/entities/bonds/bondDepository'
+import { payoutFor, fullPayoutFor } from '../src/entities/bonds/bondDepository'
 
 describe('Bonding', () => {
 
@@ -14,6 +14,15 @@ describe('Bonding', () => {
 
   const reqtPair = new WeightedPair(new TokenAmount(REQT, '8000000000000000000000'), new TokenAmount(DAI, '2000000000000000000000'), weightREQT, fee)
 
+  const terms = {
+    controlVariable: BigNumber.from(320), // scaling variable for price
+    vestingTerm: BigNumber.from(10000), // in blocks
+    minimumPrice: BigNumber.from(10000), // vs principle value
+    maxPayout: BigNumber.from('10000000000000000000000000'), // in thousandths of a %. i.e. 500 = 0.5%
+    fee: BigNumber.from(25), // as % of bond payout, in hundreths. ( 500 = 5% = 0.05 for every 1 paid)
+    maxDebt: BigNumber.from('10000000000000000000000000'),
+
+  }
   it('#calculations', () => {
     const x = BigNumber.from(100000000)
     const testSqrt = sqrrt(x)
@@ -40,7 +49,12 @@ describe('Bonding', () => {
       JSBI.BigInt(bp.toString())
     ).toString()
     console.log("payout", payout.toString(), manual.toString())
+
+    const currentDebt = BigNumber.from('100000000000000')
+    const fullPayout = fullPayoutFor(reqtPair, currentDebt, totalSupply, amount, REQT, terms)
     // expect(y).toEqual(BigNumber.from('39941507181798454000'))
+
+    console.log("full payout", fullPayout.toString(), (new TokenAmount(REQT, fullPayout.toString())).toSignificant(9))
 
   })
 })

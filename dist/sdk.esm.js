@@ -5562,38 +5562,38 @@ function sqrrt(a) {
 
   return c;
 }
-function getTotalValue(pair, reqt) {
+function getTotalValue(pair, payoutToken) {
   var reserve0 = pair.reserve0;
   var reserve1 = pair.reserve1;
 
-  var _ref = reqt.equals(pair.token0) ? [reserve1, pair.weight0, pair.weight1] : [reserve0, pair.weight1, pair.weight0],
+  var _ref = payoutToken.equals(pair.token0) ? [reserve1, pair.weight0, pair.weight1] : [reserve0, pair.weight1, pair.weight0],
       reservesOther = _ref[0],
-      weightReqt = _ref[1],
+      weightPayoutToken = _ref[1],
       weightOther = _ref[2];
 
-  return SQRT2x100.mul(reservesOther.toBigNumber()).div(sqrrt(BigNumber$1.from(JSBI.add(JSBI.multiply(weightOther, weightOther), JSBI.multiply(weightReqt, weightReqt)).toString()))).div(ONE_E18);
+  return SQRT2x100.mul(reservesOther.toBigNumber()).div(sqrrt(BigNumber$1.from(JSBI.add(JSBI.multiply(weightOther, weightOther), JSBI.multiply(weightPayoutToken, weightPayoutToken)).toString()))).div(ONE_E18);
 }
 /**
-* - calculates the value in reqt of the input LP amount provided
+* - calculates the value in payoutToken of the input LP amount provided
 * @param _pair general pair that has the RequiemSwap interface implemented
 * @param amount_ the amount of LP to price in REQT
 *  - is consistent with the uniswapV2-type case
 */
 
-function valuation(pair, totalSupply, amount, reqt) {
-  var totalValue = getTotalValue(pair, reqt);
+function valuation(pair, totalSupply, amount, payoutToken) {
+  var totalValue = getTotalValue(pair, payoutToken);
   return totalValue.mul(amount).div(totalSupply);
 } // markdown function for bond valuation
 
-function markdown(pair, reqt) {
-  var _ref2 = reqt.equals(pair.token0) ? [pair.reserve1.toBigNumber(), BigNumber$1.from(pair.weight1.toString()), BigNumber$1.from(pair.weight0.toString())] : [pair.reserve0.toBigNumber(), BigNumber$1.from(pair.weight0.toString()), BigNumber$1.from(pair.weight1.toString())],
+function markdown(pair, payoutToken) {
+  var _ref2 = payoutToken.equals(pair.token0) ? [pair.reserve1.toBigNumber(), BigNumber$1.from(pair.weight1.toString()), BigNumber$1.from(pair.weight0.toString())] : [pair.reserve0.toBigNumber(), BigNumber$1.from(pair.weight0.toString()), BigNumber$1.from(pair.weight1.toString())],
       reservesOther = _ref2[0],
       weightOther = _ref2[1],
-      weightReqt = _ref2[2]; // adjusted markdown scaling up the reserve as the trading mechnism allows
-  // higher or lower valuation for reqt reserve
+      weightPayoutToken = _ref2[2]; // adjusted markdown scaling up the reserve as the trading mechnism allows
+  // higher or lower valuation for payoutToken reserve
 
 
-  return reservesOther.add(weightOther.mul(reservesOther).div(weightReqt)).mul(BigNumber$1.from(JSBI.exponentiate(TEN$1, JSBI.BigInt(reqt.decimals))).div(getTotalValue(pair, reqt)));
+  return reservesOther.add(weightOther.mul(reservesOther).div(weightPayoutToken)).mul(BigNumber$1.from(JSBI.exponentiate(TEN$1, JSBI.BigInt(payoutToken.decimals))).div(getTotalValue(pair, payoutToken)));
 }
 
 var RESOLUTION = /*#__PURE__*/BigNumber$1.from(112);
@@ -5619,9 +5619,9 @@ function fraction(numerator, denominator) {
   // }
 }
 
-var ONE_E16 = /*#__PURE__*/BigNumber$1.from('10000000000000000'); // const ONE_E18 = JSBI.BigInt('10000000000000000')
-
+var ONE_E16 = /*#__PURE__*/BigNumber$1.from('10000000000000000');
 var ONE_E18$1 = /*#__PURE__*/BigNumber$1.from('10000000000000000');
+var ONE_E9 = /*#__PURE__*/BigNumber$1.from('1000000000');
 function payoutFor(value, bondPrice) {
   // return BigNumber.from(
   //     JSBI.divide(
@@ -5631,9 +5631,32 @@ function payoutFor(value, bondPrice) {
   // ).div(ONE_E16)
   return decode112with18(fraction(value.mul(ONE_E18$1), bondPrice)).div(ONE_E16);
 }
-function fullPayoutFor(value, pair, totalSupply, amount, reqt) {
-  var bondPrice = valuation(pair, totalSupply, amount, reqt);
-  return payoutFor(value, bondPrice);
+function fullPayoutFor(pair, currentDebt, totalSupply, amount, payoutToken, terms) {
+  var value = valuation(pair, totalSupply, amount, payoutToken);
+  var bondPrice_ = bondPrice(terms.controlVariable, totalSupply, currentDebt, terms.minimumPrice);
+  return payoutFor(value, bondPrice_);
+}
+/**
+ *  @notice calculate current ratio of debt to REQT supply
+ *  @return debtRatio_ uint
+ */
+
+function debtRatio(totalSupply, currentDebt) {
+  return decode112with18(fraction(currentDebt.mul(ONE_E9), totalSupply)).div(ONE_E18$1);
+}
+/**
+ *  @notice calculate current bond premium
+ *  @return price_ uint
+ */
+
+function bondPrice(controlVariable, totalSupply, currentDebt, minimumPrice) {
+  var price_ = controlVariable.mul(debtRatio(totalSupply, currentDebt)).add(ONE_E18$1).div(ONE_E16);
+
+  if (price_.lt(minimumPrice)) {
+    price_ = minimumPrice;
+  }
+
+  return price_;
 }
 
 function toHex(currencyAmount) {
@@ -6198,5 +6221,5 @@ var RouterV4 = /*#__PURE__*/function () {
   return RouterV4;
 }();
 
-export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, currencyEquals, decode, decode112with18, findPositionInMaxExpArray, fraction, fullPayoutFor, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, markdown, optimalExp, optimalLog, payoutFor, power, sqrrt, tradeComparator, tradeComparatorV3, tradeComparatorV4, valuation };
+export { ChainId, Currency, CurrencyAmount, ETHER, FACTORY_ADDRESS, Fetcher, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, NETWORK_CCY, Pair, Percent, PoolType, Price, Rounding, Route, RouteV3, RouteV4, Router, RouterV3, RouterV4, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePairWrapper, StablePool, StablesFetcher, SwapStorage, Token, TokenAmount, Trade, TradeType, TradeV3, TradeV4, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPair, bondPrice, currencyEquals, debtRatio, decode, decode112with18, findPositionInMaxExpArray, fraction, fullPayoutFor, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, inputOutputComparatorV3, inputOutputComparatorV4, markdown, optimalExp, optimalLog, payoutFor, power, sqrrt, tradeComparator, tradeComparatorV3, tradeComparatorV4, valuation };
 //# sourceMappingURL=sdk.esm.js.map
