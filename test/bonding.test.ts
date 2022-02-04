@@ -16,12 +16,9 @@ describe('Bonding', () => {
 
   const terms = {
     controlVariable: BigNumber.from(320), // scaling variable for price
-    vestingTerm: BigNumber.from(10000), // in blocks
-    minimumPrice: BigNumber.from(10000), // vs principle value
+    vesting: BigNumber.from(10000), // in blocks
     maxPayout: BigNumber.from('10000000000000000000000000'), // in thousandths of a %. i.e. 500 = 0.5%
-    fee: BigNumber.from(25), // as % of bond payout, in hundreths. ( 500 = 5% = 0.05 for every 1 paid)
     maxDebt: BigNumber.from('10000000000000000000000000'),
-
   }
   it('#calculations', () => {
     const x = BigNumber.from(100000000)

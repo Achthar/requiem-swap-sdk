@@ -5621,17 +5621,11 @@ var ONE_E16 = /*#__PURE__*/ethers.BigNumber.from('10000000000000000');
 var ONE_E18$1 = /*#__PURE__*/ethers.BigNumber.from('10000000000000000');
 var ONE_E9 = /*#__PURE__*/ethers.BigNumber.from('1000000000');
 function payoutFor(value, bondPrice) {
-  // return BigNumber.from(
-  //     JSBI.divide(
-  //         JSBI.multiply(JSBI.BigInt(value.toString()), ONE_E18),
-  //         JSBI.BigInt(bondPrice.toString())
-  //     ).toString()
-  // ).div(ONE_E16)
-  return decode112with18(fraction(value.mul(ONE_E18$1), bondPrice)).div(ONE_E16);
+  return value.mul(ONE_E18$1.mul(ONE_E18$1)).div(bondPrice).div(ONE_E18$1);
 }
 function fullPayoutFor(pair, currentDebt, totalSupply, amount, payoutToken, terms) {
   var value = valuation(pair, totalSupply, amount, payoutToken);
-  var bondPrice_ = bondPrice(terms.controlVariable, totalSupply, currentDebt, terms.minimumPrice);
+  var bondPrice_ = bondPrice(terms.controlVariable, totalSupply, currentDebt);
   return payoutFor(value, bondPrice_);
 }
 /**
@@ -5647,13 +5641,8 @@ function debtRatio(totalSupply, currentDebt) {
  *  @return price_ uint
  */
 
-function bondPrice(controlVariable, totalSupply, currentDebt, minimumPrice) {
+function bondPrice(controlVariable, totalSupply, currentDebt) {
   var price_ = controlVariable.mul(debtRatio(totalSupply, currentDebt)).add(ONE_E18$1).div(ONE_E16);
-
-  if (price_.lt(minimumPrice)) {
-    price_ = minimumPrice;
-  }
-
   return price_;
 }
 /**
@@ -5661,18 +5650,12 @@ function bondPrice(controlVariable, totalSupply, currentDebt, minimumPrice) {
  *  @return price_ uint
  */
 
-function bondPriceUsingDebtRatio(controlVariable, debtRatio, minimumPrice) {
-  var price_ = controlVariable.mul(debtRatio).add(ONE_E18$1).div(ONE_E16);
-
-  if (price_.lt(minimumPrice)) {
-    price_ = minimumPrice;
-  }
-
-  return price_;
+function bondPriceUsingDebtRatio(controlVariable, debtRatio) {
+  return controlVariable.mul(debtRatio).div(ONE_E18$1);
 }
 function fullPayoutForUsingDebtRatio(pair, debtRatio, totalSupply, amount, payoutToken, terms) {
   var value = valuation(pair, totalSupply, amount, payoutToken);
-  var bondPrice_ = bondPriceUsingDebtRatio(terms.controlVariable, debtRatio, terms.minimumPrice);
+  var bondPrice_ = bondPriceUsingDebtRatio(terms.controlVariable, debtRatio);
   return payoutFor(value, bondPrice_);
 }
 
