@@ -28,8 +28,8 @@ export class Currency {
     [ChainId.AVAX_TESTNET]: new Currency(18, 'AVAX', 'AVAX'),
     [ChainId.MATIC_MAINNET]: new Currency(18, 'MATIC', 'MATIC'),
     [ChainId.MATIC_TESTNET]: new Currency(18, 'MATIC', 'MATIC'),
-    [ChainId.OASIS_MAINNET]: new Currency(10, 'ROSE', 'ROSE'),
-    [ChainId.OASIS_TESTNET]: new Currency(10, 'ROSE', 'ROSE'),
+    [ChainId.OASIS_MAINNET]: new Currency(18, 'ROSE', 'ROSE'),
+    [ChainId.OASIS_TESTNET]: new Currency(18, 'ROSE', 'ROSE'),
     [ChainId.QUARKCHAIN_DEV_S0]: new Currency(18, 'QKC', 'QKC')
   }
   /**
