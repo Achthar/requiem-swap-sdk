@@ -202,7 +202,7 @@ export const WRAPPED_NETWORK_TOKENS = {
   ),
   [ChainId.OASIS_TESTNET]:
   new Token( ChainId.OASIS_TESTNET,
-    '0xfb40cd35C0cF322fA3cfB8D67b533Bd9ad7df056',
+    '0x792296e2a15e6Ceb5f5039DecaE7A1f25b00B0B0',
     18,
     'wROSE',
     'Wrapped ROSE',
