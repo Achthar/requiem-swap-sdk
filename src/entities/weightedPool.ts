@@ -122,7 +122,11 @@ export class WeightedPool {
     // chainId: number,
     provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh> {
 
-    const outAmount: BigintIsh = await new Contract('0xCc62754F15f7F35E4c58Ce6aD5608fA575C5583E', new ethers.utils.Interface(weightedPoolABI.abi), provider).calculateSwapGivenIn(this.tokens[inIndex].address, this.tokens[outIndex].address, inAmount)
+    const outAmount: BigintIsh = await new Contract(
+      '0xCc62754F15f7F35E4c58Ce6aD5608fA575C5583E',
+      new ethers.utils.Interface(weightedPoolABI.abi),
+      provider
+    ).calculateSwapGivenIn(this.tokens[inIndex].address, this.tokens[outIndex].address, inAmount)
 
     return outAmount
   }

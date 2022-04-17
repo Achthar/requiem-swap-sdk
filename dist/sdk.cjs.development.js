@@ -1526,8 +1526,966 @@ var Trade = /*#__PURE__*/function () {
   return Trade;
 }();
 
-var ZERO$1 = /*#__PURE__*/bignumber.BigNumber.from(0);
-var ONE$1 = /*#__PURE__*/bignumber.BigNumber.from(1);
+// SPDX-License-Identifier: MIT
+
+/* solhint-disable */
+
+/**
+ * @dev Exponentiation and logarithm functions for 18 decimal fixed point numbers (both base and exponent/argument).
+ *
+ * Exponentiation and logarithm with arbitrary bases (x^y and log_x(y)) are implemented by conversion to natural
+ * exponentiation and logarithm (where the base is Euler's number).
+ *
+ * @author Fernando Martinelli - @fernandomartinelli
+ * @author Sergio Yuhjtman - @sergioyuhjtman
+ * @author Daniel Fernandez - @dmf7z
+ */
+// All fixed point multiplications and divisions are inlined. This means we need to divide by ONE when multiplying
+// two numbers, and multiply by ONE when dividing them.
+
+var ZERO$1 = /*#__PURE__*/bignumber.BigNumber.from(0); // All arguments and return values are 18 decimal fixed point numbers.
+
+var ONE_18 = /*#__PURE__*/bignumber.BigNumber.from('1000000000000000000'); // Internally, intermediate values are computed with higher precision as 20 decimal fixed point numbers, and in the
+// case of ln36, 36 decimals.
+
+var ONE_20 = /*#__PURE__*/bignumber.BigNumber.from('100000000000000000000');
+var ONE_36 = /*#__PURE__*/bignumber.BigNumber.from('1000000000000000000000000000000000000'); // The domain of natural exponentiation is bound by the word size and number of decimals used.
+//
+// Because internally the result will be stored using 20 decimals, the largest possible result is
+// (2^255 - 1) / 10^20, which makes the largest exponent ln((2^255 - 1) / 10^20) = 130.700829182905140221.
+// The smallest possible result is 10^(-18), which makes largest negative argument
+// ln(10^(-18)) = -41.446531673892822312.
+// We use 130.0 and -41.0 to have some safety margin.
+// const MAX_NATURAL_EXPONENT = BigNumber.from('130000000000000000000');
+// const MIN_NATURAL_EXPONENT = BigNumber.from(-'41000000000000000000');
+// Bounds for ln_36's argument. Both ln(0.9) and ln(1.1) can be represented with 36 decimal places in a fixed point
+// 256 bit integer.
+
+var LN_36_LOWER_BOUND = /*#__PURE__*/ONE_18.sub( /*#__PURE__*/bignumber.BigNumber.from('100000000000000000'));
+var LN_36_UPPER_BOUND = /*#__PURE__*/ONE_18.add( /*#__PURE__*/bignumber.BigNumber.from('100000000000000000')); // const MILD_EXPONENT_BOUND = ethers.constants.MaxUint256.div(ONE_20);
+// 18 decimal constants
+
+var x0 = /*#__PURE__*/bignumber.BigNumber.from('128000000000000000000'); // 2ˆ7
+
+var a0 = /*#__PURE__*/bignumber.BigNumber.from('38877084059945950922200000000000000000000000000000000000'); // eˆ(x0) (no decimals)
+
+var x1 = /*#__PURE__*/bignumber.BigNumber.from('64000000000000000000'); // 2ˆ6
+
+var a1 = /*#__PURE__*/bignumber.BigNumber.from('6235149080811616882910000000'); // eˆ(x1) (no decimals)
+// 20 decimal constants
+
+var x2 = /*#__PURE__*/bignumber.BigNumber.from('3200000000000000000000'); // 2ˆ5
+
+var a2 = /*#__PURE__*/bignumber.BigNumber.from('7896296018268069516100000000000000'); // eˆ(x2)
+
+var x3 = /*#__PURE__*/bignumber.BigNumber.from('1600000000000000000000'); // 2ˆ4
+
+var a3 = /*#__PURE__*/bignumber.BigNumber.from('888611052050787263676000000'); // eˆ(x3)
+
+var x4 = /*#__PURE__*/bignumber.BigNumber.from('800000000000000000000'); // 2ˆ3
+
+var a4 = /*#__PURE__*/bignumber.BigNumber.from('298095798704172827474000'); // eˆ(x4)
+
+var x5 = /*#__PURE__*/bignumber.BigNumber.from('400000000000000000000'); // 2ˆ2
+
+var a5 = /*#__PURE__*/bignumber.BigNumber.from('5459815003314423907810'); // eˆ(x5)
+
+var x6 = /*#__PURE__*/bignumber.BigNumber.from('200000000000000000000'); // 2ˆ1
+
+var a6 = /*#__PURE__*/bignumber.BigNumber.from('738905609893065022723'); // eˆ(x6)
+
+var x7 = /*#__PURE__*/bignumber.BigNumber.from('100000000000000000000'); // 2ˆ0
+
+var a7 = /*#__PURE__*/bignumber.BigNumber.from('271828182845904523536'); // eˆ(x7)
+
+var x8 = /*#__PURE__*/bignumber.BigNumber.from('50000000000000000000'); // 2ˆ-1
+
+var a8 = /*#__PURE__*/bignumber.BigNumber.from('164872127070012814685'); // eˆ(x8)
+
+var x9 = /*#__PURE__*/bignumber.BigNumber.from('25000000000000000000'); // 2ˆ-2
+
+var a9 = /*#__PURE__*/bignumber.BigNumber.from('128402541668774148407'); // eˆ(x9)
+
+var x10 = /*#__PURE__*/bignumber.BigNumber.from('12500000000000000000'); // 2ˆ-3
+
+var a10 = /*#__PURE__*/bignumber.BigNumber.from('113314845306682631683'); // eˆ(x10)
+
+var x11 = /*#__PURE__*/bignumber.BigNumber.from('6250000000000000000'); // 2ˆ-4
+
+var a11 = /*#__PURE__*/bignumber.BigNumber.from('106449445891785942956'); // eˆ(x11)
+
+/**
+ * @dev Exponentiation (x^y) with unsigned 18 decimal fixed point base and exponent.
+ *
+ * Reverts if ln(x) * y is smaller than `MIN_NATURAL_EXPONENT`, or larger than `MAX_NATURAL_EXPONENT`.
+ */
+
+function pow(x, y) {
+  if (y.eq(0)) {
+    // We solve the 0^0 indetermination by making it equal one.
+    return ONE_18;
+  }
+
+  if (x.eq(0)) {
+    return ZERO$1;
+  }
+
+  var x_int256 = x;
+  var y_int256 = y;
+  var logx_times_y;
+
+  if (LN_36_LOWER_BOUND.lt(x_int256) && x_int256.lt(LN_36_UPPER_BOUND)) {
+    var ln_36_x = _ln_36(x_int256); // ln_36_x has 36 decimal places, so multiplying by y_int256 isn't as straightforward, since we can't just
+    // bring y_int256 to 36 decimal places, as it might overflow. Instead, we perform two 18 decimal
+    // multiplications and add the results: one with the first 18 decimals of ln_36_x, and one with the
+    // (downscaled) last 18 decimals.
+
+
+    logx_times_y = ln_36_x.div(ONE_18).mul(y_int256).add(ln_36_x.mod(ONE_18).mul(y_int256).div(ONE_18));
+  } else {
+    logx_times_y = _ln(x_int256).mul(y_int256);
+  }
+
+  logx_times_y = logx_times_y.div(ONE_18);
+  return exp(logx_times_y); // that +1 differs from the original variant
+}
+/**
+ * @dev Natural exponentiation (e^x) with signed 18 decimal fixed point exponent.
+ *
+ * Reverts if `x` is smaller than MIN_NATURAL_EXPONENT, or larger than `MAX_NATURAL_EXPONENT`.
+ */
+
+function exp(x) {
+  if (x.lt(ZERO$1)) {
+    // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it
+    // fits in the signed 256 bit range (as it is larger than MIN_NATURAL_EXPONENT).
+    // Fixed point division requires multiplying by ONE_18.
+    return ONE_18.mul(ONE_18).div(exp(x.mul(-1)));
+  } // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
+  // where x_n == 2^(7 - n), and e^x_n = a_n has been precomputed. We choose the first x_n, x0, to equal 2^7
+  // because all larger powers are larger than MAX_NATURAL_EXPONENT, and therefore not present in the
+  // decomposition.
+  // At the end of this process we will have the product of all e^x_n = a_n that apply, and the remainder of this
+  // decomposition, which will be lower than the smallest x_n.
+  // exp(x) = k_0 * a_0 * k_1 * a_1 * ... + k_n * a_n * exp(remainder), where each k_n equals either 0 or 1.
+  // We mutate x by subtracting x_n, making it the remainder of the decomposition.
+  // The first two a_n (e^(2^7) and e^(2^6)) are too large if stored as 18 decimal numbers, and could cause
+  // intermediate overflows. Instead we store them as plain integers, with 0 decimals.
+  // Additionally, x0 + x1 is larger than MAX_NATURAL_EXPONENT, which means they will not both be present in the
+  // decomposition.
+  // For each x_n, we test if that term is present in the decomposition (if x is larger than it), and if so deduct
+  // it and compute the accumulated product.
+
+
+  var firstAN;
+
+  if (x.gte(x0)) {
+    x = x.sub(x0);
+    firstAN = a0;
+  } else if (x.gte(x1)) {
+    x = x.sub(x1);
+    firstAN = a1;
+  } else {
+    firstAN = bignumber.BigNumber.from(1); // One with no decimal places
+  } // We now transform x into a 20 decimal fixed point number, to have enhanced precision when computing the
+  // smaller terms.
+
+
+  x = x.mul(100); // `product` is the accumulated product of all a_n (except a0 and a1), which starts at 20 decimal fixed point
+  // one. Recall that fixed point multiplication requires dividing by ONE_20.
+
+  var product = ONE_20;
+
+  if (x.gte(x2)) {
+    x = x.sub(x2);
+    product = product.mul(a2).div(ONE_20);
+  }
+
+  if (x.gte(x3)) {
+    x = x.sub(x3);
+    product = product.mul(a3).div(ONE_20);
+  }
+
+  if (x.gte(x4)) {
+    x = x.sub(x4);
+    product = product.mul(a4).div(ONE_20);
+  }
+
+  if (x.gte(x5)) {
+    x = x.sub(x5);
+    product = product.mul(a5).div(ONE_20);
+  }
+
+  if (x.gte(x6)) {
+    x = x.sub(x6);
+    product = product.mul(a6).div(ONE_20);
+  }
+
+  if (x.gte(x7)) {
+    x = x.sub(x7);
+    product = product.mul(a7).div(ONE_20);
+  }
+
+  if (x.gte(x8)) {
+    x = x.sub(x8);
+    product = product.mul(a8).div(ONE_20);
+  }
+
+  if (x.gte(x9)) {
+    x = x.sub(x9);
+    product = product.mul(a9).div(ONE_20);
+  } // x10 and x11 are unnecessary here since we have high enough precision already.
+  // Now we need to compute e^x, where x is small (in particular, it is smaller than x9). We use the Taylor series
+  // expansion for e^x: 1 + x + (x^2 / 2!) + (x^3 / 3!) + ... + (x^n / n!).
+
+
+  var seriesSum = ONE_20; // The initial one in the sum, with 20 decimal places.
+
+  var term; // Each term in the sum, where the nth term is (x^n / n!).
+  // The first term is simply x.
+
+  term = x;
+  seriesSum = seriesSum.add(term); // Each term (x^n / n!) equals the previous one times x, divided by n. Since x is a fixed point number,
+  // multiplying by it requires dividing by ONE_20, but dividing by the non-fixed point n values does not.
+
+  term = term.mul(x).div(ONE_20).div(2);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(3);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(4);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(5);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(6);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(7);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(8);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(9);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(10);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(11);
+  seriesSum = seriesSum.add(term);
+  term = term.mul(x).div(ONE_20).div(12);
+  seriesSum = seriesSum.add(term); // 12 Taylor terms are sufficient for 18 decimal precision.
+  // We now have the first a_n (with no decimals), and the product of all other a_n present, and the Taylor
+  // approximation of the exponentiation of the remainder (both with 20 decimals). All that remains is to multiply
+  // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
+  // and then drop two digits to return an 18 decimal value.
+
+  return product.mul(seriesSum).div(ONE_20).mul(firstAN).div(100);
+}
+/**
+ * @dev Logarithm (log(arg, base), with signed 18 decimal fixed point base and argument.
+ */
+
+function log(arg, base) {
+  // This performs a simple base change: log(arg, base) = ln(arg) / ln(base).
+  // Both logBase and logArg are computed as 36 decimal fixed point numbers, either by using ln_36, or by
+  // upscaling.
+  var logBase;
+
+  if (LN_36_LOWER_BOUND.lt(base) && base.lt(LN_36_UPPER_BOUND)) {
+    logBase = _ln_36(base);
+  } else {
+    logBase = _ln(base).mul(ONE_18);
+  }
+
+  var logArg;
+
+  if (LN_36_LOWER_BOUND.lt(arg) && arg.lt(LN_36_UPPER_BOUND)) {
+    logArg = _ln_36(arg);
+  } else {
+    logArg = _ln(arg).mul(ONE_18);
+  } // When dividing, we multiply by ONE_18 to arrive at a result with 18 decimal places
+
+
+  return logArg.mul(ONE_18).div(logBase);
+}
+/**
+ * @dev Natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
+ */
+
+function ln(a) {
+  // The real natural logarithm is not defined for negative numbers or zero.
+  if (LN_36_LOWER_BOUND.lt(a) && a.lt(LN_36_UPPER_BOUND)) {
+    return _ln_36(a).div(ONE_18);
+  } else {
+    return _ln(a);
+  }
+}
+/**
+ * @dev Internal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
+ */
+
+function _ln(a) {
+  if (a.lt(ONE_18)) {
+    // Since ln(a^k) = k * ln(a), we can compute ln(a) as ln(a) = ln((1/a)^(-1)) = - ln((1/a)). If a is less
+    // than one, 1/a will be greater than one, and this if statement will not be entered in the recursive call.
+    // Fixed point division requires multiplying by ONE_18.
+    return _ln(ONE_18.mul(ONE_18).div(a)).mul(-1);
+  } // First, we use the fact that ln^(a * b) = ln(a) + ln(b) to decompose ln(a) into a sum of powers of two, which
+  // we call x_n, where x_n == 2^(7 - n), which are the natural logarithm of precomputed quantities a_n (that is,
+  // ln(a_n) = x_n). We choose the first x_n, x0, to equal 2^7 because the exponential of all larger powers cannot
+  // be represented as 18 fixed point decimal numbers in 256 bits, and are therefore larger than a.
+  // At the end of this process we will have the sum of all x_n = ln(a_n) that apply, and the remainder of this
+  // decomposition, which will be lower than the smallest a_n.
+  // ln(a) = k_0 * x_0 + k_1 * x_1 + ... + k_n * x_n + ln(remainder), where each k_n equals either 0 or 1.
+  // We mutate a by subtracting a_n, making it the remainder of the decomposition.
+  // For reasons related to how `exp` works, the first two a_n (e^(2^7) and e^(2^6)) are not stored as fixed point
+  // numbers with 18 decimals, but instead as plain integers with 0 decimals, so we need to multiply them by
+  // ONE_18 to convert them to fixed point.
+  // For each a_n, we test if that term is present in the decomposition (if a is larger than it), and if so divide
+  // by it and compute the accumulated sum.
+
+
+  var sum = ZERO$1;
+
+  if (a.gte(a0.mul(ONE_18))) {
+    a = a.div(a0); // Integer, not fixed point division
+
+    sum = sum.add(x0);
+  }
+
+  if (a.gte(a1.mul(ONE_18))) {
+    a = a.div(a1); // Integer, not fixed point division
+
+    sum = sum.add(x1);
+  } // All other a_n and x_n are stored as 20 digit fixed point numbers, so we convert the sum and a to this format.
+
+
+  sum = sum.mul(100);
+  a = a.mul(100); // Because further a_n are  20 digit fixed point numbers, we multiply by ONE_20 when dividing by them.
+
+  if (a.gte(a2)) {
+    a = a.mul(ONE_20).div(a2);
+    sum = sum.add(x2);
+  }
+
+  if (a.gte(a3)) {
+    a = a.mul(ONE_20).div(a3);
+    sum = sum.add(x3);
+  }
+
+  if (a.gte(a4)) {
+    a = a.mul(ONE_20).div(a4);
+    sum = sum.add(x4);
+  }
+
+  if (a.gte(a5)) {
+    a = a.mul(ONE_20).div(a5);
+    sum = sum.add(x5);
+  }
+
+  if (a.gte(a6)) {
+    a = a.mul(ONE_20).div(a6);
+    sum = sum.add(x6);
+  }
+
+  if (a.gte(a7)) {
+    a = a.mul(ONE_20).div(a7);
+    sum = sum.add(x7);
+  }
+
+  if (a.gte(a8)) {
+    a = a.mul(ONE_20).div(a8);
+    sum = sum.add(x8);
+  }
+
+  if (a.gte(a9)) {
+    a = a.mul(ONE_20).div(a9);
+    sum = sum.add(x9);
+  }
+
+  if (a.gte(a10)) {
+    a = a.mul(ONE_20).div(a10);
+    sum = sum.add(x10);
+  }
+
+  if (a.gte(a11)) {
+    a = a.mul(ONE_20).div(a11);
+    sum = sum.add(x11);
+  } // a is now a small number (smaller than a_11, which roughly equals 1.06). This means we can use a Taylor series
+  // that converges rapidly for values of `a` close to one - the same one used in ln_36.
+  // Let z = (a - 1) / (a + 1).
+  // ln(a) =2.mul((z + z^.div( 3) + z^5 / 5 + z^7 / 7 + ... + z^(2 * n + 1) / (2 * n + 1))
+  // Recall that 20 digit fixed point division requires multiplying by ONE_20, and multiplication requires
+  // division by ONE_20.
+
+
+  var z = a.sub(ONE_20).mul(ONE_20).div(a.add(ONE_20));
+  var z_squared = z.mul(z).div(ONE_20); // num is the numerator of the series: the z^(2 * n + 1) term
+
+  var num = z; // seriesSum holds the accumulated sum of each term in the series, starting with the initial z
+
+  var seriesSum = num; // In each step, the numerator is multiplied by z^2
+
+  num = num.mul(z_squared).div(ONE_20);
+  seriesSum = seriesSum.add(num.div(3));
+  num = num.mul(z_squared).div(ONE_20);
+  seriesSum = seriesSum.add(num.div(5));
+  num = num.mul(z_squared).div(ONE_20);
+  seriesSum = seriesSum.add(num.div(7));
+  num = num.mul(z_squared).div(ONE_20);
+  seriesSum = seriesSum.add(num.div(9));
+  num = num.mul(z_squared).div(ONE_20);
+  seriesSum = seriesSum.add(num.div(11)); // 6 Taylor terms are sufficient for 36 decimal precision.
+  // Finally, we multiply by 2 (non fixed point) to compute ln(remainder)
+
+  seriesSum = seriesSum.mul(2); // We now have the sum of all x_n present, and the Taylor approximation of the logarithm of the remainder (both
+  // with 20 decimals). All that remains is to sum these two, and then drop two digits to return a 18 decimal
+  // value.
+
+  return sum.add(seriesSum).div(100);
+}
+/**
+ * @dev Intrnal high precision (36 decimal places) natural logarithm (ln(x)) with signed 18 decimal fixed point argument,
+ * for x close to one.
+ *
+ * Should only be used if x is between LN_36_LOWER_BOUND and LN_36_UPPER_BOUND.
+ */
+
+function _ln_36(x) {
+  // Since ln(1) = 0, a value of x close to one will yield a very small result, which makes using 36 digits
+  // worthwhile.
+  // First, we transform x to a 36 digit fixed point value.
+  x = x.mul(ONE_18); // We will use the following Taylor expansion, which converges very rapidly. Let z = (x - 1) / (x + 1).
+  // ln(x) = 2 * (z + z^3 / 3 + z^5 / 5 + z^7 / 7 + ... + z^(2 * n + 1) / (2 * n + 1))
+  // Recall that 36 digit fixed point division requires multiplying by ONE_36, and multiplication requires
+  // division by ONE_36.
+
+  var z = x.sub(ONE_36).mul(ONE_36).div(x.add(ONE_36));
+  var z_squared = z.mul(z).div(ONE_36); // num is the numerator of the series: the z^(2 * n + 1) term
+
+  var num = z; // seriesSum holds the accumulated sum of each term in the series, starting with the initial z
+
+  var seriesSum = num; // In each step, the numerator is multiplied by z^2
+
+  num = num.mul(z_squared).div(ONE_36);
+  seriesSum = seriesSum.add(num.div(3));
+  num = num.mul(z_squared).div(ONE_36);
+  seriesSum = seriesSum.add(num.div(5));
+  num = num.mul(z_squared).div(ONE_36);
+  seriesSum = seriesSum.add(num.div(7));
+  num = num.mul(z_squared).div(ONE_36);
+  seriesSum = seriesSum.add(num.div(9));
+  num = num.mul(z_squared).div(ONE_36);
+  seriesSum = seriesSum.add(num.div(11));
+  num = num.mul(z_squared).div(ONE_36);
+  seriesSum = seriesSum.add(num.div(13));
+  num = num.mul(z_squared).div(ONE_36);
+  seriesSum = seriesSum.add(num.div(15)); // 8 Taylor terms are sufficient for 36 decimal precision.
+  // All that remains is multiplying by 2 (non fixed point).
+
+  return seriesSum.mul(2);
+}
+
+// import invariant from 'tiny-invariant'
+var ONE$1 = ONE_18;
+/* solhint-disable private-vars-leading-underscore */
+// const ONE = BigNumber.from(1e18); // 18 decimal places
+
+var MAX_POW_RELATIVE_ERROR = /*#__PURE__*/bignumber.BigNumber.from(10000); // 10^(-14)
+// Minimum base for the power function when the exponent is 'free' (larger than ONE).
+
+var MIN_POW_BASE_FREE_EXPONENT = /*#__PURE__*/bignumber.BigNumber.from('700000000000000000');
+function mulDown(a, b) {
+  var product = a.mul(b);
+  return product.div(ONE$1);
+}
+function mulUp(a, b) {
+  var product = a.mul(b);
+
+  if (product.eq(0)) {
+    return bignumber.BigNumber.from(0);
+  } else {
+    // The traditional divUp formula is:
+    // divUp(x, y) := (x + y - 1) / y
+    // To avoid intermediate overflow in the addition, we distribute the division and get:
+    // divUp(x, y) := (x - 1) / y + 1
+    // Note that this requires x != 0, which we already tested for.
+    return product.sub(1).div(ONE$1).add(1);
+  }
+}
+function divDown(a, b) {
+  if (a.eq(ZERO$1)) {
+    return ZERO$1;
+  } else {
+    var aInflated = a.mul(ONE$1);
+    return aInflated.div(b);
+  }
+}
+function divUp(a, b) {
+  if (a.eq(ZERO$1)) {
+    return ZERO$1;
+  } else {
+    var aInflated = a.mul(ONE$1); // The traditional divUp formula is:
+    // divUp(x, y) := (x + y - 1) / y
+    // To avoid intermediate overflow in the addition, we distribute the division and get:
+    // divUp(x, y) := (x - 1) / y + 1
+    // Note that this requires x != 0, which we already tested for.
+
+    return aInflated.sub(1).div(b).add(1);
+  }
+}
+/**
+ * @dev Returns x^y, assuming both are fixed point numbers, rounding down. The result is guaranteed to not be above
+ * the true value (that is, the error function expected - actual is always positive).
+ */
+
+function powDown(x, y) {
+  var raw = pow(x, y);
+  var maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR).add(1);
+
+  if (raw < maxError) {
+    return ZERO$1;
+  } else {
+    return raw.sub(maxError);
+  }
+}
+/**
+ * @dev Returns x^y, assuming both are fixed point numbers, rounding up. The result is guaranteed to not be below
+ * the true value (that is, the error function expected - actual is always negative).
+ */
+
+function powUp(x, y) {
+  var raw = pow(x, y);
+  var maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR).add(1);
+  return raw.add(maxError);
+}
+/**
+ * @dev Returns the complement of a value (1 - x), capped to 0 if x is larger than 1.
+ *
+ * Useful when computing the complement for values with some level of relative error, as it strips this error and
+ * prevents intermediate negative values.
+ */
+
+function complement(x) {
+  return x.lt(ONE$1) ? ONE$1.sub(x) : ZERO$1;
+}
+/**
+ * @dev Returns the largest of two numbers of 256 bits.
+ */
+
+function max(a, b) {
+  return a.gte(b) ? a : b;
+}
+/**
+ * @dev Returns the smallest of two numbers of 256 bits.
+ */
+
+function min(a, b) {
+  return a.lt(b) ? a : b;
+}
+
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
+// should be fixed.
+// solhint-disable private-vars-leading-underscore
+// A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
+// implementation of the power function, as these ratios are often exponents.
+// const _MIN_WEIGHT = BigNumber.from(0.01e18);
+// Having a minimum normalized weight imposes a limit on the maximum number of tokens;
+// i.e., the largest possible pool is one where all tokens have exactly the minimum weight.
+// const _MAX_WEIGHTED_TOKENS = BigNumber.from(100);
+// Pool limits that arise from limitations in the fixed point power function (and the imposed 1:100 maximum weight
+// ratio).
+// Swap limits: amounts swapped may not be larger than this percentage of total balance.
+
+var _MAX_IN_RATIO = /*#__PURE__*/bignumber.BigNumber.from('300000000000000000'); //0.3e18
+
+
+var _MAX_OUT_RATIO = /*#__PURE__*/bignumber.BigNumber.from('300000000000000000'); //0.3e18
+// Invariant growth limit: non-proportional joins cannot cause the invariant to increase by more than this ratio.
+
+
+var _MAX_INVARIANT_RATIO = /*#__PURE__*/bignumber.BigNumber.from('3000000000000000000'); //3e18
+// Invariant shrink limit: non-proportional exits cannot cause the invariant to decrease by less than this ratio.
+
+
+var _MIN_INVARIANT_RATIO = /*#__PURE__*/bignumber.BigNumber.from('700000000000000000'); //0.7e18
+// About swap fees on joins and exits:
+// Any join or exit that is not perfectly balanced (e.g. all single token joins or exits) is mathematically
+// equivalent to a perfectly balanced join or  exit followed by a series of swaps. Since these swaps would charge
+// swap fees, it follows that (some) joins and exits should as well.
+// On these operations, we split the token amounts in 'taxable' and 'non-taxable' portions, where the 'taxable' part
+// is the one to which swap fees are applied.
+// Invariant is used to collect protocol swap fees by comparing its value between two times.
+// So we can round always to the same direction. It is also used to initiate the BPT amount
+// and, because there is a minimum BPT, we round down the invariant.
+
+
+function _calculateInvariant(normalizedWeights, balances) {
+  /**********************************************************************************************
+  // invariant               _____                                                             //
+  // wi = weight index i      | |      wi                                                      //
+  // bi = balance index i     | |  bi ^   = i                                                  //
+  // i = invariant                                                                             //
+  **********************************************************************************************/
+  var _invariant = ONE$1;
+
+  for (var i = 0; i < normalizedWeights.length; i++) {
+    _invariant = mulDown(_invariant, powUp(balances[i], normalizedWeights[i]));
+  }
+
+  !_invariant.gt(0) ?  invariant(false, "ZERO_INVARIANT")  : void 0;
+  return _invariant;
+} // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
+// current balances and weights.
+
+function _calcOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, amountIn) {
+  /**********************************************************************************************
+  // outGivenIn                                                                                //
+  // aO = amountOut                                                                            //
+  // bO = balanceOut                                                                           //
+  // bI = balanceIn              /      /            bI             \    (wI / wO) \           //
+  // aI = amountIn    aO = bO * |  1 - | --------------------------  | ^            |          //
+  // wI = weightIn               \      \       ( bI + aI )         /              /           //
+  // wO = weightOut                                                                            //
+  **********************************************************************************************/
+  // Amount out, so we round down overall.
+  // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
+  // Because bI / (bI + aI) <= 1, the exponent rounds down.
+  // Cannot exceed maximum in ratio
+  !amountIn.lte(mulDown(balanceIn, _MAX_IN_RATIO)) ?  invariant(false, "MAX_IN_RATIO")  : void 0;
+  var denominator = balanceIn.add(amountIn);
+  var base = divUp(balanceIn, denominator);
+  var exponent = divDown(weightIn, weightOut);
+  var power = powUp(base, exponent);
+  return mulDown(balanceOut, complement(power));
+} // Computes how many tokens must be sent to a pool in order to take `amountOut`, given the
+// current balances and weights.
+
+function _calcInGivenOut(balanceIn, weightIn, balanceOut, weightOut, amountOut) {
+  /**********************************************************************************************
+  // inGivenOut                                                                                //
+  // aO = amountOut                                                                            //
+  // bO = balanceOut                                                                           //
+  // bI = balanceIn              /  /            bO             \    (wO / wI)      \          //
+  // aI = amountIn    aI = bI * |  | --------------------------  | ^            - 1  |         //
+  // wI = weightIn               \  \       ( bO - aO )         /                   /          //
+  // wO = weightOut                                                                            //
+  **********************************************************************************************/
+  // Amount in, so we round up overall.
+  // The multiplication rounds up, and the power rounds up (so the base rounds up too).
+  // Because b0 / (b0 - a0) >= 1, the exponent rounds up.
+  // Cannot exceed maximum out ratio
+  !amountOut.lte(mulDown(balanceOut, _MAX_OUT_RATIO)) ?  invariant(false, "MAX_OUT_RATIO")  : void 0;
+  var base = divUp(balanceOut, balanceOut.sub(amountOut));
+  var exponent = divUp(weightOut, weightIn);
+  var power = powUp(base, exponent); // Because the base is larger than one (and the power rounds up), the power should always be larger than one, so
+  // the following subtraction should never revert.
+
+  var ratio = power.sub(ONE$1);
+  return mulUp(balanceIn, ratio);
+}
+function _calcLpOutGivenExactTokensIn(balances, normalizedWeights, amountsIn, lpTotalSupply, swapFeePercentage) {
+  // BPT out, so we round down overall.
+  var balanceRatiosWithFee = [];
+  var invariantRatioWithFees = ZERO$1;
+
+  for (var i = 0; i < balances.length; i++) {
+    balanceRatiosWithFee.push(divDown(balances[i].add(amountsIn[i]), balances[i]));
+    invariantRatioWithFees = mulDown(invariantRatioWithFees.add(balanceRatiosWithFee[i]), normalizedWeights[i]);
+  }
+
+  var _computeJoinExactToke = _computeJoinExactTokensInInvariantRatio(balances, normalizedWeights, amountsIn, balanceRatiosWithFee, invariantRatioWithFees, swapFeePercentage),
+      invariantRatio = _computeJoinExactToke.invariantRatio,
+      swapFees = _computeJoinExactToke.swapFees;
+
+  var lpOut = invariantRatio.gt(ONE$1) ? mulDown(lpTotalSupply, invariantRatio.sub(ONE$1)) : ZERO$1;
+  return {
+    lpOut: lpOut,
+    swapFees: swapFees
+  };
+}
+/**
+ * @dev Intermediate function to avoid stack-too-deep "
+ */
+
+function _computeJoinExactTokensInInvariantRatio(balances, normalizedWeights, amountsIn, balanceRatiosWithFee, invariantRatioWithFees, swapFeePercentage) {
+  // Swap fees are charged on all tokens that are being added in a larger proportion than the overall invariant
+  // increase.
+  var swapFees = [];
+  var invariantRatio = ONE$1;
+
+  for (var i = 0; i < balances.length; i++) {
+    var amountInWithoutFee = void 0;
+
+    if (balanceRatiosWithFee[i].gt(invariantRatioWithFees)) {
+      var nonTaxableAmount = mulDown(balances[i], invariantRatioWithFees.sub(ONE$1));
+      var taxableAmount = amountsIn[i].sub(nonTaxableAmount);
+      var swapFee = mulUp(taxableAmount, swapFeePercentage);
+      amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
+      swapFees[i] = swapFee;
+    } else {
+      amountInWithoutFee = amountsIn[i];
+    }
+
+    var balanceRatio = divDown(balances[i].add(amountInWithoutFee), balances[i]);
+    invariantRatio = mulDown(invariantRatio, powDown(balanceRatio, normalizedWeights[i]));
+  }
+
+  return {
+    invariantRatio: invariantRatio,
+    swapFees: swapFees
+  };
+}
+function _calcTokenInGivenExactLpOut(balance, normalizedWeight, lpAmountOut, lpTotalSupply, swapFeePercentage) {
+  /******************************************************************************************
+  // tokenInForExactLpOut                                                                 //
+  // a = amountIn                                                                          //
+  // b = balance                      /  /    totalBPT + LpOut      \    (1 / w)       \  //
+  // LpOut = lpAmountOut   a = b * |  | --------------------------  | ^          - 1  |  //
+  // lp = totalBPT                   \  \       totalBPT            /                  /  //
+  // w = weight                                                                            //
+  ******************************************************************************************/
+  // Token in, so we round up overall.
+  // Calculate the factor by which the invariant will increase after minting BPTAmountOut
+  var invariantRatio = divUp(lpTotalSupply.add(lpAmountOut), lpTotalSupply);
+  !invariantRatio.lte(_MAX_INVARIANT_RATIO) ?  invariant(false, "MAX_OUT_LP")  : void 0; // Calculate by how much the token balance has to increase to match the invariantRatio
+
+  var balanceRatio = powUp(invariantRatio, divUp(ONE$1, normalizedWeight));
+  var amountInWithoutFee = mulUp(balance, balanceRatio.sub(ONE$1)); // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
+  // accordingly.
+
+  var taxablePercentage = complement(normalizedWeight);
+  var taxableAmount = mulUp(amountInWithoutFee, taxablePercentage);
+  var nonTaxableAmount = amountInWithoutFee.sub(taxableAmount);
+  var taxableAmountPlusFees = divUp(taxableAmount, ONE$1.sub(swapFeePercentage));
+  return {
+    swapFee: taxableAmountPlusFees.sub(taxableAmount),
+    amountIn: nonTaxableAmount.add(taxableAmountPlusFees)
+  };
+}
+function _calcAllTokensInGivenExactLpOut(balances, lpAmountOut, totalBPT) {
+  /************************************************************************************
+  // tokensInForExactLpOut                                                          //
+  // (per token)                                                                     //
+  // aI = amountIn                   /   LpOut   \                                  //
+  // b = balance           aI = b * | ------------ |                                 //
+  // LpOut = lpAmountOut           \  totalBPT  /                                  //
+  // lp = totalBPT                                                                  //
+  ************************************************************************************/
+  // Tokens in, so we round up overall.
+  var lpRatio = divUp(lpAmountOut, totalBPT);
+  var amountsIn = [];
+
+  for (var i = 0; i < balances.length; i++) {
+    amountsIn.push(mulUp(balances[i], lpRatio));
+  }
+
+  return amountsIn;
+}
+function _calcLpInGivenExactTokensOut(balances, normalizedWeights, amountsOut, lpTotalSupply, swapFeePercentage) {
+  // BPT in, so we round up overall.
+  var balanceRatiosWithoutFee = [];
+  var invariantRatioWithoutFees = ZERO$1;
+
+  for (var i = 0; i < balances.length; i++) {
+    balanceRatiosWithoutFee.push(divUp(balances[i].sub(amountsOut[i]), balances[i]));
+    invariantRatioWithoutFees = invariantRatioWithoutFees.add(mulUp(balanceRatiosWithoutFee[i], normalizedWeights[i]));
+  }
+
+  var _computeExitExactToke = _computeExitExactTokensOutInvariantRatio(balances, normalizedWeights, amountsOut, balanceRatiosWithoutFee, invariantRatioWithoutFees, swapFeePercentage),
+      invariantRatio = _computeExitExactToke.invariantRatio,
+      swapFees = _computeExitExactToke.swapFees;
+
+  var lpIn = mulUp(lpTotalSupply, complement(invariantRatio));
+  return {
+    lpIn: lpIn,
+    swapFees: swapFees
+  };
+}
+/**
+ * @dev Intermediate function to avoid stack-too-deep "
+ */
+
+function _computeExitExactTokensOutInvariantRatio(balances, normalizedWeights, amountsOut, balanceRatiosWithoutFee, invariantRatioWithoutFees, swapFeePercentage) {
+  var swapFees = [];
+  var invariantRatio = ONE$1;
+
+  for (var i = 0; i < balances.length; i++) {
+    // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
+    // 'token out'. This results in slightly larger price impact.
+    var amountOutWithFee = void 0;
+
+    if (invariantRatioWithoutFees.gt(balanceRatiosWithoutFee[i])) {
+      var nonTaxableAmount = mulDown(balances[i], complement(invariantRatioWithoutFees));
+      var taxableAmount = amountsOut[i].sub(nonTaxableAmount);
+      var taxableAmountPlusFees = divUp(taxableAmount, ONE$1.sub(swapFeePercentage));
+      swapFees[i] = taxableAmountPlusFees.sub(taxableAmount);
+      amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
+    } else {
+      amountOutWithFee = amountsOut[i];
+    }
+
+    var balanceRatio = divDown(balances[i].sub(amountOutWithFee), balances[i]);
+    invariantRatio = mulDown(invariantRatio, powDown(balanceRatio, normalizedWeights[i]));
+  }
+
+  return {
+    invariantRatio: invariantRatio,
+    swapFees: swapFees
+  };
+}
+function _calcTokenOutGivenExactLpIn(balance, normalizedWeight, lpAmountIn, lpTotalSupply, swapFeePercentage) {
+  /*****************************************************************************************
+  // exactBPTInForTokenOut                                                                //
+  // a = amountOut                                                                        //
+  // b = balance                     /      /    totalBPT - lpIn       \    (1 / w)  \   //
+  // lpIn = lpAmountIn    a = b * |  1 - | --------------------------  | ^           |  //
+  // lp = totalBPT                  \      \       totalBPT            /             /   //
+  // w = weight                                                                           //
+  *****************************************************************************************/
+  // Token out, so we round down overall. The multiplication rounds down, but the power rounds up (so the base
+  // rounds up). Because (totalBPT - lpIn) / totalBPT <= 1, the exponent rounds down.
+  // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
+  var invariantRatio = divUp(lpTotalSupply.sub(lpAmountIn), lpTotalSupply);
+  !(invariantRatio >= _MIN_INVARIANT_RATIO) ?  invariant(false, "MIN_LP_IN")  : void 0; // Calculate by how much the token balance has to decrease to match invariantRatio
+
+  var balanceRatio = powUp(invariantRatio, divDown(ONE$1, normalizedWeight)); // Because of rounding up, balanceRatio can be greater than one. Using complement prevents reverts.
+
+  var amountOutWithoutFee = mulDown(balance, complement(balanceRatio)); // We can now compute how much excess balance is being withdrawn as a result of the virtual swaps, which result
+  // in swap fees.
+
+  var taxablePercentage = complement(normalizedWeight); // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it
+  // to 'token out'. This results in slightly larger price impact. Fees are rounded up.
+
+  var taxableAmount = mulUp(amountOutWithoutFee, taxablePercentage);
+  var nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
+  var swapFee = mulUp(taxableAmount, swapFeePercentage);
+  return {
+    swapFee: swapFee,
+    amountOut: nonTaxableAmount.add(taxableAmount.sub(swapFee))
+  };
+}
+function _calcTokensOutGivenExactLpIn(balances, lpAmountIn, totalBPT) {
+  /**********************************************************************************************
+  // exactBPTInForTokensOut                                                                    //
+  // (per token)                                                                               //
+  // aO = amountOut                  /        lpIn         \                                  //
+  // b = balance           a0 = b * | ---------------------  |                                 //
+  // lpIn = lpAmountIn             \       totalBPT       /                                  //
+  // lp = totalBPT                                                                            //
+  **********************************************************************************************/
+  // Since we're computing an amount out, we round down overall. This means rounding down on both the
+  // multiplication and division.
+  var lpRatio = divDown(lpAmountIn, totalBPT);
+  var amountsOut = [];
+
+  for (var i = 0; i < balances.length; i++) {
+    amountsOut.push(mulDown(balances[i], lpRatio));
+  }
+
+  return amountsOut;
+}
+function _calcDueTokenProtocolSwapFeeAmount(balance, normalizedWeight, previousInvariant, currentInvariant, protocolSwapFeePercentage) {
+  /*********************************************************************************
+  /*  protocolSwapFeePercentage * balanceToken * ( 1 - (previousInvariant / currentInvariant) ^ (1 / weightToken))
+  *********************************************************************************/
+  if (currentInvariant.lte(previousInvariant)) {
+    // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
+    // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
+    return ZERO$1;
+  } // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
+  // fees to the Vault.
+  // Fee percentage and balance multiplications round down, while the subtrahend (power) rounds up (as does the
+  // base). Because previousInvariant / currentInvariant <= 1, the exponent rounds down.
+
+
+  var base = divUp(previousInvariant, currentInvariant);
+  var exponent = divDown(ONE$1, normalizedWeight); // Because the exponent is larger than one, the base of the power function has a lower bound. We cap to this
+  // value to avoid numeric issues, which means in the extreme case (where the invariant growth is larger than
+  // 1 / min exponent) the Pool will pay less in protocol fees than it should.
+
+  base = max(base, MIN_POW_BASE_FREE_EXPONENT);
+  var power = powUp(base, exponent);
+  var tokenAccruedFees = mulDown(balance, complement(power));
+  return mulDown(tokenAccruedFees, protocolSwapFeePercentage);
+}
+
+// SPDX-License-Identifier: MIT
+var FEE_DENOMINATOR = /*#__PURE__*/bignumber.BigNumber.from(10000000000);
+function calculateRemoveLiquidityOneTokenExactIn(self, outIndex, lpAmount, lpSupply, tokenBalances) {
+  return _calcTokenOutGivenExactLpIn(tokenBalances[outIndex].mul(self.tokenMultipliers[outIndex]), self.normalizedWeights[outIndex], lpAmount, lpSupply, self.fee);
+}
+function calculateRemoveLiquidityExactIn(self, lpAmount, lpSupply, tokenBalances) {
+  return _calcAllTokensInGivenExactLpOut(_xp(tokenBalances, self.tokenMultipliers), lpAmount, lpSupply);
+}
+/**
+ * Estimate amount of LP token minted or burned at deposit or withdrawal
+ */
+
+function calculateTokenAmount(self, amounts, lpSupply, deposit, tokenBalances) {
+  var lpTokenAmount = ZERO$1;
+
+  if (deposit) {
+    var _calcLpOutGivenExactT = _calcLpOutGivenExactTokensIn(_xp(tokenBalances, self.tokenMultipliers), self.normalizedWeights, _xp(amounts, self.tokenMultipliers), lpSupply, self.fee.mul(1e8)),
+        lpOut = _calcLpOutGivenExactT.lpOut;
+
+    lpTokenAmount = lpOut;
+  } else {
+    var _calcLpInGivenExactTo = _calcLpInGivenExactTokensOut(_xp(tokenBalances, self.tokenMultipliers), self.normalizedWeights, _xp(amounts, self.tokenMultipliers), lpSupply, self.fee.mul(1e8)),
+        lpIn = _calcLpInGivenExactTo.lpIn;
+
+    lpTokenAmount = lpIn;
+  }
+
+  return lpTokenAmount;
+}
+function calculateSwapGivenIn(self, inIndex, outIndex, amountIn, tokenBalances) {
+  // use in amount with fee alredy deducted
+  var amountInWithFee = amountIn.mul(self.tokenMultipliers[inIndex]).mul(FEE_DENOMINATOR.sub(self.fee)); // calculate out amount
+
+  var amountOut = _calcOutGivenIn(tokenBalances[inIndex].mul(self.tokenMultipliers[inIndex]).mul(FEE_DENOMINATOR), self.normalizedWeights[inIndex], tokenBalances[outIndex].mul(self.tokenMultipliers[outIndex]).mul(FEE_DENOMINATOR), self.normalizedWeights[outIndex], amountInWithFee); // downscale out amount
+
+
+  return amountOut.div(FEE_DENOMINATOR).div(self.tokenMultipliers[outIndex]);
+}
+function calculateSwapGivenOut(self, inIndex, outIndex, amountOut, tokenBalances) {
+  // calculate in amount with upscaled balances
+  var amountIn = _calcInGivenOut(tokenBalances[inIndex].mul(self.tokenMultipliers[inIndex]).mul(FEE_DENOMINATOR), self.normalizedWeights[inIndex], tokenBalances[outIndex].mul(self.tokenMultipliers[outIndex]).mul(FEE_DENOMINATOR), self.normalizedWeights[outIndex], amountOut.mul(self.tokenMultipliers[outIndex]).mul(FEE_DENOMINATOR)); // adjust for fee and scale down - rounding up
+
+
+  return amountIn.div(FEE_DENOMINATOR.sub(self.fee)).div(self.tokenMultipliers[inIndex]).add(1);
+}
+function _xp(balances, rates) {
+  var result = [];
+
+  for (var i = 0; i < balances.length; i++) {
+    result.push(rates[i].mul(balances[i]));
+  }
+
+  return result;
+}
+
+var WeightedSwapStorage = /*#__PURE__*/function () {
+  function WeightedSwapStorage(tokenMultipliers, normalizedWeights, fee, adminFee) {
+    this.tokenMultipliers = tokenMultipliers;
+    this.normalizedWeights = normalizedWeights;
+    this.fee = fee;
+    this.adminFee = adminFee;
+    this.balances = tokenMultipliers.map(function (_) {
+      return ZERO$1;
+    });
+  }
+
+  WeightedSwapStorage.mock = function mock() {
+    return new WeightedSwapStorage([ZERO$1], [ZERO$1], ZERO$1, ZERO$1);
+  };
+
+  return WeightedSwapStorage;
+}();
+
+var ZERO$2 = /*#__PURE__*/bignumber.BigNumber.from(0);
+var ONE$2 = /*#__PURE__*/bignumber.BigNumber.from(1);
 var TWO$1 = /*#__PURE__*/bignumber.BigNumber.from(2);
 var TENK = /*#__PURE__*/bignumber.BigNumber.from(10000);
 
@@ -1701,18 +2659,18 @@ function power(_baseN, _baseD, _expN, _expD) {
  */
 
 function floorLog2(_n) {
-  var res = ZERO$1;
+  var res = ZERO$2;
 
   if (_n.lt(_256)) {
     // At most 8 iterations
-    while (_n.gt(ONE$1)) {
-      _n = signedRightShift(_n, ONE$1);
-      res = res.add(ONE$1);
+    while (_n.gt(ONE$2)) {
+      _n = signedRightShift(_n, ONE$2);
+      res = res.add(ONE$2);
     }
   } else {
     // Exactly 8 iterations
-    for (var s = _128; s.gt(ZERO$1); s = signedRightShift(s, ONE$1)) {
-      if (_n.gt(leftShift(ONE$1, s))) {
+    for (var s = _128; s.gt(ZERO$2); s = signedRightShift(s, ONE$2)) {
+      if (_n.gt(leftShift(ONE$2, s))) {
         _n = signedRightShift(_n, s);
         res = res.or(s);
       }
@@ -1728,7 +2686,7 @@ function floorLog2(_n) {
 
 
 function generalLog(x) {
-  var res = ZERO$1; // If x >= 2, then we compute the integer part of log2(x), which is larger than 0.
+  var res = ZERO$2; // If x >= 2, then we compute the integer part of log2(x), which is larger than 0.
 
   if (x.gte(FIXED_2)) {
     var count = floorLog2(x.div(FIXED_1));
@@ -1743,9 +2701,9 @@ function generalLog(x) {
       x = x.mul(x).div(FIXED_1); // now 1 < x < 4
 
       if (x.gte(FIXED_2)) {
-        x = signedRightShift(x, ONE$1); // now 1 < x < 2
+        x = signedRightShift(x, ONE$2); // now 1 < x < 2
 
-        res = res.add(leftShift(ONE$1, bignumber.BigNumber.from(i - 1)));
+        res = res.add(leftShift(ONE$2, bignumber.BigNumber.from(i - 1)));
       }
     }
   }
@@ -1765,7 +2723,7 @@ function generalLog(x) {
     */
 
 function optimalLog(x) {
-  var res = ZERO$1;
+  var res = ZERO$2;
   var y;
   var z;
   var w;
@@ -1846,7 +2804,7 @@ function optimalLog(x) {
   return res;
 }
 function optimalExp(x) {
-  var res = ZERO$1;
+  var res = ZERO$2;
   var y;
   var z;
   z = y = x.mod(bignumber.BigNumber.from('0x10000000000000000000000000000000')); // get the input modulo 2^(-3)
@@ -1936,7 +2894,7 @@ function optimalExp(x) {
 
 function generalExp(_x, _precision) {
   var xi = _x;
-  var res = ZERO$1;
+  var res = ZERO$2;
   xi = signedRightShift(xi.mul(_x), _precision);
   res = res.add(xi.mul('0x3442c4e6074a82f1797f72ac0000000')); // add x^02 * (33! / 02!)
 
@@ -2033,7 +2991,7 @@ function generalExp(_x, _precision) {
   xi = signedRightShift(xi.mul(_x), _precision);
   res = res.add(xi.mul('0x0000000000000000000000000000001')); // add x^33 * (33! / 33!)
 
-  return res.div(bignumber.BigNumber.from('0x688589cc0e9505e2f2fee5580000000')).add(_x).add(leftShift(ONE$1, _precision)); // divide by 33! and then add x^1 / 1! + x^0 / 0!
+  return res.div(bignumber.BigNumber.from('0x688589cc0e9505e2f2fee5580000000')).add(_x).add(leftShift(ONE$2, _precision)); // divide by 33! and then add x^1 / 1! + x^0 / 0!
 }
 /**
     * @dev the global "maxExpArray" is sorted in descending order, and therefore the following statements are equivalent:
@@ -2072,10 +3030,10 @@ function findPositionInMaxExpArray(_x) {
 
 function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
   // validate input
-  !amountIn.gt(ZERO$1) ?  invariant(false, "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT")  : void 0; // if (amountIn.lte(ZERO) || amountIn.eq(ZERO))
+  !amountIn.gt(ZERO$2) ?  invariant(false, "RequiemFormula: INSUFFICIENT_INPUT_AMOUNT")  : void 0; // if (amountIn.lte(ZERO) || amountIn.eq(ZERO))
   //     return ZERO
 
-  !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ?  invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY")  : void 0;
+  !(reserveIn.gt(ZERO$2) && reserveOut.gt(ZERO$2)) ?  invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY")  : void 0;
   var amountInWithFee = amountIn.mul(TENK.sub(swapFee)); // special case for equal weights
 
   if (tokenWeightIn.eq(tokenWeightOut)) {
@@ -2112,10 +3070,10 @@ function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeigh
 
 function getAmountIn(amountOut, reserveIn, reserveOut, tokenWeightIn, tokenWeightOut, swapFee) {
   // validate input
-  !amountOut.gt(ZERO$1) ?  invariant(false, "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT")  : void 0; // if (amountOut.gte(ZERO) || amountOut.eq(ZERO))
+  !amountOut.gt(ZERO$2) ?  invariant(false, "RequiemFormula: INSUFFICIENT_OUTPUT_AMOUNT")  : void 0; // if (amountOut.gte(ZERO) || amountOut.eq(ZERO))
   //     return ZERO
 
-  !(reserveIn.gt(ZERO$1) && reserveOut.gt(ZERO$1)) ?  invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY")  : void 0; // special case for equal weights
+  !(reserveIn.gt(ZERO$2) && reserveOut.gt(ZERO$2)) ?  invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY")  : void 0; // special case for equal weights
 
   if (tokenWeightIn.eq(tokenWeightOut)) {
     var numerator = reserveIn.mul(amountOut).mul(TENK);
@@ -2616,9 +3574,9 @@ var StablePairWrapper = /*#__PURE__*/function () {
 
 var MAX_ITERATION = 256;
 var A_PRECISION = /*#__PURE__*/ethers.BigNumber.from(100);
-var FEE_DENOMINATOR = /*#__PURE__*/ethers.BigNumber.from(1e10);
-var ONE$2 = /*#__PURE__*/ethers.BigNumber.from(1);
-function _xp(balances, rates) {
+var FEE_DENOMINATOR$1 = /*#__PURE__*/ethers.BigNumber.from(1e10);
+var ONE$3 = /*#__PURE__*/ethers.BigNumber.from(1);
+function _xp$1(balances, rates) {
   var result = [];
 
   for (var i = 0; i < balances.length; i++) {
@@ -2727,35 +3685,35 @@ blockTimestamp, swapStorage, normalizedBalances) {
 }
 function calculateSwap(inIndex, outIndex, inAmount, // standard fields
 balances, blockTimestamp, swapStorage) {
-  var normalizedBalances = _xp(balances, swapStorage.tokenMultipliers);
+  var normalizedBalances = _xp$1(balances, swapStorage.tokenMultipliers);
 
   var newInBalance = normalizedBalances[inIndex].add(inAmount.mul(swapStorage.tokenMultipliers[inIndex]));
 
   var outBalance = _getY(inIndex, outIndex, newInBalance, blockTimestamp, swapStorage, normalizedBalances);
 
-  var outAmount = normalizedBalances[outIndex].sub(outBalance).sub(ONE$2).div(swapStorage.tokenMultipliers[outIndex]);
+  var outAmount = normalizedBalances[outIndex].sub(outBalance).sub(ONE$3).div(swapStorage.tokenMultipliers[outIndex]);
 
-  var _fee = swapStorage.fee.mul(outAmount).div(FEE_DENOMINATOR);
+  var _fee = swapStorage.fee.mul(outAmount).div(FEE_DENOMINATOR$1);
 
   return outAmount.sub(_fee);
 }
-function calculateSwapGivenOut(inIndex, outIndex, outAmount, // standard fields
+function calculateSwapGivenOut$1(inIndex, outIndex, outAmount, // standard fields
 balances, blockTimestamp, swapStorage) {
-  var normalizedBalances = _xp(balances, swapStorage.tokenMultipliers);
+  var normalizedBalances = _xp$1(balances, swapStorage.tokenMultipliers);
 
-  var _amountOutInclFee = outAmount.mul(FEE_DENOMINATOR).div(FEE_DENOMINATOR.sub(swapStorage.fee));
+  var _amountOutInclFee = outAmount.mul(FEE_DENOMINATOR$1).div(FEE_DENOMINATOR$1.sub(swapStorage.fee));
 
   var newOutBalance = normalizedBalances[outIndex].sub(_amountOutInclFee.mul(swapStorage.tokenMultipliers[outIndex]));
 
   var inBalance = _getY(outIndex, inIndex, newOutBalance, blockTimestamp, swapStorage, normalizedBalances);
 
-  var inAmount = inBalance.sub(normalizedBalances[inIndex]).sub(ONE$2).div(swapStorage.tokenMultipliers[inIndex]).add(ONE$2);
+  var inAmount = inBalance.sub(normalizedBalances[inIndex]).sub(ONE$3).div(swapStorage.tokenMultipliers[inIndex]).add(ONE$3);
   return inAmount;
 } // function to calculate the amounts of stables from the amounts of LP
 
 function _calculateRemoveLiquidity(amount, swapStorage, totalSupply, currentWithdrawFee, balances) {
   !amount.lte(totalSupply) ?  invariant(false, "Cannot exceed total supply")  : void 0;
-  var feeAdjustedAmount = amount.mul(FEE_DENOMINATOR.sub(currentWithdrawFee)).div(FEE_DENOMINATOR);
+  var feeAdjustedAmount = amount.mul(FEE_DENOMINATOR$1.sub(currentWithdrawFee)).div(FEE_DENOMINATOR$1);
   var amounts = [];
 
   for (var i = 0; i < swapStorage.tokenMultipliers.length; i++) {
@@ -2811,7 +3769,7 @@ function _calculateRemoveLiquidityOneToken(swapStorage, tokenAmount, index, bloc
 
   var amp = _getAPrecise(blockTimestamp, swapStorage);
 
-  var xp = _xp(balances, swapStorage.tokenMultipliers);
+  var xp = _xp$1(balances, swapStorage.tokenMultipliers);
 
   var D0 = _getD(xp, amp);
 
@@ -2832,13 +3790,13 @@ function _calculateRemoveLiquidityOneToken(swapStorage, tokenAmount, index, bloc
       expectedDx = xp[i].sub(xp[i].mul(D1).div(D0));
     }
 
-    reducedXP[i] = reducedXP[i].sub(_fee.mul(expectedDx).div(FEE_DENOMINATOR));
+    reducedXP[i] = reducedXP[i].sub(_fee.mul(expectedDx).div(FEE_DENOMINATOR$1));
   }
 
   var dy = reducedXP[index].sub(_getYD(amp, index, reducedXP, D1));
   dy = dy.sub(1).div(swapStorage.tokenMultipliers[index]);
   var fee = xp[index].sub(newY).div(swapStorage.tokenMultipliers[index]).sub(dy);
-  dy = dy.mul(FEE_DENOMINATOR.sub(currentWithdrawFee)).div(FEE_DENOMINATOR);
+  dy = dy.mul(FEE_DENOMINATOR$1.sub(currentWithdrawFee)).div(FEE_DENOMINATOR$1);
   return {
     "dy": dy,
     "fee": fee
@@ -2855,7 +3813,7 @@ function _calculateTokenAmount(swapStorage, amounts, deposit, balances, blockTim
 
   var amp = _getAPrecise(blockTimestamp, swapStorage);
 
-  var D0 = _getD(_xp(balances, swapStorage.tokenMultipliers), amp);
+  var D0 = _getD(_xp$1(balances, swapStorage.tokenMultipliers), amp);
 
   var newBalances = balances;
 
@@ -2867,7 +3825,7 @@ function _calculateTokenAmount(swapStorage, amounts, deposit, balances, blockTim
     }
   }
 
-  var D1 = _getD(_xp(newBalances, swapStorage.tokenMultipliers), amp);
+  var D1 = _getD(_xp$1(newBalances, swapStorage.tokenMultipliers), amp);
 
   if (totalSupply.eq(0)) {
     return D1; // first depositor take it all
@@ -4420,10 +5378,10 @@ var StablePool = /*#__PURE__*/function () {
   // pinging the blockchain for data
   ;
 
-  _proto.calculateSwapGivenOut = function calculateSwapGivenOut$1(inIndex, outIndex, outAmount) {
+  _proto.calculateSwapGivenOut = function calculateSwapGivenOut(inIndex, outIndex, outAmount) {
     // if (this.getBalances()[outIndex].lte(outAmount)) // || outAmount.eq(ZERO))
     //   return ZERO
-    var inAmount = calculateSwapGivenOut(inIndex, outIndex, outAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
+    var inAmount = calculateSwapGivenOut$1(inIndex, outIndex, outAmount, this.getBalances(), this.blockTimestamp, this.swapStorage);
 
     return inAmount;
   };
@@ -5538,24 +6496,24 @@ var TradeV4 = /*#__PURE__*/function () {
   return TradeV4;
 }();
 
-var ONE$3 = /*#__PURE__*/ethers.BigNumber.from(1);
+var ONE$4 = /*#__PURE__*/ethers.BigNumber.from(1);
 var TEN$1 = /*#__PURE__*/JSBI.BigInt(10);
 var TWO$2 = /*#__PURE__*/ethers.BigNumber.from(2);
 var SQRT2x100 = /*#__PURE__*/ethers.BigNumber.from('141421356237309504880');
 var ONE_E18 = /*#__PURE__*/ethers.BigNumber.from('1000000000000000000');
 function sqrrt(a) {
-  var c = ONE$3;
+  var c = ONE$4;
 
   if (a.gt(3)) {
     c = a;
-    var b = a.div(TWO$2).add(ONE$3);
+    var b = a.div(TWO$2).add(ONE$4);
 
     while (b < c) {
       c = b;
       b = a.div(b).add(b).div(TWO$2);
     }
   } else if (!a.eq(0)) {
-    c = ONE$3;
+    c = ONE$4;
   }
 
   return c;
@@ -5596,7 +6554,7 @@ function markdown(pair, payoutToken) {
 
 var RESOLUTION = /*#__PURE__*/ethers.BigNumber.from(112);
 var resPrec = /*#__PURE__*/ethers.BigNumber.from(2).pow(RESOLUTION);
-var ZERO$2 = /*#__PURE__*/ethers.BigNumber.from(0); // const Q112 = BigNumber.from('0x10000000000000000000000000000');
+var ZERO$3 = /*#__PURE__*/ethers.BigNumber.from(0); // const Q112 = BigNumber.from('0x10000000000000000000000000000');
 // const Q224 = BigNumber.from('0x100000000000000000000000000000000000000000000000000000000');
 // const LOWER_MASK = BigNumber.from('0xffffffffffffffffffffffffffff'); // decimal of UQ*x112 (lower 112 bits)
 
@@ -5607,8 +6565,8 @@ function decode112with18(x) {
   return x.div(ethers.BigNumber.from('5192296858534827'));
 }
 function fraction(numerator, denominator) {
-  !denominator.gt(ZERO$2) ?  invariant(false, "FixedPoint::fraction: division by zero")  : void 0;
-  if (numerator.isZero()) return ZERO$2; // if (numerator.lte(BigNumber.) <= type(uint144).max) {
+  !denominator.gt(ZERO$3) ?  invariant(false, "FixedPoint::fraction: division by zero")  : void 0;
+  if (numerator.isZero()) return ZERO$3; // if (numerator.lte(BigNumber.) <= type(uint144).max) {
 
   var result = numerator.mul(resPrec).div(denominator); //   require(result <= type(uint224).max, "FixedPoint::fraction: overflow");
 
@@ -6233,7 +7191,10 @@ exports.INIT_CODE_HASH_WEIGHTED = INIT_CODE_HASH_WEIGHTED;
 exports.InsufficientInputAmountError = InsufficientInputAmountError;
 exports.InsufficientReservesError = InsufficientReservesError;
 exports.MINIMUM_LIQUIDITY = MINIMUM_LIQUIDITY;
+exports.MIN_POW_BASE_FREE_EXPONENT = MIN_POW_BASE_FREE_EXPONENT;
 exports.NETWORK_CCY = NETWORK_CCY;
+exports.ONE = ONE$1;
+exports.ONE_18 = ONE_18;
 exports.Pair = Pair;
 exports.Percent = Percent;
 exports.Price = Price;
@@ -6261,29 +7222,56 @@ exports.WEIGHTED_FACTORY_ADDRESS = WEIGHTED_FACTORY_ADDRESS;
 exports.WETH = WETH;
 exports.WRAPPED_NETWORK_TOKENS = WRAPPED_NETWORK_TOKENS;
 exports.WeightedPair = WeightedPair;
+exports.WeightedSwapStorage = WeightedSwapStorage;
+exports.ZERO = ZERO$1;
+exports._calcAllTokensInGivenExactLpOut = _calcAllTokensInGivenExactLpOut;
+exports._calcDueTokenProtocolSwapFeeAmount = _calcDueTokenProtocolSwapFeeAmount;
+exports._calcInGivenOut = _calcInGivenOut;
+exports._calcLpInGivenExactTokensOut = _calcLpInGivenExactTokensOut;
+exports._calcLpOutGivenExactTokensIn = _calcLpOutGivenExactTokensIn;
+exports._calcOutGivenIn = _calcOutGivenIn;
+exports._calcTokenInGivenExactLpOut = _calcTokenInGivenExactLpOut;
+exports._calcTokenOutGivenExactLpIn = _calcTokenOutGivenExactLpIn;
+exports._calcTokensOutGivenExactLpIn = _calcTokensOutGivenExactLpIn;
+exports._calculateInvariant = _calculateInvariant;
+exports._computeExitExactTokensOutInvariantRatio = _computeExitExactTokensOutInvariantRatio;
+exports._computeJoinExactTokensInInvariantRatio = _computeJoinExactTokensInInvariantRatio;
+exports._ln = _ln;
+exports._ln_36 = _ln_36;
+exports._xp = _xp;
 exports.bondPrice = bondPrice;
 exports.bondPriceUsingDebtRatio = bondPriceUsingDebtRatio;
+exports.calculateRemoveLiquidityExactIn = calculateRemoveLiquidityExactIn;
+exports.calculateRemoveLiquidityOneTokenExactIn = calculateRemoveLiquidityOneTokenExactIn;
+exports.calculateSwapGivenIn = calculateSwapGivenIn;
+exports.calculateSwapGivenOut = calculateSwapGivenOut;
+exports.calculateTokenAmount = calculateTokenAmount;
+exports.complement = complement;
 exports.currencyEquals = currencyEquals;
 exports.debtRatio = debtRatio;
 exports.decode = decode;
 exports.decode112with18 = decode112with18;
-exports.findPositionInMaxExpArray = findPositionInMaxExpArray;
+exports.divDown = divDown;
+exports.divUp = divUp;
+exports.exp = exp;
 exports.fraction = fraction;
 exports.fullPayoutFor = fullPayoutFor;
 exports.fullPayoutForUsingDebtRatio = fullPayoutForUsingDebtRatio;
-exports.generalExp = generalExp;
-exports.generalLog = generalLog;
-exports.getAmountIn = getAmountIn;
-exports.getAmountOut = getAmountOut;
 exports.getTotalValue = getTotalValue;
 exports.inputOutputComparator = inputOutputComparator;
 exports.inputOutputComparatorV3 = inputOutputComparatorV3;
 exports.inputOutputComparatorV4 = inputOutputComparatorV4;
+exports.ln = ln;
+exports.log = log;
 exports.markdown = markdown;
-exports.optimalExp = optimalExp;
-exports.optimalLog = optimalLog;
+exports.max = max;
+exports.min = min;
+exports.mulDown = mulDown;
+exports.mulUp = mulUp;
 exports.payoutFor = payoutFor;
-exports.power = power;
+exports.pow = pow;
+exports.powDown = powDown;
+exports.powUp = powUp;
 exports.sqrrt = sqrrt;
 exports.tradeComparator = tradeComparator;
 exports.tradeComparatorV3 = tradeComparatorV3;

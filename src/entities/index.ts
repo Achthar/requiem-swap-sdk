@@ -7,7 +7,7 @@ export * from './fractions'
 export * from './calculators'
 
 export * from './weightedPair'
-export * from './weightedPairCalc'
+export * from './calculators'
 export * from './pool'
 export * from './stables'
 export * from './stablePairWrapper'

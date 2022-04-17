@@ -1,5 +1,5 @@
 import { ChainId, Token, TokenAmount, WETH, Price, WeightedPair } from '../src'
-import { getAmountIn, getAmountOut } from '../src/entities/weightedPairCalc'
+import { getAmountIn, getAmountOut } from '../src/entities/calculators/weightedPairCalc'
 import {
   //  getAmountIn, 
   //  getAmountOut,
@@ -8,7 +8,7 @@ import {
   generalExp,
   optimalExp,
   optimalLog
-} from '../src/entities/weightedPairCalc'
+} from '../src/entities/calculators/weightedPairCalc'
 import JSBI from 'jsbi'
 import { BigNumber } from '@ethersproject/bignumber'
 

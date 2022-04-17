@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers';
 import { ethers } from 'ethers';
-import { SwapStorage } from './swapStorage';
+import { WeightedSwapStorage } from './calculators/weightedSwapStorage';
 import { BigintIsh, ChainId } from '../constants';
 import { Token } from './token';
 import { TokenAmount } from './fractions/tokenAmount';
@@ -11,21 +11,20 @@ import { TokenAmount } from './fractions/tokenAmount';
   * instead of the index
   */
 export declare class WeightedPool {
+    readonly poolAddress: string;
     readonly liquidityToken: Token;
     readonly tokens: {
         [index: number]: Token;
     };
     tokenBalances: BigNumber[];
-    _A: BigNumber;
-    swapStorage: SwapStorage;
+    swapStorage: WeightedSwapStorage;
     blockTimestamp: BigNumber;
     lpTotalSupply: BigNumber;
-    currentWithdrawFee: BigNumber;
     static getRouterAddress(chainId: number): string;
     static getLpAddress(chainId: number): string;
-    constructor(tokens: {
+    constructor(poolAddress: string, tokens: {
         [index: number]: Token;
-    }, tokenBalances: BigNumber[], _A: BigNumber, swapStorage: SwapStorage, blockTimestamp: number, lpTotalSupply: BigNumber, currentWithdrawFee: BigNumber);
+    }, tokenBalances: BigNumber[], swapStorage: WeightedSwapStorage, blockTimestamp: number, lpTotalSupply: BigNumber);
     static mock(): WeightedPool;
     getAddressForRouter(): string;
     /**
@@ -33,12 +32,11 @@ export declare class WeightedPool {
      * @param token to check
      */
     involvesToken(token: Token): boolean;
-    set setCurrentWithdrawFee(feeToSet: BigNumber);
     tokenFromIndex(index: number): Token;
     indexFromToken(token: Token): number;
     getBalances(): BigNumber[];
-    calculateSwapViaPing(inIndex: number, outIndex: number, inAmount: BigNumber | BigintIsh, chainId: number, provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh>;
-    calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber): BigNumber;
+    calculateSwapViaPing(inIndex: number, outIndex: number, inAmount: BigNumber | BigintIsh, provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh>;
+    calculateSwapGivenIn(inIndex: number, outIndex: number, inAmount: BigNumber): BigNumber;
     calculateSwapGivenOut(inIndex: number, outIndex: number, outAmount: BigNumber): BigNumber;
     getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount;
     getInputAmount(outputAmount: TokenAmount, inIndex: number): TokenAmount;
@@ -54,7 +52,7 @@ export declare class WeightedPool {
     };
     getLiquidityAmount(amounts: BigNumber[], deposit: boolean): BigNumber;
     getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount;
-    setSwapStorage(swapStorage: SwapStorage): void;
+    setSwapStorage(swapStorage: WeightedSwapStorage): void;
     setTokenBalances(tokenBalances: BigNumber[]): void;
     setBlockTimestamp(blockTimestamp: BigNumber): void;
     setLpTotalSupply(totalSupply: BigNumber): void;

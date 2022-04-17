@@ -21,7 +21,7 @@ import {
 import { sqrt, parseBigintIsh } from '../utils'
 import { InsufficientReservesError, InsufficientInputAmountError } from '../errors'
 import { Token } from './token'
-import { getAmountOut, getAmountIn } from './weightedPairCalc'
+import { getAmountOut, getAmountIn } from './calculators/weightedPairCalc'
 import { PoolType } from './pool'
 
 let PAIR_ADDRESS_CACHE: {
