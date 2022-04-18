@@ -1,16 +1,17 @@
 import invariant from 'tiny-invariant'
 
 import { ChainId, ONE, TradeType, ZERO } from '../constants'
-import { sortedInsert } from '../utils'
+import { sortedInsert } from '../helperUtils'
 import { Currency, NETWORK_CCY } from './currency'
 import { CurrencyAmount } from './fractions/currencyAmount'
 import { Fraction } from './fractions/fraction'
 import { Percent } from './fractions/percent'
 import { Price } from './fractions/price'
 import { TokenAmount, InputOutput } from './fractions/tokenAmount'
-import { Pair } from './pair'
 import { Route } from './route'
 import { currencyEquals, Token, WRAPPED_NETWORK_TOKENS } from './token'
+import { PairData } from './pools/pairData'
+import { Pool } from './pools/pool'
 
 /**
  * Returns the percent difference between the mid price and the execution price, i.e. price impact.
@@ -24,6 +25,18 @@ function computePriceImpact(midPrice: Price, inputAmount: CurrencyAmount, output
   const slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote)
   return new Percent(slippage.numerator, slippage.denominator)
 }
+
+// function computePriceImpactWeightedPair(pair: WeightedPair, inputAmount: CurrencyAmount, outputAmount: CurrencyAmount): Percent {
+//   const artificialMidPrice = new Price(
+//     inputAmount.currency,
+//     outputAmount.currency,
+//     pair.reserveOf(wrappedCurrency(inputAmount.currency, pair.chainId)).raw,
+//     pair.reserveOf(wrappedCurrency(outputAmount.currency, pair.chainId)).raw)
+//   const exactQuote = artificialMidPrice.raw.multiply(inputAmount.raw)
+//   // calculate slippage := (exactQuote - outputAmount) / exactQuote
+//   const slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote)
+//   return new Percent(slippage.numerator, slippage.denominator)
+// }
 
 // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
 // in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
@@ -119,10 +132,6 @@ export class Trade {
    */
   public readonly executionPrice: Price
   /**
-   * The mid price after the trade executes assuming no slippage.
-   */
-  public readonly nextMidPrice: Price
-  /**
    * The percent difference between the mid price before the trade and the trade execution price.
    */
   public readonly priceImpact: Percent
@@ -132,8 +141,8 @@ export class Trade {
    * @param route route of the exact in trade
    * @param amountIn the amount being passed in
    */
-  public static exactIn(route: Route, amountIn: CurrencyAmount): Trade {
-    return new Trade(route, amountIn, TradeType.EXACT_INPUT)
+  public static exactIn(route: Route, amountIn: CurrencyAmount, poolDict:{[id:string]:Pool}): Trade {
+    return new Trade(route, amountIn, TradeType.EXACT_INPUT, poolDict)
   }
 
   /**
@@ -141,30 +150,28 @@ export class Trade {
    * @param route route of the exact out trade
    * @param amountOut the amount returned by the trade
    */
-  public static exactOut(route: Route, amountOut: CurrencyAmount): Trade {
-    return new Trade(route, amountOut, TradeType.EXACT_OUTPUT)
+  public static exactOut(route: Route, amountOut: CurrencyAmount, poolDict:{[id:string]:Pool}): Trade {
+    return new Trade(route, amountOut, TradeType.EXACT_OUTPUT, poolDict)
   }
 
-  public constructor(route: Route, amount: CurrencyAmount, tradeType: TradeType) {
+  public constructor(route: Route, amount: CurrencyAmount, tradeType: TradeType, poolDict:{[id:string]:Pool}) {
     const amounts: TokenAmount[] = new Array(route.path.length)
-    const nextPairs: Pair[] = new Array(route.pairs.length)
     if (tradeType === TradeType.EXACT_INPUT) {
       invariant(currencyEquals(amount.currency, route.input), 'INPUT')
       amounts[0] = wrappedAmount(amount, route.chainId)
       for (let i = 0; i < route.path.length - 1; i++) {
-        const pair = route.pairs[i]
-        const [outputAmount, nextPair] = pair.getOutputAmount(amounts[i])
+        const pair = route.pairData[i]
+        const outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDict)
         amounts[i + 1] = outputAmount
-        nextPairs[i] = nextPair
+
       }
     } else {
       invariant(currencyEquals(amount.currency, route.output), 'OUTPUT')
       amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId)
       for (let i = route.path.length - 1; i > 0; i--) {
-        const pair = route.pairs[i - 1]
-        const [inputAmount, nextPair] = pair.getInputAmount(amounts[i])
+        const pair = route.pairData[i - 1]
+        const inputAmount = pair.calculateSwapGivenOut(amounts[i], poolDict)
         amounts[i - 1] = inputAmount
-        nextPairs[i - 1] = nextPair
       }
     }
 
@@ -174,13 +181,13 @@ export class Trade {
       tradeType === TradeType.EXACT_INPUT
         ? amount
         : route.input === NETWORK_CCY[route.chainId]
-          ? CurrencyAmount.networkCCYAmount(route.chainId,amounts[0].raw)
+          ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw)
           : amounts[0]
     this.outputAmount =
       tradeType === TradeType.EXACT_OUTPUT
         ? amount
         : route.output === NETWORK_CCY[route.chainId]
-          ? CurrencyAmount.networkCCYAmount(route.chainId,amounts[amounts.length - 1].raw)
+          ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw)
           : amounts[amounts.length - 1]
     this.executionPrice = new Price(
       this.inputAmount.currency,
@@ -188,8 +195,8 @@ export class Trade {
       this.inputAmount.raw,
       this.outputAmount.raw
     )
-    this.nextMidPrice = Price.fromRoute(new Route(nextPairs, route.input))
     this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount)
+
   }
 
   /**
@@ -223,7 +230,7 @@ export class Trade {
       const slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient
       return this.inputAmount instanceof TokenAmount
         ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn)
-        : CurrencyAmount.networkCCYAmount(this.route.chainId,slippageAdjustedAmountIn)
+        : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn)
     }
   }
 
@@ -241,19 +248,20 @@ export class Trade {
    * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
    * @param bestTrades used in recursion; the current list of best trades
    */
-  public static bestTradeExactIn(
-    pairs: Pair[],
+  public static bestTradeExactInIteration(
+    pairData: PairData[],
     currencyAmountIn: CurrencyAmount,
     currencyOut: Currency,
+    poolDict: { [id: string]: Pool }, // pools used for pricing swap pairs
     { maxNumResults = 3, maxHops = 3 }: BestTradeOptions = {},
     // used in recursion.
-    currentPairs: Pair[] = [],
+    currentpools: PairData[] = [],
     originalAmountIn: CurrencyAmount = currencyAmountIn,
     bestTrades: Trade[] = []
   ): Trade[] {
-    invariant(pairs.length > 0, 'PAIRS')
+    invariant(pairData.length > 0, 'PAIRS')
     invariant(maxHops > 0, 'MAX_HOPS')
-    invariant(originalAmountIn === currencyAmountIn || currentPairs.length > 0, 'INVALID_RECURSION')
+    invariant(originalAmountIn === currencyAmountIn || currentpools.length > 0, 'INVALID_RECURSION')
     const chainId: ChainId | undefined =
       currencyAmountIn instanceof TokenAmount
         ? currencyAmountIn.token.chainId
@@ -261,18 +269,22 @@ export class Trade {
           ? currencyOut.chainId
           : undefined
     invariant(chainId !== undefined, 'CHAIN_ID')
+    // create copy of stablePool object no not change the original one
+    // const stablePoolForIteration = stablePool.clone()
 
     const amountIn = wrappedAmount(currencyAmountIn, chainId)
     const tokenOut = wrappedCurrency(currencyOut, chainId)
-    for (let i = 0; i < pairs.length; i++) {
-      const pair = pairs[i]
-      // pair irrelevant
+
+    for (let i = 0; i < pairData.length; i++) {
+      let pair = pairData[i]
+
       if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue
-      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue
 
       let amountOut: TokenAmount
+      // if( pool instanceof WeightedPair)  {console.log("out": pool.getInputAmount(amountOut) }
       try {
-        ;[amountOut] = pair.getOutputAmount(amountIn)
+        amountOut = pair.calculateSwapGivenIn(amountIn, poolDict)
+
       } catch (error) {
         // input too low
         if ((error as any).isInsufficientInputAmountError) {
@@ -285,32 +297,34 @@ export class Trade {
         sortedInsert(
           bestTrades,
           new Trade(
-            new Route([...currentPairs, pair], originalAmountIn.currency, currencyOut),
+            new Route(poolDict, [...currentpools, pair], originalAmountIn.currency, currencyOut),
             originalAmountIn,
-            TradeType.EXACT_INPUT
+            TradeType.EXACT_INPUT,
+            poolDict
           ),
           maxNumResults,
           tradeComparator
         )
-      } else if (maxHops > 1 && pairs.length > 1) {
-        const pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length))
+      } else if (maxHops > 1 && pairData.length > 1) {
+        const poolsExcludingThispool = pairData.slice(0, i).concat(pairData.slice(i + 1, pairData.length))
 
         // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
-        Trade.bestTradeExactIn(
-          pairsExcludingThisPair,
+        Trade.bestTradeExactInIteration(
+          poolsExcludingThispool,
           amountOut,
           currencyOut,
+          poolDict,
           {
             maxNumResults,
             maxHops: maxHops - 1
           },
-          [...currentPairs, pair],
+          [...currentpools, pair],
           originalAmountIn,
           bestTrades
         )
       }
-    }
 
+    }
     return bestTrades
   }
 
@@ -320,28 +334,28 @@ export class Trade {
    * to an output token amount, making at most `maxHops` hops
    * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
    * the amount in among multiple routes.
-   * @param pairs the pairs to consider in finding the best trade
    * @param currencyIn the currency to spend
    * @param currencyAmountOut the exact amount of currency out
    * @param maxNumResults maximum number of results to return
    * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
-   * @param currentPairs used in recursion; the current list of pairs
+   * @param currentpools used in recursion; the current list of pairs
    * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
    * @param bestTrades used in recursion; the current list of best trades
    */
-  public static bestTradeExactOut(
-    pairs: Pair[],
+  public static bestTradeExactOutIteration(
+    pairData: PairData[],
     currencyIn: Currency,
     currencyAmountOut: CurrencyAmount,
+    poolDict: { [id: string]: Pool }, // pools used for pricing swap pairs
     { maxNumResults = 3, maxHops = 3 }: BestTradeOptions = {},
     // used in recursion.
-    currentPairs: Pair[] = [],
+    currentpools: PairData[] = [],
     originalAmountOut: CurrencyAmount = currencyAmountOut,
     bestTrades: Trade[] = []
   ): Trade[] {
-    invariant(pairs.length > 0, 'PAIRS')
+    invariant(pairData.length > 0, 'PAIRS')
     invariant(maxHops > 0, 'MAX_HOPS')
-    invariant(originalAmountOut === currencyAmountOut || currentPairs.length > 0, 'INVALID_RECURSION')
+    invariant(originalAmountOut === currencyAmountOut || currentpools.length > 0, 'INVALID_RECURSION')
     const chainId: ChainId | undefined =
       currencyAmountOut instanceof TokenAmount
         ? currencyAmountOut.token.chainId
@@ -349,20 +363,24 @@ export class Trade {
           ? currencyIn.chainId
           : undefined
     invariant(chainId !== undefined, 'CHAIN_ID')
+    // create copy of stablePool object
+    // const stablePoolForIteration = stablePool.clone()
 
     const amountOut = wrappedAmount(currencyAmountOut, chainId)
     const tokenIn = wrappedCurrency(currencyIn, chainId)
-    for (let i = 0; i < pairs.length; i++) {
-      const pair = pairs[i]
-      // pair irrelevant
+
+    for (let i = 0; i < pairData.length; i++) {
+      const pair = pairData[i]
+      // pool irrelevant
       if (!pair.token0.equals(amountOut.token) && !pair.token1.equals(amountOut.token)) continue
-      if (pair.reserve0.equalTo(ZERO) || pair.reserve1.equalTo(ZERO)) continue
 
       let amountIn: TokenAmount
       try {
-        ;[amountIn] = pair.getInputAmount(amountOut)
+        amountIn = pair.calculateSwapGivenOut(amountOut, poolDict)
+
+
       } catch (error) {
-        // not enough liquidity in this pair
+        // not enough liquidity in this pool
         if ((error as any).isInsufficientReservesError) {
           continue
         }
@@ -373,26 +391,28 @@ export class Trade {
         sortedInsert(
           bestTrades,
           new Trade(
-            new Route([pair, ...currentPairs], currencyIn, originalAmountOut.currency),
+            new Route(poolDict, [pair, ...currentpools], currencyIn, originalAmountOut.currency),
             originalAmountOut,
-            TradeType.EXACT_OUTPUT
+            TradeType.EXACT_OUTPUT,
+            poolDict
           ),
           maxNumResults,
           tradeComparator
         )
-      } else if (maxHops > 1 && pairs.length > 1) {
-        const pairsExcludingThisPair = pairs.slice(0, i).concat(pairs.slice(i + 1, pairs.length))
+      } else if (maxHops > 1 && pairData.length > 1) {
+        const poolsExcludingThispool = pairData.slice(0, i).concat(pairData.slice(i + 1, pairData.length))
 
         // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
-        Trade.bestTradeExactOut(
-          pairsExcludingThisPair,
+        Trade.bestTradeExactOutIteration(
+          poolsExcludingThispool,
           currencyIn,
           amountIn,
+          poolDict,
           {
             maxNumResults,
             maxHops: maxHops - 1
           },
-          [pair, ...currentPairs],
+          [pair, ...currentpools],
           originalAmountOut,
           bestTrades
         )
@@ -400,5 +420,48 @@ export class Trade {
     }
 
     return bestTrades
+  }
+
+
+  /** 
+   * 
+   * 
+  */
+  public static bestTradeExactOut(
+    pairData: PairData[],
+    currencyIn: Currency,
+    currencyAmountOut: CurrencyAmount,
+    poolDict: { [id: string]: Pool }, // pools used for pricing swap pairs
+    { maxNumResults = 3, maxHops = 3 }: BestTradeOptions = {},
+  ): Trade[] {
+
+    return this.bestTradeExactOutIteration(
+      pairData,
+      currencyIn,
+      currencyAmountOut,
+      poolDict,
+      { maxNumResults, maxHops },
+      [],
+      currencyAmountOut,
+      [])
+
+  }
+
+  public static bestTradeExactIn(
+    pairData: PairData[],
+    currencyAmountIn: CurrencyAmount,
+    currencyOut: Currency,
+    poolDict: { [id: string]: Pool }, // pools used for pricing swap pairs
+    { maxNumResults = 3, maxHops = 3 }: BestTradeOptions = {},
+  ): Trade[] {
+    return this.bestTradeExactInIteration(
+      pairData,
+      currencyAmountIn,
+      currencyOut,
+      poolDict,
+      { maxNumResults, maxHops },
+      [],
+      currencyAmountIn,
+      [])
   }
 }

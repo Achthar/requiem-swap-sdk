@@ -1,26 +1,17 @@
 import { currencyEquals } from '../token'
-import { Currency, ETHER, NETWORK_CCY } from '../currency'
+import { Currency, ChainId, NETWORK_CCY } from '../currency'
 import invariant from 'tiny-invariant'
-import JSBI from 'jsbi'
 import _Big from 'big.js'
 import toFormat from 'toformat'
 import { BigNumber } from '@ethersproject/bignumber'
-import { BigintIsh, Rounding, TEN, SolidityType, ChainId } from '../../constants'
-import { parseBigintIsh, validateSolidityTypeInstance } from '../../utils'
-import { Fraction } from './fraction'
+import { BigintIsh, TEN, SolidityType } from '../../constants'
+import { parseBigintIsh, validateSolidityTypeInstance } from '../../helperUtils'
+import { Fraction, Rounding } from './fraction'
 
 const Big = toFormat(_Big)
 
 export class CurrencyAmount extends Fraction {
   public readonly currency: Currency
-
-  /**
-   * Helper that calls the constructor with the ETHER currency
-   * @param amount ether amount in wei
-   */
-  public static ether(amount: BigintIsh): CurrencyAmount {
-    return new CurrencyAmount(ETHER, amount)
-  }
 
   /**
    * Helper that calls the constructor with the more flexible network currency
@@ -36,22 +27,22 @@ export class CurrencyAmount extends Fraction {
     const parsedAmount = parseBigintIsh(amount)
     validateSolidityTypeInstance(parsedAmount, SolidityType.uint256)
 
-    super(parsedAmount, JSBI.exponentiate(TEN, JSBI.BigInt(currency.decimals)))
+    super(parsedAmount, TEN.pow(currency.decimals))
     this.currency = currency
   }
 
-  public get raw(): JSBI {
+  public get raw(): BigNumber {
     return this.numerator
   }
 
   public add(other: CurrencyAmount): CurrencyAmount {
     invariant(currencyEquals(this.currency, other.currency), 'TOKEN')
-    return new CurrencyAmount(this.currency, JSBI.add(this.raw, other.raw))
+    return new CurrencyAmount(this.currency, this.raw.add(other.raw))
   }
 
   public subtract(other: CurrencyAmount): CurrencyAmount {
     invariant(currencyEquals(this.currency, other.currency), 'TOKEN')
-    return new CurrencyAmount(this.currency, JSBI.subtract(this.raw, other.raw))
+    return new CurrencyAmount(this.currency, this.raw.sub(other.raw))
   }
 
   public toSignificant(

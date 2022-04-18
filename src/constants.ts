@@ -1,30 +1,11 @@
-import JSBI from 'jsbi'
-// exports for external consumption
-export type BigintIsh = JSBI | bigint | string
+import { BigNumber } from 'ethers'
 
-export enum ChainId {
-  BSC_MAINNET = 56,
-  BSC_TESTNET = 97,
-  AVAX_MAINNET = 43114,
-  AVAX_TESTNET = 43113,
-  ARBITRUM_MAINNET = 42161,
-  ARBITRUM_TETSNET_RINKEBY = 421611,
-  MATIC_MAINNET = 137,
-  MATIC_TESTNET = 80001,
-  OASIS_TESTNET = 42261,
-  OASIS_MAINNET = 42262,
-  QUARKCHAIN_DEV_S0 = 110001,
-}
+// exports for external consumption
+export type BigintIsh = BigNumber | bigint | string
 
 export enum TradeType {
   EXACT_INPUT,
   EXACT_OUTPUT
-}
-
-export enum Rounding {
-  ROUND_DOWN,
-  ROUND_HALF_UP,
-  ROUND_UP
 }
 
 export const FACTORY_ADDRESS: { [chainId: number]: string } = {
@@ -68,19 +49,19 @@ export const STABLE_POOL_LP_ADDRESS: { [chainId: number]: string } = {
   110001: '0x029f9f8e2c27627341824120ee814F31a1551256'
 }
 
-export const MINIMUM_LIQUIDITY = JSBI.BigInt(1000)
+export const MINIMUM_LIQUIDITY = BigNumber.from(1000)
 
 // exports for internal consumption
-export const ZERO = JSBI.BigInt(0)
-export const ONE = JSBI.BigInt(1)
-export const TWO = JSBI.BigInt(2)
-export const THREE = JSBI.BigInt(3)
-export const FIVE = JSBI.BigInt(5)
-export const TEN = JSBI.BigInt(10)
-export const TENK = JSBI.BigInt(10000)
-export const _100 = JSBI.BigInt(100)
-export const FEES_NUMERATOR = JSBI.BigInt(9975)
-export const FEES_DENOMINATOR = JSBI.BigInt(10000)
+export const ZERO = BigNumber.from(0)
+export const ONE = BigNumber.from(1)
+export const TWO = BigNumber.from(2)
+export const THREE = BigNumber.from(3)
+export const FIVE = BigNumber.from(5)
+export const TEN = BigNumber.from(10)
+export const TENK = BigNumber.from(10000)
+export const _100 = BigNumber.from(100)
+export const FEES_NUMERATOR = BigNumber.from(9975)
+export const FEES_DENOMINATOR = BigNumber.from(10000)
 
 export enum SolidityType {
   uint8 = 'uint8',
@@ -88,6 +69,6 @@ export enum SolidityType {
 }
 
 export const SOLIDITY_TYPE_MAXIMA = {
-  [SolidityType.uint8]: JSBI.BigInt('0xff'),
-  [SolidityType.uint256]: JSBI.BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+  [SolidityType.uint8]: BigNumber.from('0xff'),
+  [SolidityType.uint256]: BigNumber.from('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
 }

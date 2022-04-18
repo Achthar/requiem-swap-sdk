@@ -1,13 +1,13 @@
 import { TradeType } from './constants'
 import invariant from 'tiny-invariant'
-import { validateAndParseAddress } from './utils'
+import { validateAndParseAddress } from './helperUtils'
 import { CurrencyAmount, NETWORK_CCY, Percent } from './entities'
-import { TradeV4 } from './entities/tradeV4'
+import { Trade } from './entities/trade'
 
 /**
  * Options for producing the arguments to send call to the router.
  */
-export interface TradeV4Options {
+export interface TradeOptions {
   /**
    * How much the execution price is allowed to move unfavorably from the trade execution price.
    */
@@ -34,7 +34,7 @@ export interface TradeV4Options {
   multiSwap?: boolean
 }
 
-export interface TradeV4OptionsDeadline extends Omit<TradeV4Options, 'ttl'> {
+export interface TradeOptionsDeadline extends Omit<TradeOptions, 'ttl'> {
   /**
    * When the transaction expires.
    * This is an atlernate to specifying the ttl, for when you do not want to use local time.
@@ -45,7 +45,7 @@ export interface TradeV4OptionsDeadline extends Omit<TradeV4Options, 'ttl'> {
 /**
  * The parameters to use in the call to the Router to execute a trade.
  */
-export interface SwapV4Parameters {
+export interface SwapParameters {
   /**
    * The method to call on the Router.
    */
@@ -61,7 +61,7 @@ export interface SwapV4Parameters {
 }
 
 function toHex(currencyAmount: CurrencyAmount) {
-  return `0x${currencyAmount.raw.toString(16)}`
+  return currencyAmount.raw.toHexString()
 }
 
 const ZERO_HEX = '0x0'
@@ -69,7 +69,7 @@ const ZERO_HEX = '0x0'
 /**
  * Represents the Router, and has static methods for helping execute trades.
  */
-export abstract class RouterV4 {
+export abstract class Router {
   /**
    * Cannot be constructed.
    */
@@ -79,7 +79,7 @@ export abstract class RouterV4 {
    * @param trade to produce call parameters for
    * @param options options for the call parameters
    */
-  public static swapCallParameters(trade: TradeV4, options: TradeV4Options | TradeV4OptionsDeadline): SwapV4Parameters {
+  public static swapCallParameters(trade: Trade, options: TradeOptions | TradeOptionsDeadline): SwapParameters {
     const etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId]
     const etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]
     // the router does not support both ether in and out
@@ -145,22 +145,22 @@ export abstract class RouterV4 {
           break
       }
     } else {
-      const path = trade.route.path.map(token =>token.address)
-      const pools = trade.route.pools.map(pool=>pool.getAddressForRouter())
-      
+      const path = trade.route.path.map(token => token.address)
+      const pairData = trade.route.pairData.map(p => p.poolRef)
+
       switch (trade.tradeType) {
         case TradeType.EXACT_INPUT:
           if (etherIn) {
             methodName = 'onSwapExactETHForTokens'
             // function multiSwapExactETHForTokens( address[][] calldata path, uint256[] memory routerId,
             // uint256 amountOutMin, uint256 deadline )
-            args = [pools, path, amountOut, to, deadline]
+            args = [pairData, path, amountOut, to, deadline]
             value = amountIn
           } else if (etherOut) {
             methodName = 'onSwapExactTokensForETH'
             // multiSwapExactTokensForETH( address[][] calldata path, uint256[] memory pools, uint256 amountIn,
             // uint256 amountOutMin, uint256 deadline )
-            args = [pools, path, amountIn, amountOut, to, deadline]
+            args = [pairData, path, amountIn, amountOut, to, deadline]
             value = ZERO_HEX
           } else {
             methodName = 'onSwapExactTokensForTokens'
@@ -171,7 +171,7 @@ export abstract class RouterV4 {
             //   uint256 amountOutMin,
             //   address to,
             //   uint256 deadline
-            args = [pools, path, amountIn, amountOut, to, deadline]
+            args = [pairData, path, amountIn, amountOut, to, deadline]
             value = ZERO_HEX
           }
           break
@@ -179,19 +179,19 @@ export abstract class RouterV4 {
           if (etherIn) {
             methodName = 'onSwapETHForExactTokens'
             // multiSwapETHForExactTokens( address[][] calldata path, uint256[] memory pools, uint256 amountOut, uint256 deadline )
-            args = [pools, path, amountOut, to, deadline]
+            args = [pairData, path, amountOut, to, deadline]
             value = amountIn
           } else if (etherOut) {
             methodName = 'onSwapTokensForExactETH'
             // multiSwapTokensForExactETH( address[][] calldata path, uint256[] memory pools,
             // uint256 amountOut, uint256 amountInMax, uint256 deadline )
-            args = [pools, path, amountOut, amountIn, to, deadline]
+            args = [pairData, path, amountOut, amountIn, to, deadline]
             value = ZERO_HEX
           } else {
             methodName = 'onSwapTokensForExactTokens'
             // multiSwapTokensForExactTokens( address[][] calldata path, uint256[] memory pools, 
             // uint256 amountOut, uint256 amountInMax,  uint256 deadline )
-            args = [pools, path, amountOut, amountIn, to, deadline]
+            args = [pairData, path, amountOut, amountIn, to, deadline]
             value = ZERO_HEX
           }
           break

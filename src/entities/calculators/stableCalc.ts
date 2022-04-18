@@ -129,7 +129,7 @@ export function _getY(
     return BigNumber.from(0)
 }
 
-export function calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber, // standard fields
+export function calculateSwapGivenIn(inIndex: number, outIndex: number, inAmount: BigNumber, // standard fields
     balances: BigNumber[],
     blockTimestamp: BigNumber,
     swapStorage: SwapStorage

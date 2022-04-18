@@ -1,25 +1,22 @@
 import invariant from 'tiny-invariant'
 import { BigNumber } from 'ethers'
-import {
-  _getAPrecise,
-  calculateSwap,
-  _calculateRemoveLiquidity,
-  _calculateRemoveLiquidityOneToken,
-  _calculateTokenAmount,
-  calculateSwapGivenOut
-} from './stableCalc'
+
 import { Contract } from '@ethersproject/contracts'
 import { ethers } from 'ethers'
-import { SwapStorage } from './swapStorage'
+import { WeightedSwapStorage } from '../../calculators/weightedSwapStorage'
 import {
   BigintIsh,
   ChainId,
   STABLE_POOL_ADDRESS,
   STABLE_POOL_LP_ADDRESS
-} from '../constants'
-import StableSwap from '../abis/RequiemStableSwap.json'
-import { Token } from './token'
-import { TokenAmount } from './fractions/tokenAmount'
+} from '../../../constants'
+import weightedPoolABI from '../../../abis/WeightedPool.json'
+import { Token } from '../../token'
+import { TokenAmount } from '../../fractions/tokenAmount'
+import { ZERO } from '../../calculators/LogExpMath'
+import { calculateRemoveLiquidityExactIn, calculateRemoveLiquidityOneTokenExactIn, calculateSwapGivenIn, calculateSwapGivenOut, calculateTokenAmount } from '../../calculators/WeightedPoolLib'
+import { Pool } from '../pool'
+import { Price } from '../../fractions'
 
 // const ZERO = BigNumber.from(0)
 
@@ -29,20 +26,18 @@ import { TokenAmount } from './fractions/tokenAmount'
   * and actual tokens in the pool and access the swap with addresses
   * instead of the index
   */
-export class StablePool {
+export class WeightedPool extends Pool {
+  public readonly address: string
   // the only LP token
   public readonly liquidityToken: Token
   // the index-token map 
-  public readonly tokens: { [index: number]: Token }
+  public  readonly tokens: Token[]
   public tokenBalances: BigNumber[]
-  public _A: BigNumber
-  public swapStorage: SwapStorage
+  public swapStorage: WeightedSwapStorage
   // public readonly rates: BigNumber[]
   public blockTimestamp: BigNumber
 
   public lpTotalSupply: BigNumber
-  public currentWithdrawFee: BigNumber
-
   public static getRouterAddress(chainId: number): string {
     return STABLE_POOL_ADDRESS[chainId]
   }
@@ -52,21 +47,22 @@ export class StablePool {
   }
 
   public constructor(
-    tokens: { [index: number]: Token },
+    poolAddress: string,
+    tokens: Token[],
     tokenBalances: BigNumber[],
-    _A: BigNumber,
-    swapStorage: SwapStorage,
+    swapStorage: WeightedSwapStorage,
     blockTimestamp: number,
-    lpTotalSupply: BigNumber,
-    currentWithdrawFee: BigNumber
+    lpTotalSupply: BigNumber
   ) {
-    this.currentWithdrawFee = currentWithdrawFee
+    super()
+    this.tokens = tokens
+    this.tokenBalances = tokenBalances
+    this.address = ethers.utils.getAddress(poolAddress)
     this.lpTotalSupply = lpTotalSupply
     this.swapStorage = swapStorage
     this.blockTimestamp = BigNumber.from(blockTimestamp)
     this.tokens = tokens
     this.tokenBalances = tokenBalances
-    this._A = _A
     this.liquidityToken = new Token(
       tokens[0].chainId,
       STABLE_POOL_LP_ADDRESS[tokens[0].chainId] ?? '0x0000000000000000000000000000000000000001',
@@ -83,8 +79,7 @@ export class StablePool {
   }
 
   public static mock() {
-    const dummy = BigNumber.from(0)
-    return new StablePool({ 0: new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC') }, [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy)
+    return new WeightedPool('', [new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [ZERO], WeightedSwapStorage.mock(), 0, ZERO)
   }
 
   public getAddressForRouter(): string {
@@ -102,10 +97,6 @@ export class StablePool {
     }
 
     return res
-  }
-
-  public set setCurrentWithdrawFee(feeToSet: BigNumber) {
-    this.currentWithdrawFee = feeToSet
   }
 
   // maps the index to the token in the stablePool
@@ -130,13 +121,17 @@ export class StablePool {
   // requires the view on a contract as manual calculation on the frontend would
   // be inefficient
   public async calculateSwapViaPing(
-    inIndex: number,
-    outIndex: number,
+    inToken: Token,
+    outToken: Token,
     inAmount: BigNumber | BigintIsh,
-    chainId: number,
+    // chainId: number,
     provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh> {
 
-    const outAmount: BigintIsh = await new Contract(StablePool.getRouterAddress(chainId), new ethers.utils.Interface(StableSwap), provider).calculateSwap(inIndex, outIndex, inAmount)
+    const outAmount: BigintIsh = await new Contract(
+      '0xCc62754F15f7F35E4c58Ce6aD5608fA575C5583E',
+      new ethers.utils.Interface(weightedPoolABI as any),
+      provider
+    ).calculateSwapGivenIn(inToken.address, outToken.address, inAmount)
 
     return outAmount
   }
@@ -144,21 +139,21 @@ export class StablePool {
 
   // calculates the swap output amount without
   // pinging the blockchain for data
-  public calculateSwap(
-    inIndex: number,
-    outIndex: number,
+  public calculateSwapGivenIn(
+    tokenIn: Token,
+    tokenOut: Token,
     inAmount: BigNumber): BigNumber {
 
     // if (this.getBalances()[inIndex].lte(inAmount)) // || inAmount.eq(ZERO))
     //   return ZERO
 
-    const outAmount: BigNumber = calculateSwap(
-      inIndex,
-      outIndex,
+    const outAmount: BigNumber = calculateSwapGivenIn(
+      this.swapStorage,
+      this.indexFromToken(tokenIn),
+      this.indexFromToken(tokenOut),
       inAmount,
-      this.getBalances(),
-      this.blockTimestamp,
-      this.swapStorage)
+      this.tokenBalances
+    )
 
     return outAmount
   }
@@ -167,32 +162,32 @@ export class StablePool {
   // calculates the swap output amount without
   // pinging the blockchain for data
   public calculateSwapGivenOut(
-    inIndex: number,
-    outIndex: number,
+    tokenIn: Token,
+    tokenOut: Token,
     outAmount: BigNumber): BigNumber {
 
     // if (this.getBalances()[outIndex].lte(outAmount)) // || outAmount.eq(ZERO))
     //   return ZERO
 
     const inAmount: BigNumber = calculateSwapGivenOut(
-      inIndex,
-      outIndex,
+      this.swapStorage,
+      this.indexFromToken(tokenIn),
+      this.indexFromToken(tokenOut),
       outAmount,
-      this.getBalances(),
-      this.blockTimestamp,
-      this.swapStorage)
+      this.tokenBalances,
+    )
 
     return inAmount
   }
 
-  public getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount {
-    const swap = this.calculateSwap(this.indexFromToken(inputAmount.token), outIndex, inputAmount.toBigNumber())
-    return new TokenAmount(this.tokenFromIndex(outIndex), swap.toBigInt())
+  public getOutputAmount(inputAmount: TokenAmount, tokenOut: Token): TokenAmount {
+    const swap = this.calculateSwapGivenIn(inputAmount.token, tokenOut, inputAmount.raw)
+    return new TokenAmount(tokenOut, swap)
   }
 
-  public getInputAmount(outputAmount: TokenAmount, inIndex: number): TokenAmount {
-    const swap = this.calculateSwapGivenOut(inIndex, this.indexFromToken(outputAmount.token), outputAmount.toBigNumber())
-    return new TokenAmount(this.tokenFromIndex(inIndex), swap.toBigInt())
+  public getInputAmount(outputAmount: TokenAmount, tokenIn: Token): TokenAmount {
+    const swap = this.calculateSwapGivenOut(tokenIn, outputAmount.token, outputAmount.raw)
+    return new TokenAmount(tokenIn, swap.toBigInt())
   }
   /**
    * Returns the chain ID of the tokens in the pair.
@@ -215,35 +210,31 @@ export class StablePool {
   }
 
   public calculateRemoveLiquidity(amountLp: BigNumber): BigNumber[] {
-    return _calculateRemoveLiquidity(
-      amountLp,
+    return calculateRemoveLiquidityExactIn(
       this.swapStorage,
+      amountLp,
       this.lpTotalSupply,
-      this.currentWithdrawFee,
       this.getBalances()
     )
   }
 
   public calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): { [returnVal: string]: BigNumber } {
-    return _calculateRemoveLiquidityOneToken(
+    return calculateRemoveLiquidityOneTokenExactIn(
       this.swapStorage,
-      amount,
       index,
-      this.blockTimestamp,
-      this.getBalances(),
+      amount,
       this.lpTotalSupply,
-      this.currentWithdrawFee
+      this.swapStorage.balances
     )
   }
 
   public getLiquidityAmount(amounts: BigNumber[], deposit: boolean) {
-    return _calculateTokenAmount(
+    return calculateTokenAmount(
       this.swapStorage,
       amounts,
+      this.lpTotalSupply,
       deposit,
       this.getBalances(),
-      this.blockTimestamp,
-      this.lpTotalSupply
     )
   }
 
@@ -251,13 +242,13 @@ export class StablePool {
     let amount = BigNumber.from(0)
     for (let i = 0; i < userBalances.length; i++) {
       if (i !== outIndex)
-        amount = amount.add(this.calculateSwap(i, outIndex, userBalances[i]))
+        amount = amount.add(this.calculateSwapGivenIn(this.tokens[i], this.tokens[outIndex], userBalances[i]))
     }
     amount = amount.add(userBalances[outIndex])
     return new TokenAmount(this.tokens[outIndex], amount.toBigInt())
   }
 
-  public setSwapStorage(swapStorage: SwapStorage) {
+  public setSwapStorage(swapStorage: WeightedSwapStorage) {
     this.swapStorage = swapStorage
   }
 
@@ -301,9 +292,25 @@ export class StablePool {
     this.setTokenBalances(newBalances)
   }
 
-  public clone(): StablePool {
-    return new StablePool(
-      this.tokens, this.tokenBalances, this._A, this.swapStorage, this.blockTimestamp.toNumber(), this.lpTotalSupply, this.currentWithdrawFee
+  public clone(): WeightedPool {
+    return new WeightedPool(
+      this.address,
+      this.tokens,
+      this.tokenBalances,
+      this.swapStorage,
+      this.blockTimestamp.toNumber(),
+      this.lpTotalSupply
+    )
+  }
+
+  public  poolPrice(tokenIn: Token, tokenOut: Token): Price {
+    const inIndex = this.indexFromToken(tokenIn)
+    const outIndex = this.indexFromToken(tokenOut)
+    return new Price(
+      tokenIn,
+      tokenOut,
+      this.swapStorage.normalizedWeights[outIndex].mul(this.tokenBalances[inIndex]),
+      this.swapStorage.normalizedWeights[inIndex].mul(this.tokenBalances[outIndex])
     )
   }
 }

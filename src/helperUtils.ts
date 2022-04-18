@@ -1,13 +1,13 @@
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
-import JSBI from 'jsbi'
 import { getAddress } from '@ethersproject/address'
 
 import { BigintIsh, ZERO, ONE, TWO, THREE, SolidityType, SOLIDITY_TYPE_MAXIMA } from './constants'
+import { BigNumber } from 'ethers'
 
-export function validateSolidityTypeInstance(value: JSBI, solidityType: SolidityType): void {
-  invariant(JSBI.greaterThanOrEqual(value, ZERO), `${value} is not a ${solidityType}.`)
-  invariant(JSBI.lessThanOrEqual(value, SOLIDITY_TYPE_MAXIMA[solidityType]), `${value} is not a ${solidityType}.`)
+export function validateSolidityTypeInstance(value: BigNumber, solidityType: SolidityType): void {
+  invariant(value.gte(ZERO), `${value} is not a ${solidityType}.`)
+  invariant(value.lte(SOLIDITY_TYPE_MAXIMA[solidityType]), `${value} is not a ${solidityType}.`)
 }
 
 // warns if addresses are not checksummed
@@ -21,27 +21,27 @@ export function validateAndParseAddress(address: string): string {
   }
 }
 
-export function parseBigintIsh(bigintIsh: BigintIsh): JSBI {
-  return bigintIsh instanceof JSBI
+export function parseBigintIsh(bigintIsh: BigintIsh): BigNumber {
+  return bigintIsh instanceof BigNumber
     ? bigintIsh
     : typeof bigintIsh === 'bigint'
-    ? JSBI.BigInt(bigintIsh.toString())
-    : JSBI.BigInt(bigintIsh)
+    ? BigNumber.from(bigintIsh.toString())
+    : BigNumber.from(bigintIsh)
 }
 
 // mock the on-chain sqrt function
-export function sqrt(y: JSBI): JSBI {
+export function sqrt(y: BigNumber): BigNumber {
   validateSolidityTypeInstance(y, SolidityType.uint256)
-  let z: JSBI = ZERO
-  let x: JSBI
-  if (JSBI.greaterThan(y, THREE)) {
+  let z: BigNumber = ZERO
+  let x: BigNumber
+  if (y.gt(THREE)) {
     z = y
-    x = JSBI.add(JSBI.divide(y, TWO), ONE)
-    while (JSBI.lessThan(x, z)) {
+    x = y.div(TWO).add(ONE)
+    while (x.lt(z)) {
       z = x
-      x = JSBI.divide(JSBI.add(JSBI.divide(y, x), x), TWO)
+      x = y.div(x).add( x).div(TWO)
     }
-  } else if (JSBI.notEqual(y, ZERO)) {
+  } else if (!y.eq(ZERO)) {
     z = ONE
   }
   return z

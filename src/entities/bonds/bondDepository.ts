@@ -1,5 +1,6 @@
 import { BigNumber } from 'ethers'
-import { Token, WeightedPair } from '../..';
+import { Token } from '../token';
+import {  AmplifiedWeightedPair } from '../pools/weightedPair';
 import { valuation } from './bondCalculator';
 // import JSBI from 'jsbi';
 import { fraction, decode112with18 } from './fixedPoint';
@@ -21,7 +22,7 @@ export function payoutFor(value: BigNumber, bondPrice: BigNumber): BigNumber {
 
 
 export function fullPayoutFor(
-    pair: WeightedPair,
+    pair: AmplifiedWeightedPair,
     currentDebt: BigNumber,
     totalSupply: BigNumber,
     amount: BigNumber,
@@ -65,7 +66,7 @@ export function bondPriceUsingDebtRatio(controlVariable: BigNumber, debtRatio: B
 }
 
 export function fullPayoutForUsingDebtRatio(
-    pair: WeightedPair,
+    pair: AmplifiedWeightedPair,
     debtRatio: BigNumber,
     totalSupply: BigNumber,
     amount: BigNumber,

@@ -1,20 +1,27 @@
 import invariant from 'tiny-invariant'
 import { BigNumber } from 'ethers'
-
+import {
+  _getAPrecise,
+  calculateSwapGivenIn,
+  _calculateRemoveLiquidity,
+  _calculateRemoveLiquidityOneToken,
+  _calculateTokenAmount,
+  calculateSwapGivenOut
+} from '../../calculators/stableCalc'
 import { Contract } from '@ethersproject/contracts'
 import { ethers } from 'ethers'
-import { WeightedSwapStorage } from './calculators/weightedSwapStorage'
+import { SwapStorage } from '../../calculators/swapStorage'
 import {
   BigintIsh,
   ChainId,
   STABLE_POOL_ADDRESS,
   STABLE_POOL_LP_ADDRESS
-} from '../constants'
-import weightedPoolABI from '../abis/WeightedPool.json'
-import { Token } from './token'
-import { TokenAmount } from './fractions/tokenAmount'
-import { ZERO } from './calculators/LogExpMath'
-import { calculateRemoveLiquidityExactIn, calculateRemoveLiquidityOneTokenExactIn, calculateSwapGivenIn, calculateSwapGivenOut, calculateTokenAmount } from './calculators/WeightedPoolLib'
+} from '../../../constants'
+import StableSwap from '../../../abis/RequiemStableSwap.json'
+import { Token } from '../../token'
+import { TokenAmount } from '../../fractions/tokenAmount'
+import { Pool } from '../pool'
+import { Price } from '../../fractions'
 
 // const ZERO = BigNumber.from(0)
 
@@ -24,18 +31,21 @@ import { calculateRemoveLiquidityExactIn, calculateRemoveLiquidityOneTokenExactI
   * and actual tokens in the pool and access the swap with addresses
   * instead of the index
   */
-export class WeightedPool {
-  public readonly poolAddress: string
+export class StablePool extends Pool {
+  public readonly address: string
   // the only LP token
   public readonly liquidityToken: Token
   // the index-token map 
-  public readonly tokens: { [index: number]: Token }
+  public  readonly tokens: Token[]
   public tokenBalances: BigNumber[]
-  public swapStorage: WeightedSwapStorage
+  public _A: BigNumber
+  public swapStorage: SwapStorage
   // public readonly rates: BigNumber[]
   public blockTimestamp: BigNumber
 
   public lpTotalSupply: BigNumber
+  public currentWithdrawFee: BigNumber
+
   public static getRouterAddress(chainId: number): string {
     return STABLE_POOL_ADDRESS[chainId]
   }
@@ -45,19 +55,23 @@ export class WeightedPool {
   }
 
   public constructor(
-    poolAddress: string,
-    tokens: { [index: number]: Token },
+    tokens: Token[],
     tokenBalances: BigNumber[],
-    swapStorage: WeightedSwapStorage,
+    _A: BigNumber,
+    swapStorage: SwapStorage,
     blockTimestamp: number,
-    lpTotalSupply: BigNumber
+    lpTotalSupply: BigNumber,
+    currentWithdrawFee: BigNumber,
+    poolAddress: string
   ) {
-    this.poolAddress = poolAddress
+    super()
+    this.tokens = tokens
+    this.currentWithdrawFee = currentWithdrawFee
     this.lpTotalSupply = lpTotalSupply
     this.swapStorage = swapStorage
     this.blockTimestamp = BigNumber.from(blockTimestamp)
-    this.tokens = tokens
     this.tokenBalances = tokenBalances
+    this._A = _A
     this.liquidityToken = new Token(
       tokens[0].chainId,
       STABLE_POOL_LP_ADDRESS[tokens[0].chainId] ?? '0x0000000000000000000000000000000000000001',
@@ -65,6 +79,7 @@ export class WeightedPool {
       'RequiemStable-LP',
       'Requiem StableSwap LPs'
     )
+    this.address = ethers.utils.getAddress(poolAddress)
 
     for (let i = 0; i < Object.values(this.tokens).length; i++) {
       invariant(tokens[i].address != ethers.constants.AddressZero, "invalidTokenAddress");
@@ -74,7 +89,8 @@ export class WeightedPool {
   }
 
   public static mock() {
-    return new WeightedPool('', { 0: new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC') }, [ZERO], WeightedSwapStorage.mock(), 0, ZERO)
+    const dummy = BigNumber.from(0)
+    return new StablePool([new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy, '0x0000000000000000000000000000000000000001')
   }
 
   public getAddressForRouter(): string {
@@ -92,6 +108,10 @@ export class WeightedPool {
     }
 
     return res
+  }
+
+  public set setCurrentWithdrawFee(feeToSet: BigNumber) {
+    this.currentWithdrawFee = feeToSet
   }
 
   // maps the index to the token in the stablePool
@@ -116,17 +136,13 @@ export class WeightedPool {
   // requires the view on a contract as manual calculation on the frontend would
   // be inefficient
   public async calculateSwapViaPing(
-    inIndex: number,
-    outIndex: number,
+    inToken: Token,
+    outToken: Token,
     inAmount: BigNumber | BigintIsh,
-    // chainId: number,
+    chainId: number,
     provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh> {
 
-    const outAmount: BigintIsh = await new Contract(
-      '0xCc62754F15f7F35E4c58Ce6aD5608fA575C5583E',
-      new ethers.utils.Interface(weightedPoolABI.abi),
-      provider
-    ).calculateSwapGivenIn(this.tokens[inIndex].address, this.tokens[outIndex].address, inAmount)
+    const outAmount: BigintIsh = await new Contract(StablePool.getRouterAddress(chainId), new ethers.utils.Interface(StableSwap), provider).calculateSwap(inToken.address, outToken.address, inAmount)
 
     return outAmount
   }
@@ -135,20 +151,20 @@ export class WeightedPool {
   // calculates the swap output amount without
   // pinging the blockchain for data
   public calculateSwapGivenIn(
-    inIndex: number,
-    outIndex: number,
+    tokenIn: Token,
+    tokenOut: Token,
     inAmount: BigNumber): BigNumber {
 
     // if (this.getBalances()[inIndex].lte(inAmount)) // || inAmount.eq(ZERO))
     //   return ZERO
 
     const outAmount: BigNumber = calculateSwapGivenIn(
-      this.swapStorage,
-      inIndex,
-      outIndex,
+      this.indexFromToken(tokenIn),
+      this.indexFromToken(tokenOut),
       inAmount,
-      this.getBalances()
-    )
+      this.tokenBalances,
+      this.blockTimestamp,
+      this.swapStorage)
 
     return outAmount
   }
@@ -157,32 +173,32 @@ export class WeightedPool {
   // calculates the swap output amount without
   // pinging the blockchain for data
   public calculateSwapGivenOut(
-    inIndex: number,
-    outIndex: number,
+    tokenIn: Token,
+    tokenOut: Token,
     outAmount: BigNumber): BigNumber {
 
     // if (this.getBalances()[outIndex].lte(outAmount)) // || outAmount.eq(ZERO))
     //   return ZERO
 
     const inAmount: BigNumber = calculateSwapGivenOut(
-      this.swapStorage,
-      inIndex,
-      outIndex,
+      this.indexFromToken(tokenIn),
+      this.indexFromToken(tokenOut),
       outAmount,
-      this.getBalances(),
-    )
+      this.tokenBalances,
+      this.blockTimestamp,
+      this.swapStorage)
 
     return inAmount
   }
 
-  public getOutputAmount(inputAmount: TokenAmount, outIndex: number): TokenAmount {
-    const swap = this.calculateSwapGivenIn(this.indexFromToken(inputAmount.token), outIndex, inputAmount.toBigNumber())
-    return new TokenAmount(this.tokenFromIndex(outIndex), swap.toBigInt())
+  public getOutputAmount(inputAmount: TokenAmount, tokenOut: Token): TokenAmount {
+    const swap = this.calculateSwapGivenIn(inputAmount.token, tokenOut, inputAmount.toBigNumber())
+    return new TokenAmount(tokenOut, swap.toBigInt())
   }
 
-  public getInputAmount(outputAmount: TokenAmount, inIndex: number): TokenAmount {
-    const swap = this.calculateSwapGivenOut(inIndex, this.indexFromToken(outputAmount.token), outputAmount.toBigNumber())
-    return new TokenAmount(this.tokenFromIndex(inIndex), swap.toBigInt())
+  public getInputAmount(outputAmount: TokenAmount, tokenIn: Token): TokenAmount {
+    const swap = this.calculateSwapGivenOut(tokenIn, outputAmount.token, outputAmount.toBigNumber())
+    return new TokenAmount(tokenIn, swap)
   }
   /**
    * Returns the chain ID of the tokens in the pair.
@@ -205,31 +221,35 @@ export class WeightedPool {
   }
 
   public calculateRemoveLiquidity(amountLp: BigNumber): BigNumber[] {
-    return calculateRemoveLiquidityExactIn(
-      this.swapStorage,
+    return _calculateRemoveLiquidity(
       amountLp,
+      this.swapStorage,
       this.lpTotalSupply,
+      this.currentWithdrawFee,
       this.getBalances()
     )
   }
 
   public calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): { [returnVal: string]: BigNumber } {
-    return calculateRemoveLiquidityOneTokenExactIn(
+    return _calculateRemoveLiquidityOneToken(
       this.swapStorage,
-      index,
       amount,
+      index,
+      this.blockTimestamp,
+      this.getBalances(),
       this.lpTotalSupply,
-      this.swapStorage.balances
+      this.currentWithdrawFee
     )
   }
 
   public getLiquidityAmount(amounts: BigNumber[], deposit: boolean) {
-    return calculateTokenAmount(
+    return _calculateTokenAmount(
       this.swapStorage,
       amounts,
-      this.lpTotalSupply,
       deposit,
       this.getBalances(),
+      this.blockTimestamp,
+      this.lpTotalSupply
     )
   }
 
@@ -237,13 +257,13 @@ export class WeightedPool {
     let amount = BigNumber.from(0)
     for (let i = 0; i < userBalances.length; i++) {
       if (i !== outIndex)
-        amount = amount.add(this.calculateSwapGivenIn(i, outIndex, userBalances[i]))
+        amount = amount.add(this.calculateSwapGivenIn(this.tokens[i], this.tokens[outIndex], userBalances[i]))
     }
     amount = amount.add(userBalances[outIndex])
     return new TokenAmount(this.tokens[outIndex], amount.toBigInt())
   }
 
-  public setSwapStorage(swapStorage: WeightedSwapStorage) {
+  public setSwapStorage(swapStorage: SwapStorage) {
     this.swapStorage = swapStorage
   }
 
@@ -287,14 +307,14 @@ export class WeightedPool {
     this.setTokenBalances(newBalances)
   }
 
-  public clone(): WeightedPool {
-    return new WeightedPool(
-      this.poolAddress,
-      this.tokens,
-      this.tokenBalances,
-      this.swapStorage,
-      this.blockTimestamp.toNumber(),
-      this.lpTotalSupply
+  public clone(): StablePool {
+    return new StablePool(
+      this.tokens, this.tokenBalances, this._A, this.swapStorage, this.blockTimestamp.toNumber(), this.lpTotalSupply, this.currentWithdrawFee, this.address
     )
+  }
+
+  public  poolPrice(tokenIn: Token, tokenOut: Token): Price {
+    const virtualIn = BigNumber.from(this.tokenBalances[this.indexFromToken(tokenIn)]).div(10000)
+    return new Price(tokenIn, tokenOut, virtualIn, this.calculateSwapGivenIn(tokenIn, tokenOut, virtualIn))
   }
 }

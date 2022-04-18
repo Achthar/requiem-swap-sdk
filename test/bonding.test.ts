@@ -1,6 +1,5 @@
-import { ChainId, Token, TokenAmount, WeightedPair } from '../src'
+import { ChainId, Token, TokenAmount, AmplifiedWeightedPair } from '../src'
 import { valuation, sqrrt, getTotalValue } from '../src/entities/bonds/bondCalculator'
-import JSBI from 'jsbi'
 import { BigNumber } from '@ethersproject/bignumber'
 import { payoutFor, fullPayoutFor } from '../src/entities/bonds/bondDepository'
 
@@ -9,10 +8,13 @@ describe('Bonding', () => {
   const DAI = new Token(ChainId.AVAX_TESTNET, '0x6B175474E89094C44Da98b954EedeAC495271d0F', 18, 'DAI', 'DAI Stablecoin')
   const REQT = new Token(ChainId.AVAX_TESTNET, '0x78e418385153177cB1c49e58eAB5997192998bf7', 18, 'REQT', 'RequiemToken')
 
-  const weightREQT = JSBI.BigInt('80')
-  const fee = JSBI.BigInt('14')
-
-  const reqtPair = new WeightedPair(new TokenAmount(REQT, '8000000000000000000000'), new TokenAmount(DAI, '2000000000000000000000'), weightREQT, fee)
+  const weightREQT = BigNumber.from('80')
+  const fee = BigNumber.from('14')
+  const amp = BigNumber.from(10000)
+  const reqtPair = new AmplifiedWeightedPair([REQT, DAI],
+    [BigNumber.from('8000000000000000000000'), BigNumber.from('2000000000000000000000')],
+    [BigNumber.from('8000000000000000000000'), BigNumber.from('2000000000000000000000')],
+    weightREQT, fee, amp)
 
   const terms = {
     controlVariable: BigNumber.from(320), // scaling variable for price
@@ -41,9 +43,8 @@ describe('Bonding', () => {
 
     const payout = payoutFor(val, bp)
 
-    const manual = JSBI.divide(
-      JSBI.BigInt(val.mul(BigNumber.from('1000000000000000000')).toString()),
-      JSBI.BigInt(bp.toString())
+    const manual = BigNumber.from(val.mul(BigNumber.from('1000000000000000000')).toString()).div(
+      BigNumber.from(bp.toString())
     ).toString()
     console.log("payout", payout.toString(), manual.toString())
 

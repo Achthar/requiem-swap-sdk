@@ -1,5 +1,5 @@
 import { BigNumber } from 'ethers'
-import { _getAPrecise, _xp, _distance, _getD, _sumOf, _getY } from '../src/entities/stableCalc'
+import { _getAPrecise, _xp, _distance, _getD, _sumOf, _getY } from '../src/entities/calculators/stableCalc'
 
 
 import { pow, exp, ln, _ln_36, _ln, ONE_18 } from '../src'
