@@ -141,7 +141,7 @@ export class Trade {
    * @param route route of the exact in trade
    * @param amountIn the amount being passed in
    */
-  public static exactIn(route: Route, amountIn: CurrencyAmount, poolDict:{[id:string]:Pool}): Trade {
+  public static exactIn(route: Route, amountIn: CurrencyAmount, poolDict: { [id: string]: Pool }): Trade {
     return new Trade(route, amountIn, TradeType.EXACT_INPUT, poolDict)
   }
 
@@ -150,11 +150,11 @@ export class Trade {
    * @param route route of the exact out trade
    * @param amountOut the amount returned by the trade
    */
-  public static exactOut(route: Route, amountOut: CurrencyAmount, poolDict:{[id:string]:Pool}): Trade {
+  public static exactOut(route: Route, amountOut: CurrencyAmount, poolDict: { [id: string]: Pool }): Trade {
     return new Trade(route, amountOut, TradeType.EXACT_OUTPUT, poolDict)
   }
 
-  public constructor(route: Route, amount: CurrencyAmount, tradeType: TradeType, poolDict:{[id:string]:Pool}) {
+  public constructor(route: Route, amount: CurrencyAmount, tradeType: TradeType, poolDict: { [id: string]: Pool }) {
     const amounts: TokenAmount[] = new Array(route.path.length)
     if (tradeType === TradeType.EXACT_INPUT) {
       invariant(currencyEquals(amount.currency, route.input), 'INPUT')
@@ -443,7 +443,8 @@ export class Trade {
       { maxNumResults, maxHops },
       [],
       currencyAmountOut,
-      [])
+      []
+    )
 
   }
 
@@ -462,6 +463,7 @@ export class Trade {
       { maxNumResults, maxHops },
       [],
       currencyAmountIn,
-      [])
+      []
+    )
   }
 }

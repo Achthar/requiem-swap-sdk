@@ -9,6 +9,7 @@ import {
     StablePool,
     WeightedSwapStorage,
     WeightedPool,
+    TokenAmount,
 } from '../src'
 
 import { WRAPPED_NETWORK_TOKENS } from '../src/entities/token'
@@ -42,21 +43,22 @@ describe('Trade', () => {
     // )
 
     const pair_0_1 = AmplifiedWeightedPair.fromBigIntish([token0, token1], [1000, 1000], [1200, 1200], 40, 12, 12000)
-    const pair_0_2 = AmplifiedWeightedPair.fromBigIntish([token0, token2], [1000, 1100], [1200, 1100 * 1.2], 40, 12, 12000)
-    const pair_0_3 = AmplifiedWeightedPair.fromBigIntish([token0, token3], [1000, 900], [1200, Math.round(1.2 * 900)], 60, 12, 12000)
-    const pair_1_2 = AmplifiedWeightedPair.fromBigIntish([token1, token2], [1200, 1000], [Math.round(1.2 * 1200), 1200], 40, 12, 12000)
-    const pair_1_3 = AmplifiedWeightedPair.fromBigIntish([token1, token3], [1200, 1300], [Math.round(1.2 * 1200), Math.round(1.2 * 1300)], 40, 12, 12000)
+    console.log("REF", pair_0_1.virtualReserve0.raw)
+    const pair_0_2 = AmplifiedWeightedPair.fromBigIntish([token0, token2], [1000, 1100], [1200, 1320], 40, 12, 12000)
+    const pair_0_3 = AmplifiedWeightedPair.fromBigIntish([token0, token3], [1000, 900], [1200, 1080], 60, 12, 12000)
+    const pair_1_2 = AmplifiedWeightedPair.fromBigIntish([token1, token2], [1200, 1000], [1440, 1200], 40, 12, 12000)
+    const pair_1_3 = AmplifiedWeightedPair.fromBigIntish([token1, token3], [1200, 1300], [1440, 1560], 40, 12, 12000)
 
 
-    const pair_0_s3 = AmplifiedWeightedPair.fromBigIntish([token0, stable3], [1000, 900], [1200, Math.round(1.2 * 900)], 60, 12, 12000)
-    const pair_1_s2 = AmplifiedWeightedPair.fromBigIntish([token1, stable2], [1200, 1000], [Math.round(1.2 * 1200), 1200], 40, 12, 12000)
-    const pair_1_s3 = AmplifiedWeightedPair.fromBigIntish([token1, stable3], [1200, 1300], [Math.round(1.2 * 1200), Math.round(1.2 * 1300)], 40, 12, 12000)
+    const pair_0_s3 = AmplifiedWeightedPair.fromBigIntish([token0, stable3], [1000, 900], [1200, 1080], 60, 12, 12000)
+    const pair_1_s2 = AmplifiedWeightedPair.fromBigIntish([token1, stable2], [1200, 1000], [1440, 1200], 40, 12, 12000)
+    const pair_1_s3 = AmplifiedWeightedPair.fromBigIntish([token1, stable3], [1200, 1300], [1440, 1560], 40, 12, 12000)
     const pair_s0_1 = AmplifiedWeightedPair.fromBigIntish([stable0, token1], [1000, 1000], [1200, 1200], 40, 12, 12000)
 
     const pair_weth_0 = AmplifiedWeightedPair.fromBigIntish(
         [WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET], token0], [1000, 1000], [1200, 1200], 50, 20, 12000)
 
-    const empty_pair_0_1 = AmplifiedWeightedPair.fromBigIntish([token0, token1], [0, 0], [0, 0], 40, 12, 12000)
+    // const empty_pair_0_1 = AmplifiedWeightedPair.fromBigIntish([token0, token1], [0, 0], [0, 0], 40, 12, 12000)
 
 
 
@@ -105,9 +107,9 @@ describe('Trade', () => {
     ]
 
     const tokenBalances = [
-        BigNumber.from('0x028fa6ae00'),
-        BigNumber.from('0x0400b0050ef1'),
-        BigNumber.from('0x3b9e1b84663afc1eaa')
+        BigNumber.from('1000000'),
+        BigNumber.from('2000000'),
+        BigNumber.from('2200000')
     ]
 
 
@@ -143,7 +145,6 @@ describe('Trade', () => {
         [pair_1_s2.address]: pair_1_s2,
         [pair_1_s3.address]: pair_1_s3,
         [pair_s0_1.address]: pair_s0_1,
-        [empty_pair_0_1.address]: empty_pair_0_1,
         [stablePool.address]: stablePool,
         [weightedPool.address]: weightedPool
     }
@@ -162,141 +163,184 @@ describe('Trade', () => {
         expect(trade.outputAmount.currency).toEqual(token0)
         console.log('can be constructed with NETWORK_CCY done')
     })
-    //   it('can be constructed with NETWORK_CCY[ChainId.BSC_MAINNET] as input for exact output', () => {
-    //     const trade = new Trade(
-    //       new Route([pair_weth_0], NETWORK_CCY[ChainId.BSC_MAINNET], token0),
-    //       new TokenAmount(token0, BigNumber.from(100)),
-    //       TradeType.EXACT_OUTPUT
-    //     )
-    //     expect(trade.inputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //     expect(trade.outputAmount.currency).toEqual(token0)
-    //   })
+    it('can be constructed with NETWORK_CCY[ChainId.BSC_MAINNET] as input for exact output', () => {
+        const pairData = PairData.dataFromPool(pair_weth_0)
+        const route = new Route(poolDict, pairData, NETWORK_CCY[ChainId.BSC_MAINNET])
+        const trade = new Trade(
+            route,
+            new TokenAmount(token0, BigNumber.from(100)),
+            TradeType.EXACT_OUTPUT,
+            poolDict
+        )
+        expect(trade.inputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
+        expect(trade.outputAmount.currency).toEqual(token0)
+    })
 
-    //   it('can be constructed with NETWORK_CCY[ChainId.BSC_MAINNET] as output', () => {
-    //     const trade = new Trade(
-    //       new Route([pair_weth_0], token0, NETWORK_CCY[ChainId.BSC_MAINNET]),
-    //       CurrencyAmount.networkCCYAmount(chainId, BigNumber.from(100)),
-    //       TradeType.EXACT_OUTPUT
-    //     )
-    //     expect(trade.inputAmount.currency).toEqual(token0)
-    //     expect(trade.outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //   })
-    //   it('can be constructed with NETWORK_CCY[ChainId.BSC_MAINNET] as output for exact input', () => {
-    //     const trade = new Trade(
-    //       new Route([pair_weth_0], token0, NETWORK_CCY[ChainId.BSC_MAINNET]),
-    //       new TokenAmount(token0, BigNumber.from(100)),
-    //       TradeType.EXACT_INPUT
-    //     )
-    //     expect(trade.inputAmount.currency).toEqual(token0)
-    //     expect(trade.outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //   })
+    it('can be constructed with NETWORK_CCY[ChainId.BSC_MAINNET] as output', () => {
+        const pairData = PairData.dataFromPool(pair_weth_0)
+        const route = new Route(poolDict, pairData, token0, NETWORK_CCY[ChainId.BSC_MAINNET])
+        const trade = new Trade(
+            route,
+            CurrencyAmount.networkCCYAmount(chainId, BigNumber.from(100)),
+            TradeType.EXACT_OUTPUT,
+            poolDict
+        )
+        expect(trade.inputAmount.currency).toEqual(token0)
+        expect(trade.outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
+    })
+    it('can be constructed with NETWORK_CCY[ChainId.BSC_MAINNET] as output for exact input', () => {
+        const pairData = PairData.dataFromPool(pair_weth_0)
+        const route = new Route(poolDict, pairData, token0, NETWORK_CCY[ChainId.BSC_MAINNET])
+        const trade = new Trade(
+            route,
+            new TokenAmount(token0, BigNumber.from(100)),
+            TradeType.EXACT_INPUT,
+            poolDict
+        )
+        expect(trade.inputAmount.currency).toEqual(token0)
+        expect(trade.outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
+    })
 
-    //   describe('#bestTradeExactIn', () => {
-    //     it('throws with empty pairs', () => {
-    //       expect(() => Trade.bestTradeExactIn([], new TokenAmount(token0, BigNumber.from(100)), token2)).toThrow('PAIRS')
-    //     })
-    //     it('throws with max hops of 0', () => {
-    //       expect(() =>
-    //         Trade.bestTradeExactIn([pair_0_2], new TokenAmount(token0, BigNumber.from(100)), token2, { maxHops: 0 })
-    //       ).toThrow('MAX_HOPS')
-    //     })
+    describe('#bestTradeExactIn', () => {
+        it('throws with empty pairs', () => {
+            expect(() => Trade.bestTradeExactIn([], new TokenAmount(token0, BigNumber.from(100)), token2, poolDict)).toThrow('PAIRS')
+        })
+        it('throws with max hops of 0', () => {
+            const pairData = PairData.dataFromPool(pair_0_2)
+            expect(() =>
+                Trade.bestTradeExactIn(pairData, new TokenAmount(token0, BigNumber.from(100)), token2, poolDict, { maxHops: 0 })
+            ).toThrow('MAX_HOPS')
+        })
 
-    //     it('provides best route', () => {
-    //       const result = Trade.bestTradeExactIn(
-    //         [pair_0_1, pair_0_2, pair_1_2],
-    //         new TokenAmount(token0, BigNumber.from(100)),
-    //         token2
-    //       )
-    //       expect(result).toHaveLength(2)
-    //       expect(result[0].route.pairs).toHaveLength(1) // 0 -> 2 at 10:11
-    //       expect(result[0].route.path).toEqual([token0, token2])
-    //       expect(result[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
-    //       expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(99)))
-    //       expect(result[1].route.pairs).toHaveLength(2) // 0 -> 1 -> 2 at 12:12:10
-    //       expect(result[1].route.path).toEqual([token0, token1, token2])
-    //       expect(result[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
-    //       expect(result[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(69)))
-    //     })
+        it('provides best route', () => {
+            const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2])
+            const result = Trade.bestTradeExactIn(
+                pairData,
+                new TokenAmount(token0, BigNumber.from(100)),
+                token2,
+                poolDict
+            )
+            expect(result).toHaveLength(2)
+            expect(result[0].route.pairData).toHaveLength(1) // 0 -> 2 at 10:11
+            expect(result[0].route.path).toEqual([token0, token2])
+            expect(result[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(68)))
+            expect(result[1].route.pairData).toHaveLength(2) // 0 -> 1 -> 2 at 12:12:10
+            expect(result[1].route.path).toEqual([token0, token1, token2])
+            expect(result[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            expect(result[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(33)))
+        })
 
-    //     it('doesnt throw for zero liquidity pairs', () => {
-    //       expect(Trade.bestTradeExactIn([empty_pair_0_1], new TokenAmount(token0, BigNumber.from(100)), token1)).toHaveLength(
-    //         0
-    //       )
-    //     })
+        it('provides best route StablePool and WeightedPool', () => {
+            const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, stablePool, weightedPool])
+            const result = Trade.bestTradeExactIn(
+                pairData,
+                new TokenAmount(token0, BigNumber.from(100)),
+                token2,
+                poolDict,
+                {maxHops:6}
+            )
+            console.log(result[0].route.path.map(pd=>pd.symbol))
+            console.log(result[1].route.path.map(pd=>pd.symbol))
+            console.log(result[2].route.path.map(pd=>pd.symbol))
+            console.log(result[0].route.pairData.map(pd=>[pd.token0.symbol, pd.token1.symbol]))
+            console.log(result[1].route.pairData.map(pd=>[pd.token0.symbol, pd.token1.symbol]))
+            console.log(result[2].route.pairData.map(pd=>[pd.token0.symbol, pd.token1.symbol]))
+            console.log(result[0].route.midPrice.toSignificant(18))
+            console.log(result[1].route.midPrice.toSignificant(18))
+            console.log(result[2].route.midPrice.toSignificant(18))
+            expect(result).toHaveLength(2)
+            expect(result[0].route.pairData).toHaveLength(1) // 0 -> 2 at 10:11
+            expect(result[0].route.path).toEqual([token0, token2])
+            expect(result[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(68)))
+            expect(result[1].route.pairData).toHaveLength(2) // 0 -> 1 -> 2 at 12:12:10
+            expect(result[1].route.path).toEqual([token0, token1, token2])
+            expect(result[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            expect(result[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(33)))
+        })
 
-    //     it('respects maxHops', () => {
-    //       const result = Trade.bestTradeExactIn(
-    //         [pair_0_1, pair_0_2, pair_1_2],
-    //         new TokenAmount(token0, BigNumber.from(10)),
-    //         token2,
-    //         { maxHops: 1 }
-    //       )
-    //       expect(result).toHaveLength(1)
-    //       expect(result[0].route.pairs).toHaveLength(1) // 0 -> 2 at 10:11
-    //       expect(result[0].route.path).toEqual([token0, token2])
-    //     })
+        // it('doesnt throw for zero liquidity pairs', () => {
+        //     expect(Trade.bestTradeExactIn([empty_pair_0_1], new TokenAmount(token0, BigNumber.from(100)), token1)).toHaveLength(
+        //         0
+        //     )
+        // })
 
-    //     it('insufficient input for one pair', () => {
-    //       const result = Trade.bestTradeExactIn(
-    //         [pair_0_1, pair_0_2, pair_1_2],
-    //         new TokenAmount(token0, BigNumber.from(1)),
-    //         token2
-    //       )
-    //       expect(result).toHaveLength(1)
-    //       expect(result[0].route.pairs).toHaveLength(1) // 0 -> 2 at 10:11
-    //       expect(result[0].route.path).toEqual([token0, token2])
-    //       expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(1)))
-    //     })
+        it('respects maxHops', () => {
+            const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2])
+            const result = Trade.bestTradeExactIn(
+                pairData,
+                new TokenAmount(token0, BigNumber.from(10)),
+                token2,
+                poolDict,
+                { maxHops: 1 }
+            )
+            expect(result).toHaveLength(1)
+            expect(result[0].route.pairData).toHaveLength(1) // 0 -> 2 at 10:11
+            expect(result[0].route.path).toEqual([token0, token2])
+        })
 
-    //     it('respects n', () => {
-    //       const result = Trade.bestTradeExactIn(
-    //         [pair_0_1, pair_0_2, pair_1_2],
-    //         new TokenAmount(token0, BigNumber.from(10)),
-    //         token2,
-    //         { maxNumResults: 1 }
-    //       )
+        // it('insufficient input for one pair', () => {
+        //   const result = Trade.bestTradeExactIn(
+        //     [pair_0_1, pair_0_2, pair_1_2],
+        //     new TokenAmount(token0, BigNumber.from(1)),
+        //     token2
+        //   )
+        //   expect(result).toHaveLength(1)
+        //   expect(result[0].route.pairs).toHaveLength(1) // 0 -> 2 at 10:11
+        //   expect(result[0].route.path).toEqual([token0, token2])
+        //   expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(1)))
+        // })
 
-    //       expect(result).toHaveLength(1)
-    //     })
+        // it('respects n', () => {
+        //   const result = Trade.bestTradeExactIn(
+        //     [pair_0_1, pair_0_2, pair_1_2],
+        //     new TokenAmount(token0, BigNumber.from(10)),
+        //     token2,
+        //     { maxNumResults: 1 }
+        //   )
 
-    //     it('no path', () => {
-    //       const result = Trade.bestTradeExactIn(
-    //         [pair_0_1, pair_0_3, pair_1_3],
-    //         new TokenAmount(token0, BigNumber.from(10)),
-    //         token2
-    //       )
-    //       expect(result).toHaveLength(0)
-    //     })
+        //   expect(result).toHaveLength(1)
+        // })
 
-    //     it('works for NETWORK_CCY[ChainId.BSC_MAINNET] currency input', () => {
-    //       const result = Trade.bestTradeExactIn(
-    //         [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
-    //         CurrencyAmount.networkCCYAmount(chainId, BigNumber.from(100)),
-    //         token3
-    //       )
-    //       expect(result).toHaveLength(2)
-    //       expect(result[0].inputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //       expect(result[0].route.path).toEqual([WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET], token0, token1, token3])
-    //       expect(result[0].outputAmount.currency).toEqual(token3)
-    //       expect(result[1].inputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //       expect(result[1].route.path).toEqual([WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET], token0, token3])
-    //       expect(result[1].outputAmount.currency).toEqual(token3)
-    //     })
-    //     it('works for NETWORK_CCY[ChainId.BSC_MAINNET] currency output', () => {
-    //       const result = Trade.bestTradeExactIn(
-    //         [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
-    //         new TokenAmount(token3, BigNumber.from(100)),
-    //         NETWORK_CCY[ChainId.BSC_MAINNET]
-    //       )
-    //       expect(result).toHaveLength(2)
-    //       expect(result[0].inputAmount.currency).toEqual(token3)
-    //       expect(result[0].route.path).toEqual([token3, token0, WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET]])
-    //       expect(result[0].outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //       expect(result[1].inputAmount.currency).toEqual(token3)
-    //       expect(result[1].route.path).toEqual([token3, token1, token0, WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET]])
-    //       expect(result[1].outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //     })
-    //   })
+        // it('no path', () => {
+        //   const result = Trade.bestTradeExactIn(
+        //     [pair_0_1, pair_0_3, pair_1_3],
+        //     new TokenAmount(token0, BigNumber.from(10)),
+        //     token2
+        //   )
+        //   expect(result).toHaveLength(0)
+        // })
+
+        // it('works for NETWORK_CCY[ChainId.BSC_MAINNET] currency input', () => {
+        //   const result = Trade.bestTradeExactIn(
+        //     [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
+        //     CurrencyAmount.networkCCYAmount(chainId, BigNumber.from(100)),
+        //     token3
+        //   )
+        //   expect(result).toHaveLength(2)
+        //   expect(result[0].inputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
+        //   expect(result[0].route.path).toEqual([WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET], token0, token1, token3])
+        //   expect(result[0].outputAmount.currency).toEqual(token3)
+        //   expect(result[1].inputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
+        //   expect(result[1].route.path).toEqual([WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET], token0, token3])
+        //   expect(result[1].outputAmount.currency).toEqual(token3)
+        // })
+        // it('works for NETWORK_CCY[ChainId.BSC_MAINNET] currency output', () => {
+        //   const result = Trade.bestTradeExactIn(
+        //     [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
+        //     new TokenAmount(token3, BigNumber.from(100)),
+        //     NETWORK_CCY[ChainId.BSC_MAINNET]
+        //   )
+        //   expect(result).toHaveLength(2)
+        //   expect(result[0].inputAmount.currency).toEqual(token3)
+        //   expect(result[0].route.path).toEqual([token3, token0, WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET]])
+        //   expect(result[0].outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
+        //   expect(result[1].inputAmount.currency).toEqual(token3)
+        //   expect(result[1].route.path).toEqual([token3, token1, token0, WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET]])
+        //   expect(result[1].outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
+        // })
+    })
 
     //   describe('#maximumAmountIn', () => {
     //     describe('tradeType = EXACT_INPUT', () => {

@@ -204,19 +204,19 @@ export class AmplifiedWeightedPair extends Pool {
     }
 
     public get reserve0(): TokenAmount {
-        return new TokenAmount(this.tokens[0], this.tokenBalances[0].toString())
+        return new TokenAmount(this.tokens[0], this.tokenBalances[0])
     }
 
     public get reserve1(): TokenAmount {
-        return new TokenAmount(this.tokens[1], this.tokenBalances[1].toString())
+        return new TokenAmount(this.tokens[1], this.tokenBalances[1])
     }
 
     public get virtualReserve0(): TokenAmount {
-        return new TokenAmount(this.tokens[0], this.virtualReserves[0].toString())
+        return new TokenAmount(this.tokens[0], this.virtualReserves[0])
     }
 
     public get virtualReserve1(): TokenAmount {
-        return new TokenAmount(this.tokens[1], this.virtualReserves[1].toString())
+        return new TokenAmount(this.tokens[1], this.virtualReserves[1])
     }
 
     public get weight0(): BigNumber {
@@ -343,14 +343,13 @@ export class AmplifiedWeightedPair extends Pool {
     // pinging the blockchain for data
     public calculateSwapGivenIn(
         tokenIn: Token,
-        _: Token,
+        tokenOut: Token,
         inAmount: BigNumber): BigNumber {
         const inputReserve = this.virtualReserveOf(tokenIn)
-        const outputReserve = this.virtualReserveOf(tokenIn.equals(this.token0) ? this.token1 : this.token0)
+        const outputReserve = this.virtualReserveOf(tokenOut)
 
         const inputWeight = this.weightOf(tokenIn)
-        const outputWeight = this.weightOf(tokenIn.equals(this.token0) ? this.token1 : this.token0)
-
+        const outputWeight = this.weightOf(tokenOut)
 
         return getAmountOut(
             inAmount,
@@ -366,7 +365,7 @@ export class AmplifiedWeightedPair extends Pool {
     // calculates the swap output amount without
     // pinging the blockchain for data
     public calculateSwapGivenOut(
-        _: Token,
+        tokenIn: Token,
         tokenOut: Token,
         outAmount: BigNumber): BigNumber {
         if (
@@ -378,10 +377,10 @@ export class AmplifiedWeightedPair extends Pool {
         }
 
         const outputReserve = this.virtualReserveOf(tokenOut)
-        const inputReserve = this.virtualReserveOf(tokenOut.equals(this.token0) ? this.token1 : this.token0)
+        const inputReserve = this.virtualReserveOf(tokenIn)
 
         const outputWeight = this.weightOf(tokenOut)
-        const inputWeight = this.weightOf(tokenOut.equals(this.token0) ? this.token1 : this.token0)
+        const inputWeight = this.weightOf(tokenIn)
 
 
         return getAmountIn(

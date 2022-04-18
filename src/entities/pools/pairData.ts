@@ -77,5 +77,23 @@ export class PairData {
         return new PairData(pool.tokens[index0], pool.tokens[index1], pool.address)
     }
 
+    /**
+ * Pools with n > 2 tokens generate (n^2-n)/2 possible pair routes to trade
+ * The fubnction creates these pair routes
+ * @param pool input pool to generate pairs from
+ * @returns pair routes
+ */
+    public static dataFromPools(pools: Pool[]): PairData[] {
+        let pairData = []
+        for (let k = 0; k < pools.length; k++) {
+            const pool = pools[k]
+            for (let i = 0; i < pool.tokenBalances.length; i++) {
+                for (let j = 0; j < i; j++) {
+                    pairData.push(new PairData(pool.tokens[i], pool.tokens[j], pool.address))
+                }
+            }
+        }
+        return pairData
+    }
 
 }
