@@ -1,4 +1,4 @@
-import { ChainId } from "../../constants";
+import { ChainId } from "../currency";
 import { TokenAmount } from "../fractions";
 import { Token } from "../token";
 import { Pool } from "./pool";
@@ -67,7 +67,14 @@ export class PairData {
             }
         }
         return pairData
+    }
 
+    /**
+ * @param pool input pool to generate pair from
+ * @returns pair route
+ */
+    public static singleDataFromPool(index0: number, index1: number, pool: Pool): PairData {
+        return new PairData(pool.tokens[index0], pool.tokens[index1], pool.address)
     }
 
 

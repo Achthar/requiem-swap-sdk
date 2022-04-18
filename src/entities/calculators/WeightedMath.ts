@@ -154,7 +154,7 @@ export function _calcLpOutGivenExactTokensIn(
     let invariantRatioWithFees = ZERO;
     for (let i = 0; i < balances.length; i++) {
         balanceRatiosWithFee.push(divDown(balances[i].add(amountsIn[i]), balances[i]));
-        invariantRatioWithFees = mulDown(invariantRatioWithFees.add(balanceRatiosWithFee[i]), normalizedWeights[i]);
+        invariantRatioWithFees = invariantRatioWithFees.add(mulDown(balanceRatiosWithFee[i], normalizedWeights[i]));
     }
 
     const { invariantRatio, swapFees } = _computeJoinExactTokensInInvariantRatio(
@@ -283,10 +283,10 @@ export function _calcLpInGivenExactTokensOut(
 ): { lpIn: BigNumber, swapFees: BigNumber[] } {
     // BPT in, so we round up overall.
 
-    let balanceRatiosWithoutFee = [];
+    let balanceRatiosWithoutFee = Array(balances.length);
     let invariantRatioWithoutFees = ZERO;
     for (let i = 0; i < balances.length; i++) {
-        balanceRatiosWithoutFee.push(divUp(balances[i].sub(amountsOut[i]), balances[i]));
+        balanceRatiosWithoutFee[i] = divUp(balances[i].sub(amountsOut[i]), balances[i]);
         invariantRatioWithoutFees = invariantRatioWithoutFees.add(mulUp(balanceRatiosWithoutFee[i], normalizedWeights[i]));
     }
 
@@ -314,7 +314,7 @@ export function _computeExitExactTokensOutInvariantRatio(
     invariantRatioWithoutFees: BigNumber,
     swapFeePercentage: BigNumber
 ): { invariantRatio: BigNumber, swapFees: BigNumber[] } {
-    let swapFees = [];
+    let swapFees = Array(balances.length);
     let invariantRatio = ONE;
 
     for (let i = 0; i < balances.length; i++) {

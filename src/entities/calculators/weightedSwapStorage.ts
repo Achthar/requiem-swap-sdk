@@ -4,7 +4,6 @@ import { ZERO } from "./LogExpMath"
 export class WeightedSwapStorage {
     public readonly tokenMultipliers: BigNumber[]
     public readonly normalizedWeights: BigNumber[]
-    public readonly balances: BigNumber[]
     public readonly fee: BigNumber
     public readonly adminFee: BigNumber
     constructor(
@@ -17,7 +16,6 @@ export class WeightedSwapStorage {
         this.normalizedWeights = normalizedWeights
         this.fee = fee
         this.adminFee = adminFee
-        this.balances = tokenMultipliers.map((_) => ZERO)
 
     }
 

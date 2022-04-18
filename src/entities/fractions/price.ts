@@ -3,10 +3,10 @@ import { TokenAmount } from './tokenAmount'
 import { currencyEquals } from '../token'
 import invariant from 'tiny-invariant'
 
-import { BigintIsh, Rounding, TEN } from '../../constants'
+import { BigintIsh, TEN } from '../../constants'
 import { Currency } from '../currency'
 
-import { Fraction } from './fraction'
+import { Fraction, Rounding } from './fraction'
 import { CurrencyAmount } from './currencyAmount'
 
 import { Pool } from '../pools/pool'
@@ -19,14 +19,17 @@ export class Price extends Fraction {
   public readonly scalar: Fraction // used to adjust the raw fraction w/r/t the decimals of the {base,quote}Token
 
 
-    // upgraded version to include StablePairWrappers in a Route
+  // upgraded version to include StablePairWrappers in a Route
   // as well as weighted pairs
-  public static fromRoute(route: Route, poolDict:{[id:string]:Pool}): Price {
+  public static fromRoute(route: Route, poolDict: { [id: string]: Pool }): Price {
     const prices: Price[] = []
+    // console.log("=========PATH", route.path.map(x=>x.symbol))
+    // console.log("=========PATH PAIRs", route.pairData.map(x=>[x.token0.symbol, x.token1.symbol]))
     for (const [i, pool] of route.pairData.entries()) {
-      const price = pool.poolPrice(route.path[i], route.path[i+1], poolDict)
+      const price = pool.poolPrice(route.path[i], route.path[i + 1], poolDict)
       prices.push(price)
     }
+    // console.log("=========PRICE", prices.map(p=>[p.baseCurrency.symbol, p.quoteCurrency.symbol]))
     return prices.slice(1).reduce((accumulator, currentValue) => accumulator.multiply(currentValue), prices[0])
   }
 
@@ -61,12 +64,12 @@ export class Price extends Fraction {
   }
 
   // performs floor division on overflow
-  public quote(currencyAmount: CurrencyAmount): CurrencyAmount {
+  public quote(chainId: number, currencyAmount: CurrencyAmount): CurrencyAmount {
     invariant(currencyEquals(currencyAmount.currency, this.baseCurrency), 'TOKEN')
     if (this.quoteCurrency instanceof Token) {
       return new TokenAmount(this.quoteCurrency, super.multiply(currencyAmount.raw).quotient)
     }
-    return CurrencyAmount.ether(super.multiply(currencyAmount.raw).quotient)
+    return CurrencyAmount.networkCCYAmount(chainId, super.multiply(currencyAmount.raw).quotient)
   }
 
   public toSignificant(significantDigits: number = 6, format?: object, rounding?: Rounding): string {

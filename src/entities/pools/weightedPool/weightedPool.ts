@@ -6,7 +6,6 @@ import { ethers } from 'ethers'
 import { WeightedSwapStorage } from '../../calculators/weightedSwapStorage'
 import {
   BigintIsh,
-  ChainId,
   STABLE_POOL_ADDRESS,
   STABLE_POOL_LP_ADDRESS
 } from '../../../constants'
@@ -17,7 +16,7 @@ import { ZERO } from '../../calculators/LogExpMath'
 import { calculateRemoveLiquidityExactIn, calculateRemoveLiquidityOneTokenExactIn, calculateSwapGivenIn, calculateSwapGivenOut, calculateTokenAmount } from '../../calculators/WeightedPoolLib'
 import { Pool } from '../pool'
 import { Price } from '../../fractions'
-
+import  {ChainId} from '../../currency'
 // const ZERO = BigNumber.from(0)
 
 /**
@@ -34,8 +33,6 @@ export class WeightedPool extends Pool {
   public  readonly tokens: Token[]
   public tokenBalances: BigNumber[]
   public swapStorage: WeightedSwapStorage
-  // public readonly rates: BigNumber[]
-  public blockTimestamp: BigNumber
 
   public lpTotalSupply: BigNumber
   public static getRouterAddress(chainId: number): string {
@@ -51,7 +48,6 @@ export class WeightedPool extends Pool {
     tokens: Token[],
     tokenBalances: BigNumber[],
     swapStorage: WeightedSwapStorage,
-    blockTimestamp: number,
     lpTotalSupply: BigNumber
   ) {
     super()
@@ -60,15 +56,14 @@ export class WeightedPool extends Pool {
     this.address = ethers.utils.getAddress(poolAddress)
     this.lpTotalSupply = lpTotalSupply
     this.swapStorage = swapStorage
-    this.blockTimestamp = BigNumber.from(blockTimestamp)
     this.tokens = tokens
     this.tokenBalances = tokenBalances
     this.liquidityToken = new Token(
       tokens[0].chainId,
       STABLE_POOL_LP_ADDRESS[tokens[0].chainId] ?? '0x0000000000000000000000000000000000000001',
       18,
-      'RequiemStable-LP',
-      'Requiem StableSwap LPs'
+      'Requiem-LP',
+      'Requiem Swap LPs'
     )
 
     for (let i = 0; i < Object.values(this.tokens).length; i++) {
@@ -79,7 +74,7 @@ export class WeightedPool extends Pool {
   }
 
   public static mock() {
-    return new WeightedPool('', [new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [ZERO], WeightedSwapStorage.mock(), 0, ZERO)
+    return new WeightedPool('', [new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [ZERO], WeightedSwapStorage.mock(), ZERO)
   }
 
   public getAddressForRouter(): string {
@@ -113,10 +108,6 @@ export class WeightedPool extends Pool {
     throw new Error('token not in pool');
   }
 
-  public getBalances(): BigNumber[] {
-    return Object.keys(this.tokens).map((_, index) => (this.tokenBalances[index]))
-  }
-
   // calculates the output amount usingn the input for the swableSwap
   // requires the view on a contract as manual calculation on the frontend would
   // be inefficient
@@ -144,9 +135,6 @@ export class WeightedPool extends Pool {
     tokenOut: Token,
     inAmount: BigNumber): BigNumber {
 
-    // if (this.getBalances()[inIndex].lte(inAmount)) // || inAmount.eq(ZERO))
-    //   return ZERO
-
     const outAmount: BigNumber = calculateSwapGivenIn(
       this.swapStorage,
       this.indexFromToken(tokenIn),
@@ -165,9 +153,6 @@ export class WeightedPool extends Pool {
     tokenIn: Token,
     tokenOut: Token,
     outAmount: BigNumber): BigNumber {
-
-    // if (this.getBalances()[outIndex].lte(outAmount)) // || outAmount.eq(ZERO))
-    //   return ZERO
 
     const inAmount: BigNumber = calculateSwapGivenOut(
       this.swapStorage,
@@ -214,7 +199,7 @@ export class WeightedPool extends Pool {
       this.swapStorage,
       amountLp,
       this.lpTotalSupply,
-      this.getBalances()
+      this.tokenBalances
     )
   }
 
@@ -224,7 +209,7 @@ export class WeightedPool extends Pool {
       index,
       amount,
       this.lpTotalSupply,
-      this.swapStorage.balances
+      this.tokenBalances
     )
   }
 
@@ -234,7 +219,7 @@ export class WeightedPool extends Pool {
       amounts,
       this.lpTotalSupply,
       deposit,
-      this.getBalances(),
+      this.tokenBalances,
     )
   }
 
@@ -254,10 +239,6 @@ export class WeightedPool extends Pool {
 
   public setTokenBalances(tokenBalances: BigNumber[]) {
     this.tokenBalances = tokenBalances
-  }
-
-  public setBlockTimestamp(blockTimestamp: BigNumber) {
-    this.blockTimestamp = blockTimestamp
   }
 
   public setLpTotalSupply(totalSupply: BigNumber) {
@@ -298,7 +279,6 @@ export class WeightedPool extends Pool {
       this.tokens,
       this.tokenBalances,
       this.swapStorage,
-      this.blockTimestamp.toNumber(),
       this.lpTotalSupply
     )
   }

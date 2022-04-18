@@ -1,7 +1,6 @@
-import { ChainId } from '../constants'
 import invariant from 'tiny-invariant'
 import { Pool } from './pools/pool'
-import { Currency, NETWORK_CCY } from './currency'
+import { ChainId, Currency, NETWORK_CCY } from './currency'
 import { Token, WRAPPED_NETWORK_TOKENS } from './token'
 import { Price } from './fractions/price'
 import { PairData } from './pools/pairData'
@@ -30,7 +29,7 @@ export class Route {
   public readonly output: Currency
   public readonly midPrice: Price
 
-  public constructor(poolDict: { [id: string]: Pool }, pairData:PairData[], input: Currency, output?: Currency) {
+  public constructor(poolDict: { [id: string]: Pool }, pairData: PairData[], input: Currency, output?: Currency) {
     invariant(pairData.length > 0, 'pairData')
 
     invariant(
@@ -44,12 +43,11 @@ export class Route {
       (output === NETWORK_CCY[pairData[0].chainId] && pairData[pairData.length - 1].involvesToken(WRAPPED_NETWORK_TOKENS[pairData[0].chainId])),
       'OUTPUT'
     )
-
     const path: Token[] = [input instanceof Token ? input : WRAPPED_NETWORK_TOKENS[pairData[0].chainId]]
     for (const [i, pool] of pairData.entries()) {
       const currentInput = path[i]
-      invariant(currentInput.equals(pool.token0) || currentInput.equals(pool.token0), 'PATH')
-      const output = currentInput.equals(pool.token1) ? pool.token1 : pool.token0
+      invariant(currentInput.equals(pool.token0) || currentInput.equals(pool.token1), 'PATH')
+      const output = currentInput.equals(pool.token0) ? pool.token1 : pool.token0
       path.push(output)
     }
 

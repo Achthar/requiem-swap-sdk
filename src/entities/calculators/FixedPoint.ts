@@ -72,7 +72,7 @@ export function powDown(x: BigNumber, y: BigNumber): BigNumber {
     let raw = pow(x, y);
     let maxError = mulUp(raw, MAX_POW_RELATIVE_ERROR).add(1);
 
-    if (raw < maxError) {
+    if (raw.lt(maxError)) {
         return ZERO;
     } else {
         return raw.sub(maxError);

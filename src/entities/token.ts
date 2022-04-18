@@ -6,7 +6,6 @@ import { Currency, ChainId } from './currency'
  * Represents an ERC20 token with a unique address and some metadata.
  */
 export class Token extends Currency {
-  public readonly chainId: ChainId
   public readonly address: string
   public readonly projectLink?: string
 
@@ -18,8 +17,7 @@ export class Token extends Currency {
     name?: string,
     projectLink?: string
   ) {
-    super(decimals, symbol, name)
-    this.chainId = chainId
+    super(chainId, decimals, symbol, name)
     this.address = validateAndParseAddress(address)
     this.projectLink = projectLink
   }
@@ -134,7 +132,7 @@ export const WETH = {
 // this has not to be mixed up with the ERC20 token WETH on BSC or MATIC
 // these are the respective wrapped network tokens, e.g. WBNB for Binance
 // or WMATIC for Polygon
-export const WRAPPED_NETWORK_TOKENS = {
+export const WRAPPED_NETWORK_TOKENS:{[chainId:number]:Token} = {
   [ChainId.BSC_MAINNET]: new Token(
     ChainId.BSC_MAINNET,
     '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',

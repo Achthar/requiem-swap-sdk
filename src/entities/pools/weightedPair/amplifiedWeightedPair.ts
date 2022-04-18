@@ -13,7 +13,6 @@ import {
     // _100,
     // FEES_NUMERATOR,
     // FEES_DENOMINATOR,
-    ChainId,
     FACTORY_ADDRESS,
 } from '../../../constants'
 import { sqrt, parseBigintIsh } from '../../../helperUtils'
@@ -26,6 +25,7 @@ import { getAmountOut, getAmountIn } from '../../calculators/weightedPairCalc'
 import { PoolType, Pool } from '../pool'
 // import { getAmountIn, getAmountOut } from 'entities/calculators/weightedPairCalc'
 import { ethers } from 'ethers'
+import { ChainId } from '../../currency'
 
 const _100 = BigNumber.from(100)
 
@@ -37,7 +37,7 @@ let PAIR_ADDRESS_CACHE: {
     }
 } = {}
 
-const PAIR_HASH = {
+const PAIR_HASH: { [chainId: number]: string } = {
     [ChainId.AVAX_TESTNET]: '0x623d9ad8b6787321d0dff55d4f864a7cfdedfb1802a561c75cd01c62a079bc84',
     [ChainId.BSC_MAINNET]: '0x623d9ad8b6787321d0dff55d4f864a7cfdedfb1802a561c75cd01c62a079bc84',
     [ChainId.AVAX_MAINNET]: '0x623d9ad8b6787321d0dff55d4f864a7cfdedfb1802a561c75cd01c62a079bc84',
@@ -123,6 +123,18 @@ export class AmplifiedWeightedPair extends Pool {
         this.address = !address ? AmplifiedWeightedPair.getAddress(this.token0, this.token1, this.weight0) : address
     }
 
+    public static fromBigIntish(tokens: Token[], tokenBalances: BigintIsh[], virtualReserves: BigintIsh[], weightA: BigintIsh, fee: BigintIsh, amp: BigintIsh, address?: string): AmplifiedWeightedPair {
+        return new AmplifiedWeightedPair(
+            tokens,
+            tokenBalances.map(b => BigNumber.from(b)),
+            virtualReserves.map(b => BigNumber.from(b)),
+            BigNumber.from(weightA),
+            BigNumber.from(fee),
+            BigNumber.from(amp),
+            address
+        )
+    }
+
     public getAddressForRouter(): string {
         return this.liquidityToken.address
     }
@@ -160,7 +172,7 @@ export class AmplifiedWeightedPair extends Pool {
     }
 
     public poolPrice(tokenIn: Token, _: Token): Price {
-        return tokenIn.equals(this.token0) ? this.token1Price : this.token0Price
+        return tokenIn.equals(this.token0) ? this.token0Price : this.token1Price
     }
 
     public get fee0(): BigNumber {

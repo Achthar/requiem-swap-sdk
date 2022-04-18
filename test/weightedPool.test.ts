@@ -51,27 +51,26 @@ describe('WeightedPool', () => {
         new Token(43113, '0x70dC2c5F81BC18e115759398aF197e99f228f713', 18, "WETH")
       ]
 
+      const multipliers = poolTokens.map((token) => BigNumber.from(10).pow(18 - token.decimals))
+      console.log("MULTIPLIERS", multipliers)
       const swapStorage = new WeightedSwapStorage(
-        poolTokens.map((token) => (BigNumber.from(10)).pow(18 - token.decimals)),
+        multipliers,
         weights,
         swapStorageRaw.fee,
         swapStorageRaw.adminFee,
 
       )
 
-      const blockNumber = await jsonProv.getBlockNumber()
-
       console.log("--- withdrawl fee-----")
 
       const weightedPool = new WeightedPool(
         '0xCc62754F15f7F35E4c58Ce6aD5608fA575C5583E',
-        Object.assign({}, ...poolTokens.map((x, index) => { return { [index]: x } })),
+        poolTokens,
         tokenReserves,
         swapStorage,
-        blockNumber,
         lpTotalSupply
       )
-
+      console.log("======== WEIGHTED POOL ================\n", weightedPool)
       const inToken = poolTokens[0]
       const outToken = poolTokens[1]
       const inAmount = BigNumber.from('10000')
@@ -90,20 +89,20 @@ describe('WeightedPool', () => {
       expect(x).toEqual(weightedPool.calculateRemoveLiquidity(BigNumber.from('100000')))
 
 
-      const a = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateRemoveLiquidityOneToken('100000', 3)
+      const a = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateRemoveLiquidityOneToken(BigNumber.from('1000000000000'), 2)
       console.log("calculateRemoveLiquidityOne original", a)
 
-      console.log("calculateRemoveLiquidityOne manual", weightedPool.calculateRemoveLiquidityOneToken(BigNumber.from('100000'), 3))
+      console.log("calculateRemoveLiquidityOne manual", weightedPool.calculateRemoveLiquidityOneToken(BigNumber.from('1000000000000'), 2))
 
 
-      const b = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateTokenAmount(['100000', '1000000', '100000', '1000000'], true)
+      const b = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateTokenAmount(['100000', '1000000', '100000'], 1)
       console.log("getLiquidityAmount original", b)
 
 
-      console.log("getLiquidityAmount manual", weightedPool.getLiquidityAmount([BigNumber.from('100000'), BigNumber.from('1000000'), BigNumber.from('100000'), BigNumber.from('1000000')], true))
+      console.log("getLiquidityAmount manual", weightedPool.getLiquidityAmount([BigNumber.from('100000'), BigNumber.from('1000000'), BigNumber.from('100000')], true))
 
 
-      console.log("getLiquidityAmount manual", weightedPool.getLiquidityAmount([BigNumber.from('0'), BigNumber.from('0'), BigNumber.from('0'), BigNumber.from('0')], true))
+      console.log("getLiquidityAmount manual zero", weightedPool.getLiquidityAmount([BigNumber.from('0'), BigNumber.from('0'), BigNumber.from('0')], true))
 
       const inputTokenAmount = new TokenAmount(inToken, inAmount.toBigInt())
 
@@ -112,40 +111,38 @@ describe('WeightedPool', () => {
       console.log("output Token Amount Manual", output.toFixed())
 
 
-      const amountsIn = ['0', '0', '1000000000000000000', '1000000000000000000'].map((num) => BigNumber.from(num))
-      const bench = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateTokenAmount(amountsIn, 'false')
-      console.log("getLiquidityAmount original FALSE", bench)
-      console.log("getLiquidityAmount manual FALSE", weightedPool.getLiquidityAmount(amountsIn, false))
+      const amountsIn = ['0', '0', '1000000000000000000'].map((num) => BigNumber.from(num))
+      const bench = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateTokenAmount(amountsIn, 0)
+      console.log("getLiquidityAmount original FALSE", bench.toString())
+      console.log("getLiquidityAmount manual FALSE", weightedPool.getLiquidityAmount(amountsIn, false).toString())
 
 
 
-      const valueInUSDC = weightedPool.getLiquidityValue(0, ['1000000', '1000000', '1000000000000000000', '1000000000000000000'].map((num) => BigNumber.from(num)))
+      const valueInUSDC = weightedPool.getLiquidityValue(0, ['1000000', '1000000', '1000000000000000000'].map((num) => BigNumber.from(num)))
       console.log("USDCVAL", valueInUSDC.toSignificant(6))
 
 
       const testmounts1 = [
         BigNumber.from('1000000'),
         BigNumber.from('1000000'),
-        BigNumber.from('1000000000000000000'),
         BigNumber.from('1000000000000000000')
       ]
-      console.log('[1000000,1000000,1000000000000000000,1000000000000000000]')
-      const bench4 = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateTokenAmount(testmounts1, 'false')
+      console.log('[1000000,1000000,1000000000000000000]')
+      const bench4 = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateTokenAmount(testmounts1, false)
 
       console.log("real Benchmark from chain", bench4.toString())
-      console.log(" manual", weightedPool.getLiquidityAmount(testmounts1, false))
+      console.log(" manual", weightedPool.getLiquidityAmount(testmounts1, false).toString())
 
 
       const testmounts = [
-        BigNumber.from('4271223161'),
-        BigNumber.from('4873535604'),
-        BigNumber.from('4832883727052462339141'),
-        BigNumber.from('1391067960274494353613')
+        BigNumber.from('427161'),
+        BigNumber.from('487604'),
+        BigNumber.from('48328837270524')
       ]
 
-      const bench1 = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateTokenAmount(testmounts, 'false')
+      const bench1 = await new ethers.Contract(address, new ethers.utils.Interface(WeightedSwap as any), jsonProv).calculateTokenAmount(testmounts, 0)
 
-      console.log("real Benchmark from chain", bench1.toString())
+      console.log("real Benchmark from chain", bench1.toString(), weightedPool.getLiquidityAmount(testmounts, false).toString())
 
       console.log("---- calulate swap given out")
       const y = weightedPool.calculateSwapGivenOut(inToken, outToken, BigNumber.from("1239123"))

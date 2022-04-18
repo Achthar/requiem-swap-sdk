@@ -108,7 +108,7 @@ export function pow(x: BigNumber, y: BigNumber): BigNumber {
         // bring y_int256 to 36 decimal places, as it might overflow. Instead, we perform two 18 decimal
         // multiplications and add the results: one with the first 18 decimals of ln_36_x, and one with the
         // (downscaled) last 18 decimals.
-        logx_times_y = ln_36_x.div(ONE_18).mul(y_int256).add((ln_36_x.mod(ONE_18).mul(y_int256).div(ONE_18)))
+        logx_times_y = (ln_36_x.div(ONE_18).mul(y_int256)).add(ln_36_x.mod(ONE_18).mul(y_int256).div(ONE_18))
     } else {
         logx_times_y = _ln(x_int256).mul(y_int256);
     }
