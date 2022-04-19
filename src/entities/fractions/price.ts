@@ -12,7 +12,6 @@ import { CurrencyAmount } from './currencyAmount'
 import { Pool } from '../pools/pool'
 import { Route } from '../route'
 
-
 export class Price extends Fraction {
   public readonly baseCurrency: Currency // input i.e. denominator
   public readonly quoteCurrency: Currency // output i.e. numerator

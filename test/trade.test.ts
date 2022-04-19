@@ -26,10 +26,10 @@ describe('Trade', () => {
     const token3 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000004', 18, 't3')
 
 
-    const stable0 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000003', 18, 's0')
-    const stable1 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000004', 18, 's1')
-    const stable2 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000005', 18, 's2')
-    const stable3 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000006', 18, 's3')
+    const stable0 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000005', 18, 's0')
+    const stable1 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000006', 18, 's1')
+    const stable2 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000007', 18, 's2')
+    const stable3 = new Token(ChainId.BSC_MAINNET, '0x0000000000000000000000000000000000000008', 18, 's3')
 
 
     //   const pair_0_1 = new Pair(new TokenAmount(token0, BigNumber.from(1000)), new TokenAmount(token1, BigNumber.from(1000)))
@@ -58,7 +58,7 @@ describe('Trade', () => {
     const pair_weth_0 = AmplifiedWeightedPair.fromBigIntish(
         [WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET], token0], [1000, 1000], [1200, 1200], 50, 20, 12000)
 
-    // const empty_pair_0_1 = AmplifiedWeightedPair.fromBigIntish([token0, token1], [0, 0], [0, 0], 40, 12, 12000)
+    const empty_pair_0_1 = AmplifiedWeightedPair.fromBigIntish([token0, token1], [0, 0], [0, 0], 50, 1, 10000)
 
 
 
@@ -75,7 +75,7 @@ describe('Trade', () => {
     const stables = [stable0, stable1, stable2, stable3]
 
 
-    const balances = [BigNumber.from('1000000000000000000000'), BigNumber.from('1000000000000000000000'), BigNumber.from('1000000000000000000000'), BigNumber.from('1000000000000000000000')]
+    const balances = [BigNumber.from('10000'), BigNumber.from('11000'), BigNumber.from('10100'), BigNumber.from('11100')]
 
     const swapStorage = new SwapStorage(
         Object.values([stable0, stable1, stable2, stable3]).map((token) => (BigNumber.from(10)).pow(18 - token.decimals)),
@@ -146,7 +146,8 @@ describe('Trade', () => {
         [pair_1_s3.address]: pair_1_s3,
         [pair_s0_1.address]: pair_s0_1,
         [stablePool.address]: stablePool,
-        [weightedPool.address]: weightedPool
+        [weightedPool.address]: weightedPool,
+        [empty_pair_0_1.address]: empty_pair_0_1
     }
 
 
@@ -232,33 +233,59 @@ describe('Trade', () => {
         })
 
         it('provides best route StablePool and WeightedPool', () => {
-            const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, stablePool, weightedPool])
+            const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, pair_1_s2, stablePool, weightedPool])
             const result = Trade.bestTradeExactIn(
                 pairData,
                 new TokenAmount(token0, BigNumber.from(100)),
                 token2,
                 poolDict,
-                {maxHops:6}
+                { maxHops: 6 }
             )
-            console.log(result[0].route.path.map(pd=>pd.symbol))
-            console.log(result[1].route.path.map(pd=>pd.symbol))
-            console.log(result[2].route.path.map(pd=>pd.symbol))
-            console.log(result[0].route.pairData.map(pd=>[pd.token0.symbol, pd.token1.symbol]))
-            console.log(result[1].route.pairData.map(pd=>[pd.token0.symbol, pd.token1.symbol]))
-            console.log(result[2].route.pairData.map(pd=>[pd.token0.symbol, pd.token1.symbol]))
-            console.log(result[0].route.midPrice.toSignificant(18))
-            console.log(result[1].route.midPrice.toSignificant(18))
-            console.log(result[2].route.midPrice.toSignificant(18))
-            expect(result).toHaveLength(2)
-            expect(result[0].route.pairData).toHaveLength(1) // 0 -> 2 at 10:11
-            expect(result[0].route.path).toEqual([token0, token2])
+            console.log(result.map(res => res.route.path.map(pd => pd.symbol)))
+
+            console.log(result.map(res => res.route.pairData.map(pd => [pd.token0.symbol, pd.token1.symbol])))
+
+
+            console.log(result.map(res => { return { price: res.route.midPrice.toSignificant(18), out: res.outputAmount.toSignificant(18) } }))
+
+            expect(result).toHaveLength(3)
+            expect(result[0].route.pairData).toHaveLength(2) // 0 -> 2 at 10:11
+            expect(result[0].route.path).toEqual([token0, token1, token2])
             expect(result[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
-            expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(68)))
-            expect(result[1].route.pairData).toHaveLength(2) // 0 -> 1 -> 2 at 12:12:10
-            expect(result[1].route.path).toEqual([token0, token1, token2])
+            expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(123)))
+            expect(result[1].route.pairData).toHaveLength(5) // 0 -> 1 -> 2 at 12:12:10
+            expect(result[1].route.path).toEqual([token0, token1, stable1, stable2, token1, token2])
             expect(result[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
-            expect(result[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(33)))
+            expect(result[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(105)))
         })
+
+
+        it('provides best route StablePool and WeightedPool', () => {
+            const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, pair_1_s2, stablePool, weightedPool])
+            const result = Trade.bestTradeExactIn(
+                pairData,
+                new TokenAmount(token0, BigNumber.from(100)),
+                token1,
+                poolDict,
+                { maxHops: 6 }
+            )
+            console.log(result.map(res => res.route.path.map(pd => pd.symbol)))
+
+            console.log(result.map(res => res.route.pairData.map(pd => [pd.token0.symbol, pd.token1.symbol])))
+
+            console.log(result.map(res => { return { price: res.route.midPrice.toSignificant(18), out: res.outputAmount.toSignificant(18) } }))
+
+            expect(result).toHaveLength(3)
+            expect(result[0].route.pairData).toHaveLength(4) // 0 -> 2 at 10:11
+            expect(result[0].route.path).toEqual([token0, token2, stable1, stable2, token1])
+            expect(result[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            expect(result[0].outputAmount).toEqual(new TokenAmount(token1, BigNumber.from(123)))
+            expect(result[1].route.pairData).toHaveLength(2) // 0 -> 1 -> 2 at 12:12:10
+            expect(result[1].route.path).toEqual([token0, token2, token1])
+            expect(result[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            expect(result[1].outputAmount).toEqual(new TokenAmount(token1, BigNumber.from(114)))
+        })
+
 
         // it('doesnt throw for zero liquidity pairs', () => {
         //     expect(Trade.bestTradeExactIn([empty_pair_0_1], new TokenAmount(token0, BigNumber.from(100)), token1)).toHaveLength(

@@ -269,8 +269,6 @@ export class Trade {
           ? currencyOut.chainId
           : undefined
     invariant(chainId !== undefined, 'CHAIN_ID')
-    // create copy of stablePool object no not change the original one
-    // const stablePoolForIteration = stablePool.clone()
 
     const amountIn = wrappedAmount(currencyAmountIn, chainId)
     const tokenOut = wrappedCurrency(currencyOut, chainId)
@@ -278,7 +276,8 @@ export class Trade {
     for (let i = 0; i < pairData.length; i++) {
       let pair = pairData[i]
 
-      if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue
+      // filters for valid connection
+      if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue;
 
       let amountOut: TokenAmount
       // if( pool instanceof WeightedPair)  {console.log("out": pool.getInputAmount(amountOut) }
@@ -306,7 +305,7 @@ export class Trade {
           tradeComparator
         )
       } else if (maxHops > 1 && pairData.length > 1) {
-        const poolsExcludingThispool = pairData.slice(0, i).concat(pairData.slice(i + 1, pairData.length))
+        const poolsExcludingThispool = pairData.filter(data => data.poolRef !== pair.poolRef)
 
         // otherwise, consider all the other paths that lead from this token as long as we have not exceeded maxHops
         Trade.bestTradeExactInIteration(

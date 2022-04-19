@@ -13,7 +13,6 @@ import { ethers } from 'ethers'
 import { SwapStorage } from '../../calculators/swapStorage'
 import {
   BigintIsh,
-  ChainId,
   STABLE_POOL_ADDRESS,
   STABLE_POOL_LP_ADDRESS
 } from '../../../constants'
@@ -203,7 +202,7 @@ export class StablePool extends Pool {
   /**
    * Returns the chain ID of the tokens in the pair.
    */
-  public get chainId(): ChainId {
+  public get chainId(): number {
     return this.tokens[0].chainId
   }
 
