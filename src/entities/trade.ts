@@ -280,7 +280,7 @@ export class Trade {
       if (!pair.token0.equals(amountIn.token) && !pair.token1.equals(amountIn.token)) continue;
 
       let amountOut: TokenAmount
-      // if( pool instanceof WeightedPair)  {console.log("out": pool.getInputAmount(amountOut) }
+
       try {
         amountOut = pair.calculateSwapGivenIn(amountIn, poolDict)
 
@@ -399,7 +399,7 @@ export class Trade {
           tradeComparator
         )
       } else if (maxHops > 1 && pairData.length > 1) {
-        const poolsExcludingThispool = pairData.slice(0, i).concat(pairData.slice(i + 1, pairData.length))
+        const poolsExcludingThispool = pairData.filter(data => data.poolRef !== pair.poolRef)
 
         // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
         Trade.bestTradeExactOutIteration(
