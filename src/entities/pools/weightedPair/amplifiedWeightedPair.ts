@@ -167,7 +167,7 @@ export class AmplifiedWeightedPair extends Pool {
             this.token1,
             this.token0,
             this.tokenBalances[1].mul(this.weights[0]),
-            this.tokenBalances[0].mul(this.weights[1].toString())
+            this.tokenBalances[0].mul(this.weights[1])
         )
     }
 
@@ -177,6 +177,20 @@ export class AmplifiedWeightedPair extends Pool {
 
     public get fee0(): BigNumber {
         return this.fee
+    }
+
+    public poolPriceBases(tokenIn: Token, _: Token): { priceBaseIn: BigNumber; priceBaseOut: BigNumber; } {
+        if (tokenIn.equals(this.token0)) {
+            return {
+                priceBaseIn: this.tokenBalances[0].mul(this.weights[1]),
+                priceBaseOut: this.tokenBalances[1].mul(this.weights[0])
+            }
+        } else {
+            return {
+                priceBaseIn: this.tokenBalances[1].mul(this.weights[0]),
+                priceBaseOut: this.tokenBalances[0].mul(this.weights[1])
+            }
+        }
     }
 
     /**

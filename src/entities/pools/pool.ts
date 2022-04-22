@@ -131,7 +131,13 @@ export abstract class Pool {
         this.setTokenBalances(newBalances)
     }
 
-    public abstract poolPrice(tokenIn:Token, tokenOut:Token):Price;
+    public abstract poolPrice(tokenIn: Token, tokenOut: Token): Price;
+
+    public abstract poolPriceBases(tokenIn: Token, tokenOut: Token): {
+        priceBaseIn: BigNumber
+        priceBaseOut: BigNumber
+
+    };
 
 }
 
@@ -141,4 +147,10 @@ export enum PoolType {
     StablePairWrapper = 'StablePairWrapper',
     AmplifiedWeightedPair = 'AmplifiedWeightedPair',
     PoolPairWrapper = 'PoolPairWrapper',
+}
+
+export type PoolDictionary = { [id: string]: Pool }
+
+export type PoolHops = {
+    [tokenAddress: string]: Set<Token>; // the set of pool ids
 }

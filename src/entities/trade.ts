@@ -12,6 +12,8 @@ import { Route } from './route'
 import { currencyEquals, Token, WRAPPED_NETWORK_TOKENS } from './token'
 import { PairData } from './pools/pairData'
 import { Pool } from './pools/pool'
+// import { SwapRoute } from './swapRoute'
+// import { SwapData } from './pools/swapData'
 
 /**
  * Returns the percent difference between the mid price and the execution price, i.e. price impact.
@@ -25,18 +27,6 @@ function computePriceImpact(midPrice: Price, inputAmount: CurrencyAmount, output
   const slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote)
   return new Percent(slippage.numerator, slippage.denominator)
 }
-
-// function computePriceImpactWeightedPair(pair: WeightedPair, inputAmount: CurrencyAmount, outputAmount: CurrencyAmount): Percent {
-//   const artificialMidPrice = new Price(
-//     inputAmount.currency,
-//     outputAmount.currency,
-//     pair.reserveOf(wrappedCurrency(inputAmount.currency, pair.chainId)).raw,
-//     pair.reserveOf(wrappedCurrency(outputAmount.currency, pair.chainId)).raw)
-//   const exactQuote = artificialMidPrice.raw.multiply(inputAmount.raw)
-//   // calculate slippage := (exactQuote - outputAmount) / exactQuote
-//   const slippage = exactQuote.subtract(outputAmount.raw).divide(exactQuote)
-//   return new Percent(slippage.numerator, slippage.denominator)
-// }
 
 // comparator function that allows sorting trades by their output amounts, in decreasing order, and then input amounts
 // in increasing order. i.e. the best trades have the most outputs for the least inputs and are sorted first
@@ -362,18 +352,19 @@ export class Trade {
           ? currencyIn.chainId
           : undefined
     invariant(chainId !== undefined, 'CHAIN_ID')
-    // create copy of stablePool object
-    // const stablePoolForIteration = stablePool.clone()
 
     const amountOut = wrappedAmount(currencyAmountOut, chainId)
     const tokenIn = wrappedCurrency(currencyIn, chainId)
-
+    let lastPair: PairData | undefined
     for (let i = 0; i < pairData.length; i++) {
       const pair = pairData[i]
+      // console.log("PAIR", pair, pairData.map(pd => [pd.token0.symbol, pd.token1.symbol]))
       // pool irrelevant
       if (!pair.token0.equals(amountOut.token) && !pair.token1.equals(amountOut.token)) continue
+      if (lastPair && pair.poolRef === lastPair?.poolRef) continue
 
       let amountIn: TokenAmount
+
       try {
         amountIn = pair.calculateSwapGivenOut(amountOut, poolDict)
 
@@ -399,7 +390,7 @@ export class Trade {
           tradeComparator
         )
       } else if (maxHops > 1 && pairData.length > 1) {
-        const poolsExcludingThispool = pairData.filter(data => data.poolRef !== pair.poolRef)
+        const poolsExcludingThispool = pairData.slice(0, i).concat(pairData.slice(i + 1, pairData.length))
 
         // otherwise, consider all the other paths that arrive at this token as long as we have not exceeded maxHops
         Trade.bestTradeExactOutIteration(
@@ -416,6 +407,7 @@ export class Trade {
           bestTrades
         )
       }
+      lastPair = pair
     }
 
     return bestTrades
@@ -465,4 +457,18 @@ export class Trade {
       []
     )
   }
+
+
+
+
+
+
+
 }
+
+
+
+
+
+
+

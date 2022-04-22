@@ -16,7 +16,7 @@ import { ZERO } from '../../calculators/LogExpMath'
 import { calculateRemoveLiquidityExactIn, calculateRemoveLiquidityOneTokenExactIn, calculateSwapGivenIn, calculateSwapGivenOut, calculateTokenAmount } from '../../calculators/WeightedPoolLib'
 import { Pool } from '../pool'
 import { Price } from '../../fractions'
-import  {ChainId} from '../../currency'
+import { ChainId } from '../../currency'
 // const ZERO = BigNumber.from(0)
 
 /**
@@ -30,7 +30,7 @@ export class WeightedPool extends Pool {
   // the only LP token
   public readonly liquidityToken: Token
   // the index-token map 
-  public  readonly tokens: Token[]
+  public readonly tokens: Token[]
   public tokenBalances: BigNumber[]
   public swapStorage: WeightedSwapStorage
 
@@ -283,7 +283,7 @@ export class WeightedPool extends Pool {
     )
   }
 
-  public  poolPrice(tokenIn: Token, tokenOut: Token): Price {
+  public poolPrice(tokenIn: Token, tokenOut: Token): Price {
     const inIndex = this.indexFromToken(tokenIn)
     const outIndex = this.indexFromToken(tokenOut)
     return new Price(
@@ -292,5 +292,14 @@ export class WeightedPool extends Pool {
       this.swapStorage.normalizedWeights[outIndex].mul(this.tokenBalances[inIndex]),
       this.swapStorage.normalizedWeights[inIndex].mul(this.tokenBalances[outIndex])
     )
+  }
+
+  public poolPriceBases(tokenIn: Token, tokenOut: Token): { priceBaseIn: BigNumber; priceBaseOut: BigNumber; } {
+    const inIndex = this.indexFromToken(tokenIn)
+    const outIndex = this.indexFromToken(tokenOut)
+    return {
+      priceBaseIn: this.swapStorage.normalizedWeights[outIndex].mul(this.tokenBalances[inIndex]),
+      priceBaseOut: this.swapStorage.normalizedWeights[inIndex].mul(this.tokenBalances[outIndex])
+    }
   }
 }

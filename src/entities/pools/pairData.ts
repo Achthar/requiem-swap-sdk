@@ -2,6 +2,7 @@ import { ChainId } from "../currency";
 import { TokenAmount } from "../fractions";
 import { Token } from "../token";
 import { Pool } from "./pool";
+import { SwapData } from "./swapData";
 
 
 // class that stores data for a Pair to swap through
@@ -70,19 +71,19 @@ export class PairData {
     }
 
     /**
- * @param pool input pool to generate pair from
- * @returns pair route
- */
+     * @param pool input pool to generate pair from
+     * @returns pair route
+     */
     public static singleDataFromPool(index0: number, index1: number, pool: Pool): PairData {
         return new PairData(pool.tokens[index0], pool.tokens[index1], pool.address)
     }
 
     /**
- * Pools with n > 2 tokens generate (n^2-n)/2 possible pair routes to trade
- * The fubnction creates these pair routes
- * @param pool input pool to generate pairs from
- * @returns pair routes
- */
+     * Pools with n > 2 tokens generate (n^2-n)/2 possible pair routes to trade
+     * The fubnction creates these pair routes
+     * @param pool input pool to generate pairs from
+     * @returns pair routes
+     */
     public static dataFromPools(pools: Pool[]): PairData[] {
         let pairData = []
         for (let k = 0; k < pools.length; k++) {
@@ -95,5 +96,58 @@ export class PairData {
         }
         return pairData
     }
+
+    /**
+     * Converts unordered pair to directioned swap pair
+     * @param tokenIn in token, the other will be tokenOut
+     * @returns SwapData object
+     */
+    public toSwapDataFrom(tokenIn: Token): SwapData {
+        return new SwapData(tokenIn, this.token0.equals(tokenIn) ? this.token1 : this.token0, this.poolRef)
+    }
+
+    /**
+    * Converts unordered pair to directioned swap pair
+    * @param tokenIn in token, the other will be tokenOut
+    * @returns SwapData object
+    */
+    public toSwapDataTo(tokenOut: Token): SwapData {
+        return new SwapData(this.token0.equals(tokenOut) ? this.token1 : this.token0, tokenOut, this.poolRef)
+    }
+
+    /**
+     * Converts unordered swap pairs to swap route
+     * @param pairData input pair array - has to be a route to make sense
+     * @param tokenIn 
+     * @returns 
+     */
+    public static toSwapArrayFrom(pairData: PairData[], tokenIn: Token): SwapData[] {
+        let swaps = []
+        let currentIn = tokenIn
+        for (let i = 0; i < pairData.length; i++) {
+            const swap = pairData[i].toSwapDataFrom(currentIn)
+            swaps.push(swap)
+            currentIn = swap.tokenOut
+        }
+        return swaps
+    }
+
+    /**
+ * Converts unordered swap pairs to swap route
+ * @param pairData input pair array - has to be a route to make sense
+ * @param tokenIn 
+ * @returns 
+ */
+    public static toSwapArrayTo(pairData: PairData[], tokenOut: Token): SwapData[] {
+        let swaps = new Array(pairData.length)
+        let currentOut = tokenOut
+        for (let i = pairData.length - 1; i >= 0; i--) {
+            const swap = pairData[i].toSwapDataTo(currentOut)
+            swaps[i] = swap
+            currentOut = swap.tokenIn
+        }
+        return swaps
+    }
+
 
 }

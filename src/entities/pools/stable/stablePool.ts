@@ -35,7 +35,7 @@ export class StablePool extends Pool {
   // the only LP token
   public readonly liquidityToken: Token
   // the index-token map 
-  public  readonly tokens: Token[]
+  public readonly tokens: Token[]
   public tokenBalances: BigNumber[]
   public _A: BigNumber
   public swapStorage: SwapStorage
@@ -312,8 +312,17 @@ export class StablePool extends Pool {
     )
   }
 
-  public  poolPrice(tokenIn: Token, tokenOut: Token): Price {
+  public poolPrice(tokenIn: Token, tokenOut: Token): Price {
     const virtualIn = BigNumber.from(this.tokenBalances[this.indexFromToken(tokenIn)]).div(10000)
     return new Price(tokenIn, tokenOut, virtualIn, this.calculateSwapGivenIn(tokenIn, tokenOut, virtualIn))
   }
-}
+
+
+  public poolPriceBases(tokenIn: Token, tokenOut: Token): { priceBaseIn: BigNumber; priceBaseOut: BigNumber; } {
+    const virtualIn = this.tokenBalances[this.indexFromToken(tokenIn)].div(10000)
+    return {
+      priceBaseIn: virtualIn,
+      priceBaseOut: this.calculateSwapGivenIn(tokenIn, tokenOut, virtualIn)
+    }
+  }
+} 

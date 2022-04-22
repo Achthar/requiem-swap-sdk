@@ -587,13 +587,13 @@ describe('Trade', () => {
             const result = Trade.bestTradeExactOut(
                 pairData,
                 stable0,
-                new TokenAmount(token2, BigNumber.from(1000)),
+                new TokenAmount(token2, BigNumber.from(100)),
                 poolDict, { maxHops: 3 }
             )
 
             console.log(result.map(res => res.route.path.map(pd => pd.symbol)))
 
-            console.log(result.map(res => res.route.pairData.map(pd => [pd.token0.symbol, pd.token1.symbol])))
+            console.log(result.map(res => res.route.pairData.map(pd => [pd.token0.symbol, pd.token1.symbol, pd.poolRef])))
 
             console.log(result.map(res => { return { price: res.route.midPrice.toSignificant(18), out: res.outputAmount.toSignificant(22) } }))
 

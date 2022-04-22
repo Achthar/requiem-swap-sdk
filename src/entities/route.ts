@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant'
-import { Pool } from './pools/pool'
+import { Pool, PoolDictionary } from './pools/pool'
 import { ChainId, Currency, NETWORK_CCY } from './currency'
 import { Token, WRAPPED_NETWORK_TOKENS } from './token'
 import { Price } from './fractions/price'
@@ -29,7 +29,7 @@ export class Route {
   public readonly output: Currency
   public readonly midPrice: Price
 
-  public constructor(poolDict: { [id: string]: Pool }, pairData: PairData[], input: Currency, output?: Currency) {
+  public constructor(poolDict: PoolDictionary, pairData: PairData[], input: Currency, output?: Currency) {
     invariant(pairData.length > 0, 'pairData')
 
     invariant(
