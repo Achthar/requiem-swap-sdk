@@ -147,6 +147,10 @@ export class AmplifiedWeightedPair extends Pool {
         return token.equals(this.token0) || token.equals(this.token1)
     }
 
+    public get amp(): BigNumber {
+        return this.ampBPS
+    }
+
     /**
      * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
      */

@@ -2603,11 +2603,7 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
 
   _proto.involvesToken = function involvesToken(token) {
     return token.equals(this.token0) || token.equals(this.token1);
-  }
-  /**
-   * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
-   */
-  ;
+  };
 
   _proto.poolPrice = function poolPrice(tokenIn, _) {
     return tokenIn.equals(this.token0) ? this.token0Price : this.token1Price;
@@ -2797,6 +2793,15 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
   };
 
   _createClass(AmplifiedWeightedPair, [{
+    key: "amp",
+    get: function get() {
+      return this.ampBPS;
+    }
+    /**
+     * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
+     */
+
+  }, {
     key: "token0Price",
     get: function get() {
       return new Price(this.token0, this.token1, this.tokenBalances[0].mul(this.weights[1]), this.tokenBalances[1].mul(this.weights[0]));

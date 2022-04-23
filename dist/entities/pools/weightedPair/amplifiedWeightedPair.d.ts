@@ -24,6 +24,7 @@ export declare class AmplifiedWeightedPair extends Pool {
      * @param token to check
      */
     involvesToken(token: Token): boolean;
+    get amp(): BigNumber;
     /**
      * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
      */
