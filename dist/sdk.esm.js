@@ -7080,11 +7080,11 @@ var ZERO_HEX = '0x0';
  * Represents the Router, and has static methods for helping execute trades.
  */
 
-var Router = /*#__PURE__*/function () {
+var SwapRouter = /*#__PURE__*/function () {
   /**
    * Cannot be constructed.
    */
-  function Router() {}
+  function SwapRouter() {}
   /**
    * Produces the on-chain method name to call and the hex encoded parameters to pass as arguments for a given trade.
    * @param trade to produce call parameters for
@@ -7092,7 +7092,7 @@ var Router = /*#__PURE__*/function () {
    */
 
 
-  Router.swapCallParameters = function swapCallParameters(trade, options) {
+  SwapRouter.swapCallParameters = function swapCallParameters(trade, options) {
     var etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId];
     var etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]; // the router does not support both ether in and out
 
@@ -7113,7 +7113,7 @@ var Router = /*#__PURE__*/function () {
       var useFeeOnTransfer = Boolean(options.feeOnTransfer);
 
       switch (trade.tradeType) {
-        case TradeType.EXACT_INPUT:
+        case SwapType.EXACT_INPUT:
           if (etherIn) {
             methodName = useFeeOnTransfer ? 'swapExactETHForTokensSupportingFeeOnTransferTokens' : 'swapExactETHForTokens'; // (uint amountOutMin, address[] calldata path, address to, uint deadline)
 
@@ -7133,7 +7133,7 @@ var Router = /*#__PURE__*/function () {
 
           break;
 
-        case TradeType.EXACT_OUTPUT:
+        case SwapType.EXACT_OUTPUT:
           !!useFeeOnTransfer ? process.env.NODE_ENV !== "production" ? invariant(false, 'EXACT_OUT_FOT') : invariant(false) : void 0;
 
           if (etherIn) {
@@ -7160,12 +7160,12 @@ var Router = /*#__PURE__*/function () {
         return token.address;
       });
 
-      var pairData = trade.route.pairData.map(function (p) {
+      var pairData = trade.route.swapData.map(function (p) {
         return p.poolRef;
       });
 
       switch (trade.tradeType) {
-        case TradeType.EXACT_INPUT:
+        case SwapType.EXACT_INPUT:
           if (etherIn) {
             methodName = 'onSwapExactETHForTokens'; // function multiSwapExactETHForTokens( address[][] calldata path, uint256[] memory routerId,
             // uint256 amountOutMin, uint256 deadline )
@@ -7193,7 +7193,7 @@ var Router = /*#__PURE__*/function () {
 
           break;
 
-        case TradeType.EXACT_OUTPUT:
+        case SwapType.EXACT_OUTPUT:
           if (etherIn) {
             methodName = 'onSwapETHForExactTokens'; // multiSwapETHForExactTokens( address[][] calldata path, uint256[] memory pools, uint256 amountOut, uint256 deadline )
 
@@ -7224,8 +7224,8 @@ var Router = /*#__PURE__*/function () {
     };
   };
 
-  return Router;
+  return SwapRouter;
 }();
 
-export { AmplifiedWeightedPair, ChainId, Currency, CurrencyAmount, FACTORY_ADDRESS, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, MIN_POW_BASE_FREE_EXPONENT, NETWORK_CCY, ONE$1 as ONE, ONE_18, PairData, Percent, Pool, PoolType, Price, Rounding, Route, RouteProvider, Router, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePool, StableSwapStorage, Swap, SwapRoute, SwapType, Token, TokenAmount, TradeType, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPool, WeightedSwapStorage, ZERO$1 as ZERO, _calcAllTokensInGivenExactLpOut, _calcDueTokenProtocolSwapFeeAmount, _calcInGivenOut, _calcLpInGivenExactTokensOut, _calcLpOutGivenExactTokensIn, _calcOutGivenIn, _calcTokenInGivenExactLpOut, _calcTokenOutGivenExactLpIn, _calcTokensOutGivenExactLpIn, _calculateInvariant, _computeExitExactTokensOutInvariantRatio, _computeJoinExactTokensInInvariantRatio, _ln, _ln_36, _xp, bondPrice, bondPriceUsingDebtRatio, calculateRemoveLiquidityExactIn, calculateRemoveLiquidityOneTokenExactIn, calculateSwapGivenIn, calculateSwapGivenOut, calculateTokenAmount, complement, currencyEquals, debtRatio, decode, decode112with18, divDown, divUp, exp, findPositionInMaxExpArray, fraction, fullPayoutFor, fullPayoutForUsingDebtRatio, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, ln, log, markdown, max, min, mulDown, mulUp, optimalExp, optimalLog, pairDataFromPools, payoutFor, pow, powDown, powUp, power, sqrrt, tradeComparator, valuation, wrappedCurrency };
+export { AmplifiedWeightedPair, ChainId, Currency, CurrencyAmount, FACTORY_ADDRESS, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, MIN_POW_BASE_FREE_EXPONENT, NETWORK_CCY, ONE$1 as ONE, ONE_18, PairData, Percent, Pool, PoolType, Price, Rounding, Route, RouteProvider, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePool, StableSwapStorage, Swap, SwapRoute, SwapRouter, SwapType, Token, TokenAmount, TradeType, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPool, WeightedSwapStorage, ZERO$1 as ZERO, _calcAllTokensInGivenExactLpOut, _calcDueTokenProtocolSwapFeeAmount, _calcInGivenOut, _calcLpInGivenExactTokensOut, _calcLpOutGivenExactTokensIn, _calcOutGivenIn, _calcTokenInGivenExactLpOut, _calcTokenOutGivenExactLpIn, _calcTokensOutGivenExactLpIn, _calculateInvariant, _computeExitExactTokensOutInvariantRatio, _computeJoinExactTokensInInvariantRatio, _ln, _ln_36, _xp, bondPrice, bondPriceUsingDebtRatio, calculateRemoveLiquidityExactIn, calculateRemoveLiquidityOneTokenExactIn, calculateSwapGivenIn, calculateSwapGivenOut, calculateTokenAmount, complement, currencyEquals, debtRatio, decode, decode112with18, divDown, divUp, exp, findPositionInMaxExpArray, fraction, fullPayoutFor, fullPayoutForUsingDebtRatio, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, ln, log, markdown, max, min, mulDown, mulUp, optimalExp, optimalLog, pairDataFromPools, payoutFor, pow, powDown, powUp, power, sqrrt, tradeComparator, valuation, wrappedCurrency };
 //# sourceMappingURL=sdk.esm.js.map

@@ -2,4 +2,4 @@ export { BigintIsh, TradeType, FACTORY_ADDRESS, INIT_CODE_HASH, MINIMUM_LIQUIDIT
 export * from './errors';
 export * from './entities';
 export * from './routeProvider';
-export * from './router';
+export * from './swapRouter';
