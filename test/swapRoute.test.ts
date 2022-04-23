@@ -519,249 +519,63 @@ describe('SwapRoute', () => {
         })
     })
 
-    // describe('#minimumAmountOut', () => {
-    //     describe('tradeType = EXACT_INPUT', () => {
-    //         const pairData = PairData.dataFromPools([pair_0_1, pair_1_2])
-    //         const exactIn = new Trade(
-    //             new Route(poolDict, pairData, token0),
-    //             new TokenAmount(token0, BigNumber.from(100)),
-    //             TradeType.EXACT_INPUT,
-    //             poolDict
-    //         )
-    //         it('throws if less than 0', () => {
-    //             expect(() => exactIn.minimumAmountOut(new Percent(BigNumber.from(-1), BigNumber.from(100)))).toThrow(
-    //                 'SLIPPAGE_TOLERANCE'
-    //             )
-    //         })
-    //         it('returns exact if 0', () => {
-    //             expect(exactIn.minimumAmountOut(new Percent(BigNumber.from(0), BigNumber.from(100)))).toEqual(exactIn.outputAmount)
-    //         })
-    //         it('returns exact if nonzero', () => {
-    //             expect(exactIn.minimumAmountOut(new Percent(BigNumber.from(0), BigNumber.from(100)))).toEqual(
-    //                 new TokenAmount(token2, BigNumber.from(33))
-    //             )
-    //             expect(exactIn.minimumAmountOut(new Percent(BigNumber.from(5), BigNumber.from(100)))).toEqual(
-    //                 new TokenAmount(token2, BigNumber.from(31))
-    //             )
-    //             expect(exactIn.minimumAmountOut(new Percent(BigNumber.from(200), BigNumber.from(100)))).toEqual(
-    //                 new TokenAmount(token2, BigNumber.from(11))
-    //             )
-    //         })
-    //     })
-    //     describe('tradeType = EXACT_OUTPUT', () => {
-    //         const pairData = PairData.dataFromPools([pair_0_1, pair_1_2])
-    //         const exactOut = new Trade(
-    //             new Route(poolDict, pairData, token0),
-    //             new TokenAmount(token2, BigNumber.from(100)),
-    //             TradeType.EXACT_OUTPUT,
-    //             poolDict
-    //         )
+    describe('#minimumAmountOut', () => {
+        describe('tradeType = EXACT_INPUT', () => {
+            const pairData = PairData.dataFromPools([pair_0_1, pair_1_2])
+            const exactIn = new Swap(
+                new SwapRoute(PairData.toSwapArrayFrom(pairData, token0)),
+                new TokenAmount(token0, BigNumber.from(100)),
+                SwapType.EXACT_INPUT,
+                poolDict
+            )
+            it('throws if less than 0', () => {
+                expect(() => exactIn.minimumAmountOut(new Percent(BigNumber.from(-1), BigNumber.from(100)))).toThrow(
+                    'SLIPPAGE_TOLERANCE'
+                )
+            })
+            it('returns exact if 0', () => {
+                expect(exactIn.minimumAmountOut(new Percent(BigNumber.from(0), BigNumber.from(100)))).toEqual(exactIn.outputAmount)
+            })
+            it('returns exact if nonzero', () => {
+                expect(exactIn.minimumAmountOut(new Percent(BigNumber.from(0), BigNumber.from(100)))).toEqual(
+                    new TokenAmount(token2, BigNumber.from(33))
+                )
+                expect(exactIn.minimumAmountOut(new Percent(BigNumber.from(5), BigNumber.from(100)))).toEqual(
+                    new TokenAmount(token2, BigNumber.from(31))
+                )
+                expect(exactIn.minimumAmountOut(new Percent(BigNumber.from(200), BigNumber.from(100)))).toEqual(
+                    new TokenAmount(token2, BigNumber.from(11))
+                )
+            })
+        })
+        describe('tradeType = EXACT_OUTPUT', () => {
+            const pairData = PairData.dataFromPools([pair_0_1, pair_1_2])
+            const exactOut = new Swap(
+                new SwapRoute(PairData.toSwapArrayFrom(pairData, token0)),
+                new TokenAmount(token2, BigNumber.from(100)),
+                SwapType.EXACT_OUTPUT,
+                poolDict
+            )
 
-    //         it('throws if less than 0', () => {
-    //             expect(() => exactOut.minimumAmountOut(new Percent(BigNumber.from(-1), BigNumber.from(100)))).toThrow(
-    //                 'SLIPPAGE_TOLERANCE'
-    //             )
-    //         })
-    //         it('returns exact if 0', () => {
-    //             expect(exactOut.minimumAmountOut(new Percent(BigNumber.from(0), BigNumber.from(100)))).toEqual(exactOut.outputAmount)
-    //         })
-    //         it('returns slippage amount if nonzero', () => {
-    //             expect(exactOut.minimumAmountOut(new Percent(BigNumber.from(0), BigNumber.from(100)))).toEqual(
-    //                 new TokenAmount(token2, BigNumber.from(100))
-    //             )
-    //             expect(exactOut.minimumAmountOut(new Percent(BigNumber.from(5), BigNumber.from(100)))).toEqual(
-    //                 new TokenAmount(token2, BigNumber.from(100))
-    //             )
-    //             expect(exactOut.minimumAmountOut(new Percent(BigNumber.from(200), BigNumber.from(100)))).toEqual(
-    //                 new TokenAmount(token2, BigNumber.from(100))
-    //             )
-    //         })
-    //     })
-    // })
-
-    // describe('#bestTradeExactOut', () => {
-    //     it('throws with empty pairs', () => {
-    //         expect(() => Trade.bestTradeExactOut([], token0, new TokenAmount(token2, BigNumber.from(100)), poolDict)).toThrow('PAIRS')
-    //     })
-    //     it('throws with max hops of 0', () => {
-    //         expect(() =>
-    //             Trade.bestTradeExactOut(PairData.dataFromPools([pair_0_2]), token0, new TokenAmount(token2, BigNumber.from(100)), poolDict, { maxHops: 0 })
-    //         ).toThrow('MAX_HOPS')
-    //     })
-
-    //     it('provides best route', () => {
-    //         const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2])
-    //         const result = Trade.bestTradeExactOut(
-    //             pairData,
-    //             token0,
-    //             new TokenAmount(token2, BigNumber.from(100)),
-    //             poolDict
-    //         )
-
-    //         console.log(result.map(res => res.route.path.map(pd => pd.symbol)))
-
-    //         console.log(result.map(res => res.route.pairData.map(pd => [pd.token0.symbol, pd.token1.symbol])))
-
-    //         console.log(result.map(res => { return { price: res.route.midPrice.toSignificant(18), out: res.outputAmount.toSignificant(22) } }))
-
-
-    //         expect(result).toHaveLength(2)
-    //         expect(result[0].route.pairData).toHaveLength(1) // 0 -> 2 at 10:11
-    //         expect(result[0].route.path).toEqual([token0, token2])
-    //         expect(result[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(151)))
-    //         expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(100)))
-    //         expect(result[1].route.pairData).toHaveLength(2) // 0 -> 1 -> 2 at 12:12:10
-    //         expect(result[1].route.path).toEqual([token0, token1, token2])
-    //         expect(result[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(383)))
-    //         expect(result[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(100)))
-    //     })
-
-
-    //     it('provides best route with stable pool and weighted pool', () => {
-    //         const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, pair_0_s3, pair_s0_1, stablePool, weightedPool])
-    //         const result = Trade.bestTradeExactOut(
-    //             pairData,
-    //             token0,
-    //             new TokenAmount(token2, BigNumber.from(100)),
-    //             poolDict, { maxHops: 6 }
-    //         )
-    //         console.log('---------------provides best route with stable pool and weighted pool')
-    //         console.log(result.map(res => res.route.path.map(pd => pd.symbol)))
-
-    //         console.log(result.map(res => res.route.pairData.map(pd => [pd.token0.symbol, pd.token1.symbol])))
-
-    //         console.log(result.map(res => { return { price: res.route.midPrice.toSignificant(18), out: res.outputAmount.toSignificant(22) } }))
-    //         console.log('-------------------------------------------------------------')
-    //         expect(result).toHaveLength(3)
-    //         expect(result[0].route.pairData).toHaveLength(3) // 0 -> 2 at 10:11
-    //         // expect(result[0].route.path).toEqual([token0, stable3, stable0, stable1, token2, token1, token2])
-    //         expect(result[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(43)))
-    //         expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(100)))
-    //         expect(result[1].route.pairData).toHaveLength(4) // 0 -> 1 -> 2 at 12:12:10
-    //         // expect(result[1].route.path).toEqual([token0, stable3, stable2, stable1, token2, token1, token2])
-    //         expect(result[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(64)))
-    //         expect(result[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(100)))
-    //         // expect(result[2].route.path).toEqual([token0, token1, stable1, token2, token1, token2])
-    //         expect(result[2].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(68)))
-    //         expect(result[2].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(100)))
-    //     })
-
-
-    //     it('provides best route with ONLY stable pool and weighted pool', () => {
-    //         const pairData = PairData.dataFromPools([stablePool, weightedPool])
-    //         console.log(pairData.map(res => [res.token0.symbol, res.token1.symbol]))
-    //         const result = Trade.bestTradeExactOut(
-    //             pairData,
-    //             stable0,
-    //             new TokenAmount(token2, BigNumber.from(100)),
-    //             poolDict, { maxHops: 3 }
-    //         )
-
-    //         console.log(result.map(res => res.route.path.map(pd => pd.symbol)))
-
-    //         console.log(result.map(res => res.route.pairData.map(pd => [pd.token0.symbol, pd.token1.symbol, pd.poolRef])))
-
-    //         console.log(result.map(res => { return { price: res.route.midPrice.toSignificant(18), out: res.outputAmount.toSignificant(22) } }))
-
-    //         expect(result).toHaveLength(1)
-    //         // expect(result[0].route.pairData).toHaveLength(6) // 0 -> 2 at 10:11
-    //         // expect(result[0].route.path).toEqual([token0, stable3, stable0, stable1, token2, token1, token2])
-    //         // expect(result[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(25)))
-    //         // expect(result[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(100)))
-    //         // expect(result[1].route.pairData).toHaveLength(6) // 0 -> 1 -> 2 at 12:12:10
-    //         // expect(result[1].route.path).toEqual([token0, stable3, stable2, stable1, token2, token1, token2])
-    //         // expect(result[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(25)))
-    //         // expect(result[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(100)))
-    //         // expect(result[2].route.path).toEqual([token0, token1, stable1, token2, token1, token2])
-    //         // expect(result[2].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(25)))
-    //         // expect(result[2].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(100)))
-    //     })
-
-
-
-    // it('doesnt throw for zero liquidity pairs', () => {
-    //     expect(Trade.bestTradeExactOut([empty_pair_0_1], token1, new TokenAmount(token1, BigNumber.from(100)))).toHaveLength(
-    //         0
-    //     )
-    // })
-
-    //     it('respects maxHops', () => {
-    //       const result = Trade.bestTradeExactOut(
-    //         [pair_0_1, pair_0_2, pair_1_2],
-    //         token0,
-    //         new TokenAmount(token2, BigNumber.from(10)),
-    //         { maxHops: 1 }
-    //       )
-    //       expect(result).toHaveLength(1)
-    //       expect(result[0].route.pairs).toHaveLength(1) // 0 -> 2 at 10:11
-    //       expect(result[0].route.path).toEqual([token0, token2])
-    //     })
-
-    //     it('insufficient liquidity', () => {
-    //       const result = Trade.bestTradeExactOut(
-    //         [pair_0_1, pair_0_2, pair_1_2],
-    //         token0,
-    //         new TokenAmount(token2, BigNumber.from(1200))
-    //       )
-    //       expect(result).toHaveLength(0)
-    //     })
-
-    //     it('insufficient liquidity in one pair but not the other', () => {
-    //       const result = Trade.bestTradeExactOut(
-    //         [pair_0_1, pair_0_2, pair_1_2],
-    //         token0,
-    //         new TokenAmount(token2, BigNumber.from(1050))
-    //       )
-    //       expect(result).toHaveLength(1)
-    //     })
-
-    //     it('respects n', () => {
-    //       const result = Trade.bestTradeExactOut(
-    //         [pair_0_1, pair_0_2, pair_1_2],
-    //         token0,
-    //         new TokenAmount(token2, BigNumber.from(10)),
-    //         { maxNumResults: 1 }
-    //       )
-
-    //       expect(result).toHaveLength(1)
-    //     })
-
-    //     it('no path', () => {
-    //       const result = Trade.bestTradeExactOut(
-    //         [pair_0_1, pair_0_3, pair_1_3],
-    //         token0,
-    //         new TokenAmount(token2, BigNumber.from(10))
-    //       )
-    //       expect(result).toHaveLength(0)
-    //     })
-
-    //     it('works for NETWORK_CCY[ChainId.BSC_MAINNET] currency input', () => {
-    //       const result = Trade.bestTradeExactOut(
-    //         [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
-    //         NETWORK_CCY[ChainId.BSC_MAINNET],
-    //         new TokenAmount(token3, BigNumber.from(100))
-    //       )
-    //       expect(result).toHaveLength(2)
-    //       expect(result[0].inputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //       expect(result[0].route.path).toEqual([WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET], token0, token1, token3])
-    //       expect(result[0].outputAmount.currency).toEqual(token3)
-    //       expect(result[1].inputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //       expect(result[1].route.path).toEqual([WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET], token0, token3])
-    //       expect(result[1].outputAmount.currency).toEqual(token3)
-    //     })
-    //     it('works for NETWORK_CCY[ChainId.BSC_MAINNET] currency output', () => {
-    //       const result = Trade.bestTradeExactOut(
-    //         [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
-    //         token3,
-    //         CurrencyAmount.networkCCYAmount(chainId, BigNumber.from(100)),
-    //       )
-    //       expect(result).toHaveLength(2)
-    //       expect(result[0].inputAmount.currency).toEqual(token3)
-    //       expect(result[0].route.path).toEqual([token3, token0, WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET]])
-    //       expect(result[0].outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //       expect(result[1].inputAmount.currency).toEqual(token3)
-    //       expect(result[1].route.path).toEqual([token3, token1, token0, WRAPPED_NETWORK_TOKENS[ChainId.BSC_MAINNET]])
-    //       expect(result[1].outputAmount.currency).toEqual(NETWORK_CCY[ChainId.BSC_MAINNET])
-    //     })
-    // })
+            it('throws if less than 0', () => {
+                expect(() => exactOut.minimumAmountOut(new Percent(BigNumber.from(-1), BigNumber.from(100)))).toThrow(
+                    'SLIPPAGE_TOLERANCE'
+                )
+            })
+            it('returns exact if 0', () => {
+                expect(exactOut.minimumAmountOut(new Percent(BigNumber.from(0), BigNumber.from(100)))).toEqual(exactOut.outputAmount)
+            })
+            it('returns slippage amount if nonzero', () => {
+                expect(exactOut.minimumAmountOut(new Percent(BigNumber.from(0), BigNumber.from(100)))).toEqual(
+                    new TokenAmount(token2, BigNumber.from(100))
+                )
+                expect(exactOut.minimumAmountOut(new Percent(BigNumber.from(5), BigNumber.from(100)))).toEqual(
+                    new TokenAmount(token2, BigNumber.from(100))
+                )
+                expect(exactOut.minimumAmountOut(new Percent(BigNumber.from(200), BigNumber.from(100)))).toEqual(
+                    new TokenAmount(token2, BigNumber.from(100))
+                )
+            })
+        })
+    })
 })
