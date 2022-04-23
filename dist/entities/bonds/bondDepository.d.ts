@@ -1,5 +1,6 @@
 import { BigNumber } from 'ethers';
-import { Token, WeightedPair } from '../..';
+import { Token } from '../token';
+import { AmplifiedWeightedPair } from '../pools/weightedPair';
 export interface BondTerms {
     controlVariable: BigNumber;
     vesting: BigNumber;
@@ -7,7 +8,7 @@ export interface BondTerms {
     maxDebt: BigNumber;
 }
 export declare function payoutFor(value: BigNumber, bondPrice: BigNumber): BigNumber;
-export declare function fullPayoutFor(pair: WeightedPair, currentDebt: BigNumber, totalSupply: BigNumber, amount: BigNumber, payoutToken: Token, terms: BondTerms): BigNumber;
+export declare function fullPayoutFor(pair: AmplifiedWeightedPair, currentDebt: BigNumber, totalSupply: BigNumber, amount: BigNumber, payoutToken: Token, terms: BondTerms): BigNumber;
 /**
  *  @notice calculate current ratio of debt to REQT supply
  *  @return debtRatio_ uint
@@ -23,4 +24,4 @@ export declare function bondPrice(controlVariable: BigNumber, totalSupply: BigNu
  *  @return price_ uint
  */
 export declare function bondPriceUsingDebtRatio(controlVariable: BigNumber, debtRatio: BigNumber): BigNumber;
-export declare function fullPayoutForUsingDebtRatio(pair: WeightedPair, debtRatio: BigNumber, totalSupply: BigNumber, amount: BigNumber, payoutToken: Token, terms: BondTerms): BigNumber;
+export declare function fullPayoutForUsingDebtRatio(pair: AmplifiedWeightedPair, debtRatio: BigNumber, totalSupply: BigNumber, amount: BigNumber, payoutToken: Token, terms: BondTerms): BigNumber;

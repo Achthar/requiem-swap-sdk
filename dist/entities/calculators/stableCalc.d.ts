@@ -11,7 +11,7 @@ export declare function _distance(x: BigNumber, y: BigNumber): BigNumber;
  */
 export declare function _getD(xp: BigNumber[], amp: BigNumber): BigNumber;
 export declare function _getY(inIndex: number, outIndex: number, inBalance: BigNumber, blockTimestamp: BigNumber, swapStorage: SwapStorage, normalizedBalances: BigNumber[]): BigNumber;
-export declare function calculateSwap(inIndex: number, outIndex: number, inAmount: BigNumber, // standard fields
+export declare function calculateSwapGivenIn(inIndex: number, outIndex: number, inAmount: BigNumber, // standard fields
 balances: BigNumber[], blockTimestamp: BigNumber, swapStorage: SwapStorage): BigNumber;
 export declare function calculateSwapGivenOut(inIndex: number, outIndex: number, outAmount: BigNumber, // standard fields
 balances: BigNumber[], blockTimestamp: BigNumber, swapStorage: SwapStorage): BigNumber;

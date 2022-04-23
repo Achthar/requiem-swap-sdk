@@ -12,5 +12,4 @@ export {
 export * from './errors'
 export * from './entities'
 export * from './routeProvider'
-
 export * from './router'

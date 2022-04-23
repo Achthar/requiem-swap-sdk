@@ -1,5 +1,5 @@
-import { Rounding, _100 } from '../../constants'
-import { Fraction } from './fraction'
+import { _100 } from '../../constants'
+import { Fraction, Rounding } from './fraction'
 
 const _100_PERCENT = new Fraction(_100)
 

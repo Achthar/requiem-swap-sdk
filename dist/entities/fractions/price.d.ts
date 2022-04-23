@@ -1,23 +1,22 @@
-import { BigintIsh, Rounding } from '../../constants';
+import { BigintIsh } from '../../constants';
 import { Currency } from '../currency';
-import { Route } from '../route';
-import { RouteV3 } from 'entities/routeV3';
-import { RouteV4 } from 'entities/routeV4';
-import { Fraction } from './fraction';
+import { Fraction, Rounding } from './fraction';
 import { CurrencyAmount } from './currencyAmount';
+import { Pool } from '../pools/pool';
+import { Route } from '../route';
 export declare class Price extends Fraction {
     readonly baseCurrency: Currency;
     readonly quoteCurrency: Currency;
     readonly scalar: Fraction;
-    static fromRoute(route: Route): Price;
-    static fromRouteV3(route: RouteV3): Price;
-    static fromRouteV4(route: RouteV4): Price;
+    static fromRoute(route: Route, poolDict: {
+        [id: string]: Pool;
+    }): Price;
     constructor(baseCurrency: Currency, quoteCurrency: Currency, denominator: BigintIsh, numerator: BigintIsh);
     get raw(): Fraction;
     get adjusted(): Fraction;
     invert(): Price;
     multiply(other: Price): Price;
-    quote(currencyAmount: CurrencyAmount): CurrencyAmount;
+    quote(chainId: number, currencyAmount: CurrencyAmount): CurrencyAmount;
     toSignificant(significantDigits?: number, format?: object, rounding?: Rounding): string;
     toFixed(decimalPlaces?: number, format?: object, rounding?: Rounding): string;
 }

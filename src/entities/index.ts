@@ -8,5 +8,8 @@ export * from './calculators'
 
 export * from './bonds'
 
-export * from './trade'
+// export * from './trade'
 export * from './route'
+
+export * from './swap'
+export * from './swapRoute'

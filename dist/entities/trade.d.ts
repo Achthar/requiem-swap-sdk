@@ -4,8 +4,9 @@ import { CurrencyAmount } from './fractions/currencyAmount';
 import { Percent } from './fractions/percent';
 import { Price } from './fractions/price';
 import { InputOutput } from './fractions/tokenAmount';
-import { Pair } from './pair';
 import { Route } from './route';
+import { PairData } from './pools/pairData';
+import { Pool } from './pools/pool';
 export declare function inputOutputComparator(a: InputOutput, b: InputOutput): number;
 export declare function tradeComparator(a: Trade, b: Trade): number;
 export interface BestTradeOptions {
@@ -38,10 +39,6 @@ export declare class Trade {
      */
     readonly executionPrice: Price;
     /**
-     * The mid price after the trade executes assuming no slippage.
-     */
-    readonly nextMidPrice: Price;
-    /**
      * The percent difference between the mid price before the trade and the trade execution price.
      */
     readonly priceImpact: Percent;
@@ -50,14 +47,20 @@ export declare class Trade {
      * @param route route of the exact in trade
      * @param amountIn the amount being passed in
      */
-    static exactIn(route: Route, amountIn: CurrencyAmount): Trade;
+    static exactIn(route: Route, amountIn: CurrencyAmount, poolDict: {
+        [id: string]: Pool;
+    }): Trade;
     /**
      * Constructs an exact out trade with the given amount out and route
      * @param route route of the exact out trade
      * @param amountOut the amount returned by the trade
      */
-    static exactOut(route: Route, amountOut: CurrencyAmount): Trade;
-    constructor(route: Route, amount: CurrencyAmount, tradeType: TradeType);
+    static exactOut(route: Route, amountOut: CurrencyAmount, poolDict: {
+        [id: string]: Pool;
+    }): Trade;
+    constructor(route: Route, amount: CurrencyAmount, tradeType: TradeType, poolDict: {
+        [id: string]: Pool;
+    });
     /**
      * Get the minimum amount that must be received from this trade for the given slippage tolerance
      * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
@@ -82,21 +85,38 @@ export declare class Trade {
      * @param originalAmountIn used in recursion; the original value of the currencyAmountIn parameter
      * @param bestTrades used in recursion; the current list of best trades
      */
-    static bestTradeExactIn(pairs: Pair[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, { maxNumResults, maxHops }?: BestTradeOptions, currentPairs?: Pair[], originalAmountIn?: CurrencyAmount, bestTrades?: Trade[]): Trade[];
+    static bestTradeExactInIteration(pairData: PairData[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, poolDict: {
+        [id: string]: Pool;
+    }, // pools used for pricing swap pairs
+    { maxNumResults, maxHops }?: BestTradeOptions, currentpools?: PairData[], originalAmountIn?: CurrencyAmount, bestTrades?: Trade[]): Trade[];
     /**
      * similar to the above method but instead targets a fixed output amount
      * given a list of pairs, and a fixed amount out, returns the top `maxNumResults` trades that go from an input token
      * to an output token amount, making at most `maxHops` hops
      * note this does not consider aggregation, as routes are linear. it's possible a better route exists by splitting
      * the amount in among multiple routes.
-     * @param pairs the pairs to consider in finding the best trade
      * @param currencyIn the currency to spend
      * @param currencyAmountOut the exact amount of currency out
      * @param maxNumResults maximum number of results to return
      * @param maxHops maximum number of hops a returned trade can make, e.g. 1 hop goes through a single pair
-     * @param currentPairs used in recursion; the current list of pairs
+     * @param currentpools used in recursion; the current list of pairs
      * @param originalAmountOut used in recursion; the original value of the currencyAmountOut parameter
      * @param bestTrades used in recursion; the current list of best trades
      */
-    static bestTradeExactOut(pairs: Pair[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, { maxNumResults, maxHops }?: BestTradeOptions, currentPairs?: Pair[], originalAmountOut?: CurrencyAmount, bestTrades?: Trade[]): Trade[];
+    static bestTradeExactOutIteration(pairData: PairData[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, poolDict: {
+        [id: string]: Pool;
+    }, // pools used for pricing swap pairs
+    { maxNumResults, maxHops }?: BestTradeOptions, currentpools?: PairData[], originalAmountOut?: CurrencyAmount, bestTrades?: Trade[]): Trade[];
+    /**
+     *
+     *
+    */
+    static bestTradeExactOut(pairData: PairData[], currencyIn: Currency, currencyAmountOut: CurrencyAmount, poolDict: {
+        [id: string]: Pool;
+    }, // pools used for pricing swap pairs
+    { maxNumResults, maxHops }?: BestTradeOptions): Trade[];
+    static bestTradeExactIn(pairData: PairData[], currencyAmountIn: CurrencyAmount, currencyOut: Currency, poolDict: {
+        [id: string]: Pool;
+    }, // pools used for pricing swap pairs
+    { maxNumResults, maxHops }?: BestTradeOptions): Trade[];
 }

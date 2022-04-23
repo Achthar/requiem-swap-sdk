@@ -1,10 +1,15 @@
-import JSBI from 'jsbi';
-import { BigintIsh, Rounding } from '../../constants';
+import { BigintIsh } from '../../constants';
+import { BigNumber } from 'ethers';
+export declare enum Rounding {
+    ROUND_DOWN = 0,
+    ROUND_HALF_UP = 1,
+    ROUND_UP = 2
+}
 export declare class Fraction {
-    readonly numerator: JSBI;
-    readonly denominator: JSBI;
+    readonly numerator: BigNumber;
+    readonly denominator: BigNumber;
     constructor(numerator: BigintIsh, denominator?: BigintIsh);
-    get quotient(): JSBI;
+    get quotient(): BigNumber;
     get remainder(): Fraction;
     invert(): Fraction;
     add(other: Fraction | BigintIsh): Fraction;

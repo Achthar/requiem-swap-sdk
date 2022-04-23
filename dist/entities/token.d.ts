@@ -1,10 +1,8 @@
-import { ChainId } from '../constants';
-import { Currency } from './currency';
+import { Currency, ChainId } from './currency';
 /**
  * Represents an ERC20 token with a unique address and some metadata.
  */
 export declare class Token extends Currency {
-    readonly chainId: ChainId;
     readonly address: string;
     readonly projectLink?: string;
     constructor(chainId: ChainId, address: string, decimals: number, symbol?: string, name?: string, projectLink?: string);
@@ -36,15 +34,18 @@ export declare const WETH: {
     80001: Token;
 };
 export declare const WRAPPED_NETWORK_TOKENS: {
-    56: Token;
-    97: Token;
-    42161: Token;
-    421611: Token;
-    43114: Token;
-    43113: Token;
-    137: Token;
-    80001: Token;
-    42261: Token;
-    42262: Token;
-    110001: Token;
+    [chainId: number]: Token;
+};
+export declare const STABLECOINS: {
+    [chainId: number]: Token[];
+};
+export declare const STABLES_INDEX_MAP: {
+    [chainId: number]: {
+        [index: number]: Token;
+    };
+};
+export declare const STABLES_LP_TOKEN: {
+    [chainId: number]: {
+        [index: number]: Token;
+    };
 };

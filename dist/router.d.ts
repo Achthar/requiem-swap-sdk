@@ -1,4 +1,5 @@
-import { Percent, Trade } from './entities';
+import { Percent } from './entities';
+import { Trade } from './entities/trade';
 /**
  * Options for producing the arguments to send call to the router.
  */
@@ -21,6 +22,10 @@ export interface TradeOptions {
      * Whether any of the tokens in the path are fee on transfer tokens, which should be handled with special methods
      */
     feeOnTransfer?: boolean;
+    /**
+     * Whether we swap through multiple routers / pair types
+     */
+    multiSwap?: boolean;
 }
 export interface TradeOptionsDeadline extends Omit<TradeOptions, 'ttl'> {
     /**
@@ -40,7 +45,7 @@ export interface SwapParameters {
     /**
      * The arguments to pass to the method, all hex encoded.
      */
-    args: (string | string[])[];
+    args: (string | string[] | string[][])[];
     /**
      * The amount of wei to send in hex.
      */
