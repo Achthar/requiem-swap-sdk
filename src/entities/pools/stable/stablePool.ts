@@ -10,7 +10,7 @@ import {
 } from '../../calculators/stableCalc'
 import { Contract } from '@ethersproject/contracts'
 import { ethers } from 'ethers'
-import { SwapStorage } from '../../calculators/swapStorage'
+import { StableSwapStorage } from '../../calculators/stableSwapStorage'
 import {
   BigintIsh,
   STABLE_POOL_ADDRESS,
@@ -38,7 +38,7 @@ export class StablePool extends Pool {
   public readonly tokens: Token[]
   public tokenBalances: BigNumber[]
   public _A: BigNumber
-  public swapStorage: SwapStorage
+  public swapStorage: StableSwapStorage
   // public readonly rates: BigNumber[]
   public blockTimestamp: BigNumber
 
@@ -57,7 +57,7 @@ export class StablePool extends Pool {
     tokens: Token[],
     tokenBalances: BigNumber[],
     _A: BigNumber,
-    swapStorage: SwapStorage,
+    swapStorage: StableSwapStorage,
     blockTimestamp: number,
     lpTotalSupply: BigNumber,
     currentWithdrawFee: BigNumber,
@@ -89,7 +89,7 @@ export class StablePool extends Pool {
 
   public static mock() {
     const dummy = BigNumber.from(0)
-    return new StablePool([new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy, '0x0000000000000000000000000000000000000001')
+    return new StablePool([new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [dummy], dummy, StableSwapStorage.mock(), 0, dummy, dummy, '0x0000000000000000000000000000000000000001')
   }
 
   public getAddressForRouter(): string {
@@ -262,7 +262,7 @@ export class StablePool extends Pool {
     return new TokenAmount(this.tokens[outIndex], amount.toBigInt())
   }
 
-  public setSwapStorage(swapStorage: SwapStorage) {
+  public setSwapStorage(swapStorage: StableSwapStorage) {
     this.swapStorage = swapStorage
   }
 

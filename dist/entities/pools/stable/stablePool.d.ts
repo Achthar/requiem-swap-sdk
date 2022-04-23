@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers';
 import { ethers } from 'ethers';
-import { SwapStorage } from '../../calculators/swapStorage';
+import { StableSwapStorage } from '../../calculators/stableSwapStorage';
 import { BigintIsh } from '../../../constants';
 import { Token } from '../../token';
 import { TokenAmount } from '../../fractions/tokenAmount';
@@ -18,13 +18,13 @@ export declare class StablePool extends Pool {
     readonly tokens: Token[];
     tokenBalances: BigNumber[];
     _A: BigNumber;
-    swapStorage: SwapStorage;
+    swapStorage: StableSwapStorage;
     blockTimestamp: BigNumber;
     lpTotalSupply: BigNumber;
     currentWithdrawFee: BigNumber;
     static getRouterAddress(chainId: number): string;
     static getLpAddress(chainId: number): string;
-    constructor(tokens: Token[], tokenBalances: BigNumber[], _A: BigNumber, swapStorage: SwapStorage, blockTimestamp: number, lpTotalSupply: BigNumber, currentWithdrawFee: BigNumber, poolAddress: string);
+    constructor(tokens: Token[], tokenBalances: BigNumber[], _A: BigNumber, swapStorage: StableSwapStorage, blockTimestamp: number, lpTotalSupply: BigNumber, currentWithdrawFee: BigNumber, poolAddress: string);
     static mock(): StablePool;
     getAddressForRouter(): string;
     /**
@@ -53,7 +53,7 @@ export declare class StablePool extends Pool {
     };
     getLiquidityAmount(amounts: BigNumber[], deposit: boolean): BigNumber;
     getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount;
-    setSwapStorage(swapStorage: SwapStorage): void;
+    setSwapStorage(swapStorage: StableSwapStorage): void;
     setTokenBalances(tokenBalances: BigNumber[]): void;
     setBlockTimestamp(blockTimestamp: BigNumber): void;
     setLpTotalSupply(totalSupply: BigNumber): void;

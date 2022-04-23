@@ -14,7 +14,7 @@ import {
 
 import { WRAPPED_NETWORK_TOKENS } from '../src/entities/token'
 import { BigNumber } from 'ethers'
-import { SwapStorage } from '../src/entities/calculators/swapStorage'
+import { StableSwapStorage } from '../src/entities/calculators/stableSwapStorage'
 import { PairData } from '../src/entities/pools/pairData'
 import { RouteProvider } from '../src/routeProvider'
 import { SwapRoute } from '../src/entities/swapRoute'
@@ -79,7 +79,7 @@ describe('SwapRoute', () => {
 
     const balances = [BigNumber.from('10000'), BigNumber.from('11000'), BigNumber.from('10100'), BigNumber.from('11100')]
 
-    const swapStorage = new SwapStorage(
+    const swapStorage = new StableSwapStorage(
         Object.values([stable0, stable1, stable2, stable3]).map((token) => (BigNumber.from(10)).pow(18 - token.decimals)),
         manualSS.fee,
         manualSS.adminFee,

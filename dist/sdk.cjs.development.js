@@ -2392,6 +2392,26 @@ var WeightedSwapStorage = /*#__PURE__*/function () {
   return WeightedSwapStorage;
 }();
 
+var StableSwapStorage = /*#__PURE__*/function () {
+  function StableSwapStorage(tokenMultipliers, fee, adminFee, initialA, futureA, initialATime, futureATime, lpAddress) {
+    this.lpAddress = lpAddress;
+    this.tokenMultipliers = tokenMultipliers;
+    this.fee = fee;
+    this.adminFee = adminFee;
+    this.initialA = initialA;
+    this.futureA = futureA;
+    this.initialATime = initialATime;
+    this.futureATime = futureATime;
+  }
+
+  StableSwapStorage.mock = function mock() {
+    var dummy = ethers.BigNumber.from(0);
+    return new StableSwapStorage([dummy], dummy, dummy, dummy, dummy, dummy, dummy, '');
+  };
+
+  return StableSwapStorage;
+}();
+
 /**
   * A class that contains relevant stablePool information
   * It is mainly designed to save the map between the indices
@@ -4313,26 +4333,6 @@ function _calculateTokenAmount(swapStorage, amounts, deposit, balances, blockTim
   return diff.mul(totalSupply).div(D0);
 }
 
-var SwapStorage = /*#__PURE__*/function () {
-  function SwapStorage(tokenMultipliers, fee, adminFee, initialA, futureA, initialATime, futureATime, lpAddress) {
-    this.lpAddress = lpAddress;
-    this.tokenMultipliers = tokenMultipliers;
-    this.fee = fee;
-    this.adminFee = adminFee;
-    this.initialA = initialA;
-    this.futureA = futureA;
-    this.initialATime = initialATime;
-    this.futureATime = futureATime;
-  }
-
-  SwapStorage.mock = function mock() {
-    var dummy = ethers.BigNumber.from(0);
-    return new SwapStorage([dummy], dummy, dummy, dummy, dummy, dummy, dummy, '');
-  };
-
-  return SwapStorage;
-}();
-
 var StableSwap = [
 	{
 		anonymous: false,
@@ -5792,7 +5792,7 @@ var StablePool = /*#__PURE__*/function (_Pool) {
 
   StablePool.mock = function mock() {
     var dummy = ethers.BigNumber.from(0);
-    return new StablePool([new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy, '0x0000000000000000000000000000000000000001');
+    return new StablePool([new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [dummy], dummy, StableSwapStorage.mock(), 0, dummy, dummy, '0x0000000000000000000000000000000000000001');
   };
 
   var _proto = StablePool.prototype;
@@ -7252,6 +7252,7 @@ exports.STABLES_LP_TOKEN = STABLES_LP_TOKEN;
 exports.STABLE_POOL_ADDRESS = STABLE_POOL_ADDRESS;
 exports.STABLE_POOL_LP_ADDRESS = STABLE_POOL_LP_ADDRESS;
 exports.StablePool = StablePool;
+exports.StableSwapStorage = StableSwapStorage;
 exports.Swap = Swap;
 exports.SwapRoute = SwapRoute;
 exports.Token = Token;

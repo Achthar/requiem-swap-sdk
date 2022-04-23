@@ -1,5 +1,5 @@
 import { BigNumber } from "ethers";
-export declare class SwapStorage {
+export declare class StableSwapStorage {
     readonly tokenMultipliers: BigNumber[];
     readonly fee: BigNumber;
     readonly adminFee: BigNumber;
@@ -9,5 +9,5 @@ export declare class SwapStorage {
     readonly futureATime: BigNumber;
     readonly lpAddress: string;
     constructor(tokenMultipliers: BigNumber[], fee: BigNumber, adminFee: BigNumber, initialA: BigNumber, futureA: BigNumber, initialATime: BigNumber, futureATime: BigNumber, lpAddress: string);
-    static mock(): SwapStorage;
+    static mock(): StableSwapStorage;
 }

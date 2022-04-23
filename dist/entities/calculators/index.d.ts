@@ -4,3 +4,4 @@ export * from './WeightedMath';
 export * from './WeightedPoolLib';
 export * from './weightedPairCalc';
 export * from './weightedSwapStorage';
+export * from './stableSwapStorage';

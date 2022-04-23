@@ -2389,6 +2389,26 @@ var WeightedSwapStorage = /*#__PURE__*/function () {
   return WeightedSwapStorage;
 }();
 
+var StableSwapStorage = /*#__PURE__*/function () {
+  function StableSwapStorage(tokenMultipliers, fee, adminFee, initialA, futureA, initialATime, futureATime, lpAddress) {
+    this.lpAddress = lpAddress;
+    this.tokenMultipliers = tokenMultipliers;
+    this.fee = fee;
+    this.adminFee = adminFee;
+    this.initialA = initialA;
+    this.futureA = futureA;
+    this.initialATime = initialATime;
+    this.futureATime = futureATime;
+  }
+
+  StableSwapStorage.mock = function mock() {
+    var dummy = BigNumber.from(0);
+    return new StableSwapStorage([dummy], dummy, dummy, dummy, dummy, dummy, dummy, '');
+  };
+
+  return StableSwapStorage;
+}();
+
 /**
   * A class that contains relevant stablePool information
   * It is mainly designed to save the map between the indices
@@ -4311,26 +4331,6 @@ function _calculateTokenAmount(swapStorage, amounts, deposit, balances, blockTim
   return diff.mul(totalSupply).div(D0);
 }
 
-var SwapStorage = /*#__PURE__*/function () {
-  function SwapStorage(tokenMultipliers, fee, adminFee, initialA, futureA, initialATime, futureATime, lpAddress) {
-    this.lpAddress = lpAddress;
-    this.tokenMultipliers = tokenMultipliers;
-    this.fee = fee;
-    this.adminFee = adminFee;
-    this.initialA = initialA;
-    this.futureA = futureA;
-    this.initialATime = initialATime;
-    this.futureATime = futureATime;
-  }
-
-  SwapStorage.mock = function mock() {
-    var dummy = BigNumber.from(0);
-    return new SwapStorage([dummy], dummy, dummy, dummy, dummy, dummy, dummy, '');
-  };
-
-  return SwapStorage;
-}();
-
 var StableSwap = [
 	{
 		anonymous: false,
@@ -5790,7 +5790,7 @@ var StablePool = /*#__PURE__*/function (_Pool) {
 
   StablePool.mock = function mock() {
     var dummy = BigNumber.from(0);
-    return new StablePool([new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [dummy], dummy, SwapStorage.mock(), 0, dummy, dummy, '0x0000000000000000000000000000000000000001');
+    return new StablePool([new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [dummy], dummy, StableSwapStorage.mock(), 0, dummy, dummy, '0x0000000000000000000000000000000000000001');
   };
 
   var _proto = StablePool.prototype;
@@ -7227,5 +7227,5 @@ var Router = /*#__PURE__*/function () {
   return Router;
 }();
 
-export { AmplifiedWeightedPair, ChainId, Currency, CurrencyAmount, FACTORY_ADDRESS, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, MIN_POW_BASE_FREE_EXPONENT, NETWORK_CCY, ONE$1 as ONE, ONE_18, PairData, Percent, Pool, PoolType, Price, Rounding, Route, RouteProvider, Router, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePool, Swap, SwapRoute, SwapType, Token, TokenAmount, TradeType, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPool, WeightedSwapStorage, ZERO$1 as ZERO, _calcAllTokensInGivenExactLpOut, _calcDueTokenProtocolSwapFeeAmount, _calcInGivenOut, _calcLpInGivenExactTokensOut, _calcLpOutGivenExactTokensIn, _calcOutGivenIn, _calcTokenInGivenExactLpOut, _calcTokenOutGivenExactLpIn, _calcTokensOutGivenExactLpIn, _calculateInvariant, _computeExitExactTokensOutInvariantRatio, _computeJoinExactTokensInInvariantRatio, _ln, _ln_36, _xp, bondPrice, bondPriceUsingDebtRatio, calculateRemoveLiquidityExactIn, calculateRemoveLiquidityOneTokenExactIn, calculateSwapGivenIn, calculateSwapGivenOut, calculateTokenAmount, complement, currencyEquals, debtRatio, decode, decode112with18, divDown, divUp, exp, findPositionInMaxExpArray, fraction, fullPayoutFor, fullPayoutForUsingDebtRatio, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, ln, log, markdown, max, min, mulDown, mulUp, optimalExp, optimalLog, pairDataFromPools, payoutFor, pow, powDown, powUp, power, sqrrt, tradeComparator, valuation, wrappedCurrency };
+export { AmplifiedWeightedPair, ChainId, Currency, CurrencyAmount, FACTORY_ADDRESS, Fraction, INIT_CODE_HASH, INIT_CODE_HASH_WEIGHTED, InsufficientInputAmountError, InsufficientReservesError, MINIMUM_LIQUIDITY, MIN_POW_BASE_FREE_EXPONENT, NETWORK_CCY, ONE$1 as ONE, ONE_18, PairData, Percent, Pool, PoolType, Price, Rounding, Route, RouteProvider, Router, STABLECOINS, STABLES_INDEX_MAP, STABLES_LP_TOKEN, STABLE_POOL_ADDRESS, STABLE_POOL_LP_ADDRESS, StablePool, StableSwapStorage, Swap, SwapRoute, SwapType, Token, TokenAmount, TradeType, WEIGHTED_FACTORY_ADDRESS, WETH, WRAPPED_NETWORK_TOKENS, WeightedPool, WeightedSwapStorage, ZERO$1 as ZERO, _calcAllTokensInGivenExactLpOut, _calcDueTokenProtocolSwapFeeAmount, _calcInGivenOut, _calcLpInGivenExactTokensOut, _calcLpOutGivenExactTokensIn, _calcOutGivenIn, _calcTokenInGivenExactLpOut, _calcTokenOutGivenExactLpIn, _calcTokensOutGivenExactLpIn, _calculateInvariant, _computeExitExactTokensOutInvariantRatio, _computeJoinExactTokensInInvariantRatio, _ln, _ln_36, _xp, bondPrice, bondPriceUsingDebtRatio, calculateRemoveLiquidityExactIn, calculateRemoveLiquidityOneTokenExactIn, calculateSwapGivenIn, calculateSwapGivenOut, calculateTokenAmount, complement, currencyEquals, debtRatio, decode, decode112with18, divDown, divUp, exp, findPositionInMaxExpArray, fraction, fullPayoutFor, fullPayoutForUsingDebtRatio, generalExp, generalLog, getAmountIn, getAmountOut, getTotalValue, inputOutputComparator, ln, log, markdown, max, min, mulDown, mulUp, optimalExp, optimalLog, pairDataFromPools, payoutFor, pow, powDown, powUp, power, sqrrt, tradeComparator, valuation, wrappedCurrency };
 //# sourceMappingURL=sdk.esm.js.map

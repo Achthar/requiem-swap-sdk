@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers'
 import invariant from 'tiny-invariant'
-import { SwapStorage } from './swapStorage'
+import { StableSwapStorage } from './stableSwapStorage'
 
 const MAX_ITERATION = 256
 export const A_PRECISION = BigNumber.from(100)
@@ -17,7 +17,7 @@ export function _xp(balances: BigNumber[], rates: BigNumber[]): BigNumber[] {
 
 
 export function _getAPrecise(blockTimestamp: BigNumber,
-    swapStorage: SwapStorage
+    swapStorage: StableSwapStorage
 ): BigNumber {
     if (blockTimestamp.gte(swapStorage.futureATime)) {
         return swapStorage.futureA;
@@ -89,7 +89,7 @@ export function _getY(
     inBalance: BigNumber,
     // self, shoudl be replaced with swapStorage object
     blockTimestamp: BigNumber,
-    swapStorage: SwapStorage,
+    swapStorage: StableSwapStorage,
     normalizedBalances: BigNumber[]
 
 ): BigNumber {
@@ -132,7 +132,7 @@ export function _getY(
 export function calculateSwapGivenIn(inIndex: number, outIndex: number, inAmount: BigNumber, // standard fields
     balances: BigNumber[],
     blockTimestamp: BigNumber,
-    swapStorage: SwapStorage
+    swapStorage: StableSwapStorage
 ): BigNumber {
     let normalizedBalances = _xp(balances, swapStorage.tokenMultipliers)
     let newInBalance = normalizedBalances[inIndex].add(inAmount.mul(swapStorage.tokenMultipliers[inIndex]))
@@ -153,7 +153,7 @@ export function calculateSwapGivenIn(inIndex: number, outIndex: number, inAmount
 export function calculateSwapGivenOut(inIndex: number, outIndex: number, outAmount: BigNumber, // standard fields
     balances: BigNumber[],
     blockTimestamp: BigNumber,
-    swapStorage: SwapStorage
+    swapStorage: StableSwapStorage
 ): BigNumber {
 
     let normalizedBalances = _xp(balances, swapStorage.tokenMultipliers)
@@ -177,7 +177,7 @@ export function calculateSwapGivenOut(inIndex: number, outIndex: number, outAmou
 // function to calculate the amounts of stables from the amounts of LP
 export function _calculateRemoveLiquidity(
     amount: BigNumber,
-    swapStorage: SwapStorage,
+    swapStorage: StableSwapStorage,
     totalSupply: BigNumber,
     currentWithdrawFee: BigNumber,
     balances: BigNumber[]
@@ -235,14 +235,14 @@ function _getYD(
     return BigNumber.from(0)
 }
 
-function _feePerToken(swapStorage: SwapStorage): BigNumber {
+function _feePerToken(swapStorage: StableSwapStorage): BigNumber {
     let nCoins = swapStorage.tokenMultipliers.length;
     return (swapStorage.fee.mul(nCoins)).div(4 * (nCoins - 1));
 }
 
 
 export function _calculateRemoveLiquidityOneToken(
-    swapStorage: SwapStorage,
+    swapStorage: StableSwapStorage,
     tokenAmount: BigNumber,
     index: number,
     blockTimestamp: BigNumber,
@@ -284,7 +284,7 @@ export function _calculateRemoveLiquidityOneToken(
  * without taking fees into account
  */
 export function _calculateTokenAmount(
-    swapStorage: SwapStorage,
+    swapStorage: StableSwapStorage,
     amounts: BigNumber[],
     deposit: boolean,
     balances: BigNumber[],

@@ -1,7 +1,7 @@
 import { Token, AmplifiedWeightedPair, WRAPPED_NETWORK_TOKENS, ChainId, WeightedSwapStorage, WeightedPool, NETWORK_CCY } from '../src'
 
 import { StablePool } from '../src/entities/pools/stable/stablePool'
-import { SwapStorage } from '../src/entities/calculators/swapStorage'
+import { StableSwapStorage } from '../src/entities/calculators/stableSwapStorage'
 import { Route } from '../src/entities/route'
 import { BigNumber } from 'ethers'
 import { PairData } from '../src/entities/pools/pairData'
@@ -84,7 +84,7 @@ describe('Route', () => {
 
     const balances = [BigNumber.from('1000000000000000000000'), BigNumber.from('1000000000000000000000'), BigNumber.from('1000000000000000000000'), BigNumber.from('1000000000000000000000')]
 
-    const swapStorage = new SwapStorage(
+    const swapStorage = new StableSwapStorage(
         Object.values([stable0, stable1, stable2, stable3]).map((token) => (BigNumber.from(10)).pow(18 - token.decimals)),
         manualSS.fee,
         manualSS.adminFee,

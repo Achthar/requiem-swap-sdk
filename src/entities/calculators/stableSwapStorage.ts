@@ -1,6 +1,6 @@
 import { BigNumber } from "ethers"
 
-export class SwapStorage {
+export class StableSwapStorage {
     public readonly tokenMultipliers: BigNumber[]
     public readonly fee: BigNumber
     public readonly adminFee: BigNumber
@@ -28,9 +28,9 @@ export class SwapStorage {
         this.futureATime = futureATime
     }
 
-    public static mock(): SwapStorage {
+    public static mock(): StableSwapStorage {
         const dummy = BigNumber.from(0)
-        return new SwapStorage([dummy], dummy, dummy, dummy, dummy, dummy, dummy, '')
+        return new StableSwapStorage([dummy], dummy, dummy, dummy, dummy, dummy, dummy, '')
     }
 
 }

@@ -1,5 +1,5 @@
 import { ethers, BigNumber } from 'ethers'
-import { SwapStorage } from '../src/entities/calculators/swapStorage'
+import { StableSwapStorage } from '../src/entities/calculators/stableSwapStorage'
 import { _getAPrecise, _xp, _distance, _getD, _sumOf, _getY } from '../src/entities/calculators/stableCalc'
 // import HDWalletProvider from '@truffle/hdwallet-provider'
 // import JSBI from 'jsbi'
@@ -86,7 +86,7 @@ describe('StablePool', () => {
       console.log("SSComp", manualSS)
       // console.log("swapStorage RAW", swapStorageRaw)
       // console.log("MUltis", Object.values(STABLES_INDEX_MAP[chainId]).map((token) => (BigNumber.from(10)).pow(18 - token.decimals).toString()))
-      const swapStorage = new SwapStorage(
+      const swapStorage = new StableSwapStorage(
         Object.values(STABLES_INDEX_MAP[chainId]).map((token) => (BigNumber.from(10)).pow(18 - token.decimals)),
         swapStorageRaw.fee,
         swapStorageRaw.adminFee,
