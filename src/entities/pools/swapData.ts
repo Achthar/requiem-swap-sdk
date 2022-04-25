@@ -54,8 +54,8 @@ export class SwapData {
      * @param poolDict pool dictionary to fetch the underlying pool from
      * @returns price object
      */
-    public poolPrice(tokenIn: Token, tokenOut: Token, poolDict: { [id: string]: Pool }) {
-        return poolDict[this.poolRef].poolPrice(tokenIn, tokenOut)
+    public poolPrice(poolDict: { [id: string]: Pool }) {
+        return poolDict[this.poolRef].poolPrice(this.tokenIn, this.tokenOut)
     }
 
 

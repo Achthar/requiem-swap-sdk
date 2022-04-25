@@ -2745,7 +2745,7 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
 
   _proto.calculateSwapGivenOut = function calculateSwapGivenOut(tokenIn, tokenOut, outAmount) {
     if (this.reserve0.raw.eq(ZERO) || this.reserve1.raw.eq(ZERO) || outAmount.gte(this.reserveOf(tokenOut))) {
-      throw new Error("insufficcient reserves");
+      throw new InsufficientReservesError();
     }
 
     var outputReserve = this.virtualReserveOf(tokenOut);
@@ -2759,7 +2759,7 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
     !this.involvesToken(inputAmount.token) ?  invariant(false, 'TOKEN')  : void 0;
 
     if (this.reserve0.raw.eq(ZERO) || this.reserve1.raw.eq(ZERO)) {
-      throw new Error("insufficcient reserves");
+      throw new InsufficientReservesError();
     }
 
     var inputReserve = this.virtualReserveOf(inputAmount.token);
@@ -6041,8 +6041,8 @@ var SwapData = /*#__PURE__*/function () {
    */
   ;
 
-  _proto.poolPrice = function poolPrice(tokenIn, tokenOut, poolDict) {
-    return poolDict[this.poolRef].poolPrice(tokenIn, tokenOut);
+  _proto.poolPrice = function poolPrice(poolDict) {
+    return poolDict[this.poolRef].poolPrice(this.tokenIn, this.tokenOut);
   }
   /**
   * @param pool input pool to generate pair from

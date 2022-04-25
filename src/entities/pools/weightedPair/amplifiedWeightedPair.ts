@@ -18,7 +18,7 @@ import {
 import { sqrt, parseBigintIsh } from '../../../helperUtils'
 import {
     // InsufficientReservesError,
-    InsufficientInputAmountError
+    InsufficientInputAmountError, InsufficientReservesError
 } from '../../../errors'
 import { Token } from '../../token'
 import { getAmountOut, getAmountIn } from '../../calculators/weightedPairCalc'
@@ -391,7 +391,7 @@ export class AmplifiedWeightedPair extends Pool {
             this.reserve1.raw.eq(ZERO) ||
             outAmount.gte(this.reserveOf(tokenOut))
         ) {
-            throw new Error("insufficcient reserves")
+            throw new InsufficientReservesError()
         }
 
         const outputReserve = this.virtualReserveOf(tokenOut)
@@ -415,7 +415,7 @@ export class AmplifiedWeightedPair extends Pool {
     public getOutputAmount(inputAmount: TokenAmount): [TokenAmount, Pool] {
         invariant(this.involvesToken(inputAmount.token), 'TOKEN')
         if (this.reserve0.raw.eq(ZERO) || this.reserve1.raw.eq(ZERO)) {
-            throw new Error("insufficcient reserves")
+            throw new InsufficientReservesError()
         }
         const inputReserve = this.virtualReserveOf(inputAmount.token)
         const outputReserve = this.virtualReserveOf(inputAmount.token.equals(this.token0) ? this.token1 : this.token0)

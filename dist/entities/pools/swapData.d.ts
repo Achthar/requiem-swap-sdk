@@ -25,7 +25,7 @@ export declare class SwapData {
      * @param poolDict pool dictionary to fetch the underlying pool from
      * @returns price object
      */
-    poolPrice(tokenIn: Token, tokenOut: Token, poolDict: {
+    poolPrice(poolDict: {
         [id: string]: Pool;
     }): import("../fractions").Price;
     /**
