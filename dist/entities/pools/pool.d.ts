@@ -28,6 +28,7 @@ export declare abstract class Pool {
     token(index: number): Token;
     reserveOf(token: Token): BigNumber;
     setBalanceValueByIndex(index: number, newBalance: BigNumber): void;
+    getTokenBalances(): TokenAmount[];
     setTokenBalances(tokenBalances: BigNumber[]): void;
     subtractBalanceValue(tokenAmount: TokenAmount): void;
     abstract poolPrice(tokenIn: Token, tokenOut: Token): Price;

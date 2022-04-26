@@ -2505,6 +2505,14 @@ var Pool = /*#__PURE__*/function () {
     this.tokenBalances[index] = newBalance;
   };
 
+  _proto.getTokenBalances = function getTokenBalances() {
+    var _this2 = this;
+
+    return this.tokens.map(function (t, i) {
+      return new TokenAmount(t, _this2.tokenBalances[i]);
+    });
+  };
+
   _proto.setTokenBalances = function setTokenBalances(tokenBalances) {
     this.tokenBalances = tokenBalances;
   };
