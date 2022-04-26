@@ -118,7 +118,7 @@ export abstract class Pool {
         this.tokenBalances[index] = newBalance
     }
 
-    public getTokenBalances(): TokenAmount[] {
+    public getTokenAmounts(): TokenAmount[] {
         return this.tokens.map((t, i) => new TokenAmount(t, this.tokenBalances[i]))
     }
 
