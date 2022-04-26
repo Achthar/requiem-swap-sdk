@@ -38,7 +38,7 @@ let PAIR_ADDRESS_CACHE: {
 } = {}
 
 const PAIR_HASH: { [chainId: number]: string } = {
-    [ChainId.AVAX_TESTNET]: '0x623d9ad8b6787321d0dff55d4f864a7cfdedfb1802a561c75cd01c62a079bc84',
+    [ChainId.AVAX_TESTNET]: '0x9054fb12bf026c7ef2c6d1f68fbbead8f68cdbfa477faca7f9d8ec63173f87ff',
     [ChainId.BSC_MAINNET]: '0x623d9ad8b6787321d0dff55d4f864a7cfdedfb1802a561c75cd01c62a079bc84',
     [ChainId.AVAX_MAINNET]: '0x623d9ad8b6787321d0dff55d4f864a7cfdedfb1802a561c75cd01c62a079bc84',
     [ChainId.OASIS_MAINNET]: '0x623d9ad8b6787321d0dff55d4f864a7cfdedfb1802a561c75cd01c62a079bc84',
