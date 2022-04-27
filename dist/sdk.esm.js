@@ -3984,7 +3984,11 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
   };
 
   _proto.calculateRemoveLiquidity = function calculateRemoveLiquidity(amountLp) {
-    return calculateRemoveLiquidityExactIn(this.swapStorage, amountLp, this.lpTotalSupply, this.tokenBalances);
+    var _this2 = this;
+
+    return calculateRemoveLiquidityExactIn(this.swapStorage, amountLp, this.lpTotalSupply, this.tokenBalances).map(function (x, i) {
+      return x.div(_this2.swapStorage.tokenMultipliers[i]);
+    });
   };
 
   _proto.calculateRemoveLiquidityOneToken = function calculateRemoveLiquidityOneToken(amount, index) {

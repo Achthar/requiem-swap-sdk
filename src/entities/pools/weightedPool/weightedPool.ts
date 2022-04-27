@@ -200,7 +200,7 @@ export class WeightedPool extends Pool {
       amountLp,
       this.lpTotalSupply,
       this.tokenBalances
-    )
+    ).map((x, i) => x.div(this.swapStorage.tokenMultipliers[i]))
   }
 
   public calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): { [returnVal: string]: BigNumber } {
