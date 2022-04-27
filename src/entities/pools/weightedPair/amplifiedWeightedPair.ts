@@ -61,6 +61,7 @@ export class AmplifiedWeightedPair extends Pool {
     private readonly fee: BigNumber
     private readonly ampBPS: BigNumber
     public readonly type: PoolType
+    public _name: string
 
     public static getAddress(tokenA: Token, tokenB: Token, weightA: BigNumber): string {
         const tokens = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA] // does safety checks
@@ -121,6 +122,8 @@ export class AmplifiedWeightedPair extends Pool {
         )
         this.type = PoolType.AmplifiedWeightedPair
         this.address = !address ? AmplifiedWeightedPair.getAddress(this.token0, this.token1, this.weight0) : address
+
+        this._name = tokens.map(t => t.symbol).join('-')
     }
 
     public static fromBigIntish(tokens: Token[], tokenBalances: BigintIsh[], virtualReserves: BigintIsh[], weightA: BigintIsh, fee: BigintIsh, amp: BigintIsh, address?: string): AmplifiedWeightedPair {

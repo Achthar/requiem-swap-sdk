@@ -15,6 +15,7 @@ export declare class AmplifiedWeightedPair extends Pool {
     private readonly fee;
     private readonly ampBPS;
     readonly type: PoolType;
+    _name: string;
     static getAddress(tokenA: Token, tokenB: Token, weightA: BigNumber): string;
     constructor(tokens: Token[], tokenBalances: BigNumber[], virtualReserves: BigNumber[], weightA: BigNumber, fee: BigNumber, amp: BigNumber, address?: string);
     static fromBigIntish(tokens: Token[], tokenBalances: BigintIsh[], virtualReserves: BigintIsh[], weightA: BigintIsh, fee: BigintIsh, amp: BigintIsh, address?: string): AmplifiedWeightedPair;

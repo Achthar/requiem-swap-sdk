@@ -15,9 +15,10 @@ export abstract class Pool {
 
     // the index-token map 
     public abstract readonly tokens: Token[]
+    public abstract readonly liquidityToken: Token
     public abstract tokenBalances: BigNumber[]
     public abstract readonly address: string
-
+    public abstract _name: string
 
     // public constructor(
     //     tokens: Token[],
@@ -101,6 +102,14 @@ export abstract class Pool {
                 return this.tokenBalances[i]
         }
         return BigNumber.from(0)
+    }
+
+    public set name(value: string) {
+        this._name = value
+    }
+
+    public get name(): string {
+        return this._name
     }
 
 

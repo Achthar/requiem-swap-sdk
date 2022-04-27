@@ -19,6 +19,7 @@ export declare class WeightedPool extends Pool {
     readonly tokens: Token[];
     tokenBalances: BigNumber[];
     swapStorage: WeightedSwapStorage;
+    _name: string;
     lpTotalSupply: BigNumber;
     static getRouterAddress(chainId: number): string;
     static getLpAddress(chainId: number): string;

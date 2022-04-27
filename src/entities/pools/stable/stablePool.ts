@@ -44,6 +44,7 @@ export class StablePool extends Pool {
 
   public lpTotalSupply: BigNumber
   public currentWithdrawFee: BigNumber
+  public _name: string
 
   public static getRouterAddress(chainId: number): string {
     return STABLE_POOL_ADDRESS[chainId]
@@ -85,6 +86,8 @@ export class StablePool extends Pool {
       invariant(tokens[i].decimals <= 18, "invalidDecimals");
       invariant(tokens[i].chainId === tokens[0].chainId, 'INVALID TOKENS')
     }
+
+    this._name = 'Stable Pool'
   }
 
   public static mock() {

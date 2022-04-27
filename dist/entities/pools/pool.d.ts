@@ -9,8 +9,10 @@ import { Price, TokenAmount } from '../fractions';
   */
 export declare abstract class Pool {
     abstract readonly tokens: Token[];
+    abstract readonly liquidityToken: Token;
     abstract tokenBalances: BigNumber[];
     abstract readonly address: string;
+    abstract _name: string;
     /**
      * Returns true if the token is either token0 or token1
      * @param token to check
@@ -27,6 +29,8 @@ export declare abstract class Pool {
     get chainId(): number;
     token(index: number): Token;
     reserveOf(token: Token): BigNumber;
+    set name(value: string);
+    get name(): string;
     setBalanceValueByIndex(index: number, newBalance: BigNumber): void;
     getTokenAmounts(): TokenAmount[];
     setTokenBalances(tokenBalances: BigNumber[]): void;

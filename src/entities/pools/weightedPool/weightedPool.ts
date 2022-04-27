@@ -33,6 +33,7 @@ export class WeightedPool extends Pool {
   public readonly tokens: Token[]
   public tokenBalances: BigNumber[]
   public swapStorage: WeightedSwapStorage
+  public _name: string
 
   public lpTotalSupply: BigNumber
   public static getRouterAddress(chainId: number): string {
@@ -71,6 +72,8 @@ export class WeightedPool extends Pool {
       invariant(tokens[i].decimals <= 18, "invalidDecimals");
       invariant(tokens[i].chainId === tokens[0].chainId, 'INVALID TOKENS')
     }
+
+    this._name = 'Weighted Pool'
   }
 
   public static mock() {

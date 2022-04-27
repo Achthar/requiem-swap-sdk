@@ -2493,7 +2493,9 @@ var Pool = /*#__PURE__*/function () {
     }
 
     return ethers.BigNumber.from(0);
-  } // public getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount {
+  };
+
+  // public getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount {
   //     let amount = BigNumber.from(0)
   //     for (let i = 0; i < userBalances.length; i++) {
   //         if (i !== outIndex)
@@ -2502,8 +2504,6 @@ var Pool = /*#__PURE__*/function () {
   //     amount = amount.add(userBalances[outIndex])
   //     return new TokenAmount(this.tokens[outIndex], amount.toBigInt())
   // }
-  ;
-
   _proto.setBalanceValueByIndex = function setBalanceValueByIndex(index, newBalance) {
     this.tokenBalances[index] = newBalance;
   };
@@ -2534,6 +2534,14 @@ var Pool = /*#__PURE__*/function () {
     key: "chainId",
     get: function get() {
       return this.tokens[0].chainId;
+    }
+  }, {
+    key: "name",
+    get: function get() {
+      return this._name;
+    },
+    set: function set(value) {
+      this._name = value;
     }
   }]);
 
@@ -2573,6 +2581,9 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
     _this.liquidityToken = new Token(tokens[0].chainId, address ? ethers.ethers.utils.getAddress(address) : AmplifiedWeightedPair.getAddress(_this.tokens[0], _this.tokens[1], _this.weights[0]), 18, 'Requiem-LP', 'Requiem LPs');
     _this.type = exports.PoolType.AmplifiedWeightedPair;
     _this.address = !address ? AmplifiedWeightedPair.getAddress(_this.token0, _this.token1, _this.weight0) : address;
+    _this._name = tokens.map(function (t) {
+      return t.symbol;
+    }).join('-');
     return _this;
   }
 
@@ -3878,6 +3889,7 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
       !(tokens[i].chainId === tokens[0].chainId) ?  invariant(false, 'INVALID TOKENS')  : void 0;
     }
 
+    _this._name = 'Weighted Pool';
     return _this;
   }
 
@@ -5796,6 +5808,7 @@ var StablePool = /*#__PURE__*/function (_Pool) {
       !(tokens[i].chainId === tokens[0].chainId) ?  invariant(false, 'INVALID TOKENS')  : void 0;
     }
 
+    _this._name = 'Stable Pool';
     return _this;
   }
 
