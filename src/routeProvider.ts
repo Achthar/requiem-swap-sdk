@@ -8,7 +8,7 @@ import { PairData } from "./entities/pools/pairData"
 import { SwapData } from "./entities/pools/swapData"
 import { SwapRoute } from "./entities/swapRoute"
 import invariant from "tiny-invariant"
-import { ChainId, Currency, NETWORK_CCY, Token, WRAPPED_NETWORK_TOKENS } from "."
+import { ChainId, Currency, NETWORK_CCY, Token, WRAPPED_NETWORK_TOKENS } from "./entities"
 
 
 export function wrappedCurrency(currency: Currency, chainId: ChainId): Token {

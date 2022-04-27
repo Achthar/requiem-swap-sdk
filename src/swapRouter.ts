@@ -1,7 +1,7 @@
 
 import invariant from 'tiny-invariant'
 import { validateAndParseAddress } from './helperUtils'
-import { CurrencyAmount, NETWORK_CCY, Percent, Swap, SwapType } from './entities'
+import { CurrencyAmount, Percent, Swap, SwapType } from './entities'
 
 /**
  * Options for producing the arguments to send call to the router.
@@ -31,6 +31,12 @@ export interface SwapOptions {
    * Whether we swap through multiple routers / pair types
    */
   multiSwap?: boolean
+
+  /**
+   * Checks whether the networkccy is used in in- or output: helps us to avoid checks in route calculations
+   */
+  etherIn: boolean
+  etherOut: boolean
 }
 
 export interface SwapOptionsDeadline extends Omit<SwapOptions, 'ttl'> {
@@ -79,8 +85,8 @@ export abstract class SwapRouter {
    * @param options options for the call parameters
    */
   public static swapCallParameters(trade: Swap, options: SwapOptions | SwapOptionsDeadline): SwapParameters {
-    const etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId]
-    const etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]
+    const etherIn = options.etherIn
+    const etherOut = options.etherOut
     // the router does not support both ether in and out
     invariant(!(etherIn && etherOut), 'ETHER_IN_OUT')
     invariant(!('ttl' in options) || options.ttl > 0, 'TTL')

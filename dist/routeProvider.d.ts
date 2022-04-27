@@ -1,7 +1,7 @@
 import { PairData } from "./entities/pools/pairData";
 import { SwapData } from "./entities/pools/swapData";
 import { SwapRoute } from "./entities/swapRoute";
-import { ChainId, Currency, Token } from ".";
+import { ChainId, Currency, Token } from "./entities";
 export declare function wrappedCurrency(currency: Currency, chainId: ChainId): Token;
 export declare class RouteProvider {
     /**

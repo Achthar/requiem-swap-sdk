@@ -7121,8 +7121,8 @@ var SwapRouter = /*#__PURE__*/function () {
 
 
   SwapRouter.swapCallParameters = function swapCallParameters(trade, options) {
-    var etherIn = trade.inputAmount.currency === NETWORK_CCY[trade.route.chainId];
-    var etherOut = trade.outputAmount.currency === NETWORK_CCY[trade.route.chainId]; // the router does not support both ether in and out
+    var etherIn = options.etherIn;
+    var etherOut = options.etherOut; // the router does not support both ether in and out
 
     !!(etherIn && etherOut) ?  invariant(false, 'ETHER_IN_OUT')  : void 0;
     !(!('ttl' in options) || options.ttl > 0) ?  invariant(false, 'TTL')  : void 0;

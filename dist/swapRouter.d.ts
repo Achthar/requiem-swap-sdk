@@ -25,6 +25,11 @@ export interface SwapOptions {
      * Whether we swap through multiple routers / pair types
      */
     multiSwap?: boolean;
+    /**
+     * Checks whether the networkccy is used in in- or output: helps us to avoid checks in route calculations
+     */
+    etherIn: boolean;
+    etherOut: boolean;
 }
 export interface SwapOptionsDeadline extends Omit<SwapOptions, 'ttl'> {
     /**
