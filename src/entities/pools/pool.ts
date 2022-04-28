@@ -20,15 +20,6 @@ export abstract class Pool {
     public abstract readonly address: string
     public abstract _name: string
 
-    // public constructor(
-    //     tokens: Token[],
-    //     tokenBalances: BigNumber[]
-    // ) {
-
-    //     this.tokens = tokens
-    //     this.tokenBalances = tokenBalances
-    // }
-
     /**
      * Returns true if the token is either token0 or token1
      * @param token to check
@@ -75,15 +66,6 @@ export abstract class Pool {
         tokenOut: Token,
         outAmount: BigNumber): BigNumber;
 
-    // public getOutputAmount(inputAmount: TokenAmount, tokenOut: Token): TokenAmount {
-    //     const swap = this.calculateSwapGivenIn(inputAmount.token, tokenOut, inputAmount.raw)
-    //     return new TokenAmount(tokenOut, swap.toBigInt())
-    // }
-
-    // public getInputAmount(outputAmount: TokenAmount, tokenIn: Token): TokenAmount {
-    //     const swap = this.calculateSwapGivenOut(tokenIn, outputAmount.token, outputAmount.toBigNumber())
-    //     return new TokenAmount(tokenIn, swap.toBigInt())
-    // }
     /**
      * Returns the chain ID of the tokens in the pair.
      */
@@ -113,16 +95,6 @@ export abstract class Pool {
     }
 
 
-    // public getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount {
-    //     let amount = BigNumber.from(0)
-    //     for (let i = 0; i < userBalances.length; i++) {
-    //         if (i !== outIndex)
-    //             amount = amount.add(this.calculateSwapGivenIn(this.tokens[i], this.tokens[outIndex], userBalances[i]))
-    //     }
-    //     amount = amount.add(userBalances[outIndex])
-    //     return new TokenAmount(this.tokens[outIndex], amount.toBigInt())
-    // }
-
     public setBalanceValueByIndex(index: number, newBalance: BigNumber) {
         this.tokenBalances[index] = newBalance
     }
@@ -130,7 +102,6 @@ export abstract class Pool {
     public getTokenAmounts(): TokenAmount[] {
         return this.tokens.map((t, i) => new TokenAmount(t, this.tokenBalances[i]))
     }
-
 
     public setTokenBalances(tokenBalances: BigNumber[]) {
         this.tokenBalances = tokenBalances

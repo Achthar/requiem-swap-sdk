@@ -126,15 +126,18 @@ export class Swap {
   /**
    * The input amount for the trade assuming no slippage.
    */
-  public readonly swapAmounts: CurrencyAmount[]
+  public readonly swapAmounts: TokenAmount[]
   /**
    * The input amount for the trade assuming no slippage.
    */
-  public readonly inputAmount: CurrencyAmount
+  public readonly inputAmount: TokenAmount
   /**
    * The output amount for the trade assuming no slippage.
    */
-  public readonly outputAmount: CurrencyAmount
+  public readonly outputAmount: TokenAmount
+
+  public readonly isValid: boolean
+
   /**
    * The price expressed in terms of output amount/input amount.
    */
@@ -149,7 +152,7 @@ export class Swap {
    * @param route route of the exact in trade
    * @param amountIn the amount being passed in
    */
-  public static exactIn(route: SwapRoute, amountIn: CurrencyAmount, poolDict: { [id: string]: Pool }): Swap {
+  public static exactIn(route: SwapRoute, amountIn: TokenAmount, poolDict: { [id: string]: Pool }): Swap {
     return new Swap(route, amountIn, SwapType.EXACT_INPUT, poolDict)
   }
 
@@ -158,19 +161,25 @@ export class Swap {
    * @param route route of the exact out trade
    * @param amountOut the amount returned by the trade
    */
-  public static exactOut(route: SwapRoute, amountOut: CurrencyAmount, poolDict: { [id: string]: Pool }): Swap {
+  public static exactOut(route: SwapRoute, amountOut: TokenAmount, poolDict: { [id: string]: Pool }): Swap {
     return new Swap(route, amountOut, SwapType.EXACT_OUTPUT, poolDict)
   }
 
-  public constructor(route: SwapRoute, amount: CurrencyAmount, tradeType: SwapType, poolDict: { [id: string]: Pool }) {
+  public constructor(route: SwapRoute, amount: TokenAmount, tradeType: SwapType, poolDict: { [id: string]: Pool }) {
     const amounts: TokenAmount[] = new Array(route.path.length)
+    let _isValid = true
     if (tradeType === SwapType.EXACT_INPUT) {
       invariant(currencyEquals(amount.currency, route.input), 'INPUT')
       amounts[0] = wrappedAmount(amount, route.chainId)
       for (let i = 0; i < route.path.length - 1; i++) {
         const pair = route.swapData[i]
-        const outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDict)
-        amounts[i + 1] = outputAmount
+        try {
+          const outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDict)
+          amounts[i + 1] = outputAmount
+        } catch {
+          _isValid = false
+          break;
+        }
 
       }
     } else {
@@ -178,26 +187,26 @@ export class Swap {
       amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId)
       for (let i = route.path.length - 1; i > 0; i--) {
         const pair = route.swapData[i - 1]
-        const inputAmount = pair.calculateSwapGivenOut(amounts[i], poolDict)
-        amounts[i - 1] = inputAmount
+        try {
+          const inputAmount = pair.calculateSwapGivenOut(amounts[i], poolDict)
+          amounts[i - 1] = inputAmount
+        } catch {
+          _isValid = false
+          break;
+        }
       }
     }
-
+    this.isValid = _isValid
     this.route = route
     this.tradeType = tradeType
     this.swapAmounts = amounts
-    this.inputAmount =
-      tradeType === SwapType.EXACT_INPUT
-        ? amount
-        : route.input === NETWORK_CCY[route.chainId]
-          ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw)
-          : amounts[0]
-    this.outputAmount =
-      tradeType === SwapType.EXACT_OUTPUT
-        ? amount
-        : route.output === NETWORK_CCY[route.chainId]
-          ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw)
-          : amounts[amounts.length - 1]
+    if (this.isValid) {
+      this.inputAmount = tradeType === SwapType.EXACT_INPUT ? amount : amounts[0]
+      this.outputAmount = tradeType === SwapType.EXACT_OUTPUT ? amount : amounts[amounts.length - 1]
+    } else { // default
+      this.inputAmount = tradeType === SwapType.EXACT_INPUT ? amount : new TokenAmount(this.route.swapData[0].tokenIn, '0')
+      this.outputAmount = tradeType === SwapType.EXACT_OUTPUT ? amount : new TokenAmount(this.route.swapData[this.route.swapData.length - 1].tokenIn, '0')
+    }
     this.executionPrice = new Price(
       this.inputAmount.currency,
       this.outputAmount.currency,
@@ -212,7 +221,7 @@ export class Swap {
    * Get the minimum amount that must be received from this trade for the given slippage tolerance
    * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
    */
-  public minimumAmountOut(slippageTolerance: Percent): CurrencyAmount {
+  public minimumAmountOut(slippageTolerance: Percent): TokenAmount {
     invariant(!slippageTolerance.lessThan(ZERO), 'SLIPPAGE_TOLERANCE')
     if (this.tradeType === SwapType.EXACT_OUTPUT) {
       return this.outputAmount
@@ -221,9 +230,7 @@ export class Swap {
         .add(slippageTolerance)
         .invert()
         .multiply(this.outputAmount.raw).quotient
-      return this.outputAmount instanceof TokenAmount
-        ? new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut)
-        : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountOut)
+      return new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut)
     }
   }
 
@@ -231,15 +238,13 @@ export class Swap {
    * Get the maximum amount in that can be spent via this trade for the given slippage tolerance
    * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
    */
-  public maximumAmountIn(slippageTolerance: Percent): CurrencyAmount {
+  public maximumAmountIn(slippageTolerance: Percent): TokenAmount {
     invariant(!slippageTolerance.lessThan(ZERO), 'SLIPPAGE_TOLERANCE')
     if (this.tradeType === SwapType.EXACT_INPUT) {
       return this.inputAmount
     } else {
       const slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient
-      return this.inputAmount instanceof TokenAmount
-        ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn)
-        : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn)
+      return new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn)
     }
   }
   /**
@@ -249,10 +254,12 @@ export class Swap {
    * @param poolDict dictionary used to price the trade routes
    * @returns trades in an array
    */
-  public static PriceRoutes(swapRoutes: SwapRoute[], amount: CurrencyAmount, swapType: SwapType, poolDict: PoolDictionary): Swap[] {
+  public static PriceRoutes(swapRoutes: SwapRoute[], amount: TokenAmount, swapType: SwapType, poolDict: PoolDictionary): Swap[] {
     const swaps: Swap[] = []
     for (let i = 0; i < swapRoutes.length; i++) {
-      swaps.push(new Swap(swapRoutes[i], amount, swapType, poolDict))
+      const swap = new Swap(swapRoutes[i], amount, swapType, poolDict)
+      if (swap.isValid)
+        swaps.push(swap)
     }
     if (swapType === SwapType.EXACT_INPUT)
       return swaps.sort((a, b) => (a.outputAmount.raw.lt(b.outputAmount.raw) ? 1 : -1))

@@ -2424,14 +2424,6 @@ var Pool = /*#__PURE__*/function () {
 
   var _proto = Pool.prototype;
 
-  // public constructor(
-  //     tokens: Token[],
-  //     tokenBalances: BigNumber[]
-  // ) {
-  //     this.tokens = tokens
-  //     this.tokenBalances = tokenBalances
-  // }
-
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check
@@ -2467,15 +2459,7 @@ var Pool = /*#__PURE__*/function () {
     return Object.keys(this.tokens).map(function (_, index) {
       return _this.tokenBalances[index];
     });
-  } // public getOutputAmount(inputAmount: TokenAmount, tokenOut: Token): TokenAmount {
-  //     const swap = this.calculateSwapGivenIn(inputAmount.token, tokenOut, inputAmount.raw)
-  //     return new TokenAmount(tokenOut, swap.toBigInt())
-  // }
-  // public getInputAmount(outputAmount: TokenAmount, tokenIn: Token): TokenAmount {
-  //     const swap = this.calculateSwapGivenOut(tokenIn, outputAmount.token, outputAmount.toBigNumber())
-  //     return new TokenAmount(tokenIn, swap.toBigInt())
-  // }
-
+  }
   /**
    * Returns the chain ID of the tokens in the pair.
    */
@@ -2495,15 +2479,6 @@ var Pool = /*#__PURE__*/function () {
     return ethers.BigNumber.from(0);
   };
 
-  // public getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount {
-  //     let amount = BigNumber.from(0)
-  //     for (let i = 0; i < userBalances.length; i++) {
-  //         if (i !== outIndex)
-  //             amount = amount.add(this.calculateSwapGivenIn(this.tokens[i], this.tokens[outIndex], userBalances[i]))
-  //     }
-  //     amount = amount.add(userBalances[outIndex])
-  //     return new TokenAmount(this.tokens[outIndex], amount.toBigInt())
-  // }
   _proto.setBalanceValueByIndex = function setBalanceValueByIndex(index, newBalance) {
     this.tokenBalances[index] = newBalance;
   };
@@ -6525,6 +6500,7 @@ function wrappedAmount(currencyAmount, chainId) {
 var Swap = /*#__PURE__*/function () {
   function Swap(route, amount, tradeType, poolDict) {
     var amounts = new Array(route.path.length);
+    var _isValid = true;
 
     if (tradeType === exports.SwapType.EXACT_INPUT) {
       !currencyEquals(amount.currency, route.input) ?  invariant(false, 'INPUT')  : void 0;
@@ -6532,8 +6508,14 @@ var Swap = /*#__PURE__*/function () {
 
       for (var i = 0; i < route.path.length - 1; i++) {
         var pair = route.swapData[i];
-        var outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDict);
-        amounts[i + 1] = outputAmount;
+
+        try {
+          var outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDict);
+          amounts[i + 1] = outputAmount;
+        } catch (_unused) {
+          _isValid = false;
+          break;
+        }
       }
     } else {
       !currencyEquals(amount.currency, route.output) ?  invariant(false, 'OUTPUT')  : void 0;
@@ -6542,17 +6524,31 @@ var Swap = /*#__PURE__*/function () {
       for (var _i = route.path.length - 1; _i > 0; _i--) {
         var _pair = route.swapData[_i - 1];
 
-        var inputAmount = _pair.calculateSwapGivenOut(amounts[_i], poolDict);
+        try {
+          var inputAmount = _pair.calculateSwapGivenOut(amounts[_i], poolDict);
 
-        amounts[_i - 1] = inputAmount;
+          amounts[_i - 1] = inputAmount;
+        } catch (_unused2) {
+          _isValid = false;
+          break;
+        }
       }
     }
 
+    this.isValid = _isValid;
     this.route = route;
     this.tradeType = tradeType;
     this.swapAmounts = amounts;
-    this.inputAmount = tradeType === exports.SwapType.EXACT_INPUT ? amount : route.input === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[0].raw) : amounts[0];
-    this.outputAmount = tradeType === exports.SwapType.EXACT_OUTPUT ? amount : route.output === NETWORK_CCY[route.chainId] ? CurrencyAmount.networkCCYAmount(route.chainId, amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
+
+    if (this.isValid) {
+      this.inputAmount = tradeType === exports.SwapType.EXACT_INPUT ? amount : amounts[0];
+      this.outputAmount = tradeType === exports.SwapType.EXACT_OUTPUT ? amount : amounts[amounts.length - 1];
+    } else {
+      // default
+      this.inputAmount = tradeType === exports.SwapType.EXACT_INPUT ? amount : new TokenAmount(this.route.swapData[0].tokenIn, '0');
+      this.outputAmount = tradeType === exports.SwapType.EXACT_OUTPUT ? amount : new TokenAmount(this.route.swapData[this.route.swapData.length - 1].tokenIn, '0');
+    }
+
     this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw); // this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount)
   }
   /**
@@ -6595,7 +6591,7 @@ var Swap = /*#__PURE__*/function () {
       return this.outputAmount;
     } else {
       var slippageAdjustedAmountOut = new Fraction(ONE).add(slippageTolerance).invert().multiply(this.outputAmount.raw).quotient;
-      return this.outputAmount instanceof TokenAmount ? new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountOut);
+      return new TokenAmount(this.outputAmount.token, slippageAdjustedAmountOut);
     }
   }
   /**
@@ -6611,7 +6607,7 @@ var Swap = /*#__PURE__*/function () {
       return this.inputAmount;
     } else {
       var slippageAdjustedAmountIn = new Fraction(ONE).add(slippageTolerance).multiply(this.inputAmount.raw).quotient;
-      return this.inputAmount instanceof TokenAmount ? new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn) : CurrencyAmount.networkCCYAmount(this.route.chainId, slippageAdjustedAmountIn);
+      return new TokenAmount(this.inputAmount.token, slippageAdjustedAmountIn);
     }
   }
   /**
@@ -6627,7 +6623,8 @@ var Swap = /*#__PURE__*/function () {
     var swaps = [];
 
     for (var i = 0; i < swapRoutes.length; i++) {
-      swaps.push(new Swap(swapRoutes[i], amount, swapType, poolDict));
+      var swap = new Swap(swapRoutes[i], amount, swapType, poolDict);
+      if (swap.isValid) swaps.push(swap);
     }
 
     if (swapType === exports.SwapType.EXACT_INPUT) return swaps.sort(function (a, b) {

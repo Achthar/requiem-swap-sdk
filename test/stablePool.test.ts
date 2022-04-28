@@ -12,8 +12,8 @@ import { StablePool } from '../src/entities/pools/stable/stablePool'
 // import invariant from 'tiny-invariant'
 import IERC20 from '../src/abis/IERC20.json'
 import StableSwap from '../src/abis/RequiemStableSwap.json'
+import { STABLES_INDEX_MAP } from '../src'
 // import * as dotenv from 'dotenv';
-import { STABLES_INDEX_MAP } from '../src/entities/stables'
 
 describe('StablePool', () => {
   jest.setTimeout(30000);

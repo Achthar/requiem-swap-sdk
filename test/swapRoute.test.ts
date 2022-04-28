@@ -270,12 +270,12 @@ describe('SwapRoute', () => {
                 6
             )
 
-            console.log('preClean swaps',result.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol])))
-            console.log('preClean paths',result.map(r => r.path.map(p => p.symbol)))
+            console.log('preClean swaps', result.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol])))
+            console.log('preClean paths', result.map(r => r.path.map(p => p.symbol)))
 
             const agg = SwapRoute.cleanRoutes(result)
-            console.log('postClean swaps',agg.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol, d.poolRef])))
-            console.log('postClean route',agg.map(r => r.path.map(p => p.symbol).join('-')))
+            console.log('postClean swaps', agg.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol, d.poolRef])))
+            console.log('postClean route', agg.map(r => r.path.map(p => p.symbol).join('-')))
             const amount = new TokenAmount(token0, '100')
             const swaps = Swap.PriceRoutes(agg, amount, SwapType.EXACT_INPUT, poolDict)
 
@@ -298,6 +298,46 @@ describe('SwapRoute', () => {
             // console.log(result.map(res => res.route.pairData.map(pd => [pd.token0.symbol, pd.token1.symbol])))
 
             // console.log(result.map(res => { return { price: res.route.midPrice.toSignificant(18), out: res.outputAmount.toSignificant(18) } }))
+
+            expect(swaps).toHaveLength(9)
+            expect(swaps[0].route.swapData).toHaveLength(5) // 0 -> 2 at 10:11
+            expect(swaps[0].route.path).toEqual([token0, token1, stable1, stable2, token1, token2])
+            expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            expect(swaps[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(425)))
+            expect(swaps[1].route.swapData).toHaveLength(6) // 0 -> 1 -> 2 at 12:12:10
+            expect(swaps[1].route.path).toEqual([token0, token1, stable1, stable2, token1, token0, token2])
+            expect(swaps[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            expect(swaps[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(161)))
+        })
+
+
+
+        it('provides best route exact out', () => {
+
+            const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, weightedPool, stablePool])
+
+            console.log("PDCHECK", pairData.map(pd => [pd.token0.symbol, pd.token1.symbol]))
+            const result = RouteProvider.getRoutes(
+                pairData,
+                token0,
+                token2,
+                6
+            )
+            console.log('==================== EXACT OUT')
+            console.log('preClean swaps', result.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol])))
+            console.log('preClean paths', result.map(r => r.path.map(p => p.symbol)))
+
+            const agg = SwapRoute.cleanRoutes(result)
+            console.log('postClean swaps', agg.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol, d.poolRef])))
+            console.log('postClean route', agg.map(r => r.path.map(p => p.symbol).join('-')))
+            const amount = new TokenAmount(token2, '1000')
+            const swaps = Swap.PriceRoutes(agg, amount, SwapType.EXACT_OUTPUT, poolDict)
+
+            console.log(swaps.map(res => res.route.path.map(pd => pd.symbol).join('-')))
+
+            console.log(swaps.map(res => res.outputAmount.toSignificant(18)))
+
+            console.log(swaps.map(res => res.route.swapData.map(pd => [pd.tokenIn.symbol + '-' + pd.tokenOut.symbol])))
 
             expect(swaps).toHaveLength(9)
             expect(swaps[0].route.swapData).toHaveLength(5) // 0 -> 2 at 10:11
@@ -354,12 +394,12 @@ describe('SwapRoute', () => {
                 1
             )
 
-            console.log('preClean swaps',result.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol])))
-            console.log('preClean paths',result.map(r => r.path.map(p => p.symbol)))
+            console.log('preClean swaps', result.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol])))
+            console.log('preClean paths', result.map(r => r.path.map(p => p.symbol)))
 
             const agg = SwapRoute.cleanRoutes(result)
-            console.log('postClean swaps',agg.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol, d.poolRef])))
-            console.log('postClean route',agg.map(r => r.path.map(p => p.symbol).join('-')))
+            console.log('postClean swaps', agg.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol, d.poolRef])))
+            console.log('postClean route', agg.map(r => r.path.map(p => p.symbol).join('-')))
 
 
 
@@ -459,7 +499,7 @@ describe('SwapRoute', () => {
 
     describe('#maximumAmountIn', () => {
         describe('tradeType = EXACT_INPUT', () => {
-            
+
             const pairData = PairData.dataFromPools([pair_0_1, pair_1_2])
             const exactIn = new Swap(
                 new SwapRoute(PairData.toSwapArrayFrom(pairData, token0)),

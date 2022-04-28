@@ -1,7 +1,6 @@
-import { CurrencyAmount } from './fractions/currencyAmount';
 import { Percent } from './fractions/percent';
 import { Price } from './fractions/price';
-import { InputOutput } from './fractions/tokenAmount';
+import { TokenAmount, InputOutput } from './fractions/tokenAmount';
 import { Pool, PoolDictionary } from './pools/pool';
 import { SwapRoute } from './swapRoute';
 export declare enum SwapType {
@@ -36,15 +35,16 @@ export declare class Swap {
     /**
      * The input amount for the trade assuming no slippage.
      */
-    readonly swapAmounts: CurrencyAmount[];
+    readonly swapAmounts: TokenAmount[];
     /**
      * The input amount for the trade assuming no slippage.
      */
-    readonly inputAmount: CurrencyAmount;
+    readonly inputAmount: TokenAmount;
     /**
      * The output amount for the trade assuming no slippage.
      */
-    readonly outputAmount: CurrencyAmount;
+    readonly outputAmount: TokenAmount;
+    readonly isValid: boolean;
     /**
      * The price expressed in terms of output amount/input amount.
      */
@@ -57,7 +57,7 @@ export declare class Swap {
      * @param route route of the exact in trade
      * @param amountIn the amount being passed in
      */
-    static exactIn(route: SwapRoute, amountIn: CurrencyAmount, poolDict: {
+    static exactIn(route: SwapRoute, amountIn: TokenAmount, poolDict: {
         [id: string]: Pool;
     }): Swap;
     /**
@@ -65,22 +65,22 @@ export declare class Swap {
      * @param route route of the exact out trade
      * @param amountOut the amount returned by the trade
      */
-    static exactOut(route: SwapRoute, amountOut: CurrencyAmount, poolDict: {
+    static exactOut(route: SwapRoute, amountOut: TokenAmount, poolDict: {
         [id: string]: Pool;
     }): Swap;
-    constructor(route: SwapRoute, amount: CurrencyAmount, tradeType: SwapType, poolDict: {
+    constructor(route: SwapRoute, amount: TokenAmount, tradeType: SwapType, poolDict: {
         [id: string]: Pool;
     });
     /**
      * Get the minimum amount that must be received from this trade for the given slippage tolerance
      * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
      */
-    minimumAmountOut(slippageTolerance: Percent): CurrencyAmount;
+    minimumAmountOut(slippageTolerance: Percent): TokenAmount;
     /**
      * Get the maximum amount in that can be spent via this trade for the given slippage tolerance
      * @param slippageTolerance tolerance of unfavorable slippage from the execution price of this trade
      */
-    maximumAmountIn(slippageTolerance: Percent): CurrencyAmount;
+    maximumAmountIn(slippageTolerance: Percent): TokenAmount;
     /**
      *
      * @param swapRoutes input routes - should already not include duplicates
@@ -88,5 +88,5 @@ export declare class Swap {
      * @param poolDict dictionary used to price the trade routes
      * @returns trades in an array
      */
-    static PriceRoutes(swapRoutes: SwapRoute[], amount: CurrencyAmount, swapType: SwapType, poolDict: PoolDictionary): Swap[];
+    static PriceRoutes(swapRoutes: SwapRoute[], amount: TokenAmount, swapType: SwapType, poolDict: PoolDictionary): Swap[];
 }
