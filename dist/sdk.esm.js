@@ -2606,13 +2606,13 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
   _proto.poolPriceBases = function poolPriceBases(tokenIn, _) {
     if (tokenIn.equals(this.token0)) {
       return {
-        priceBaseIn: this.tokenBalances[0].mul(this.weights[1]),
-        priceBaseOut: this.tokenBalances[1].mul(this.weights[0])
+        priceBaseIn: this.virtualReserves[0].mul(this.weights[1]),
+        priceBaseOut: this.virtualReserves[1].mul(this.weights[0])
       };
     } else {
       return {
-        priceBaseIn: this.tokenBalances[1].mul(this.weights[0]),
-        priceBaseOut: this.tokenBalances[0].mul(this.weights[1])
+        priceBaseIn: this.virtualReserves[1].mul(this.weights[0]),
+        priceBaseOut: this.virtualReserves[0].mul(this.weights[1])
       };
     }
   }
@@ -2726,6 +2726,10 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
   ;
 
   _proto.calculateSwapGivenIn = function calculateSwapGivenIn(tokenIn, tokenOut, inAmount) {
+    if (inAmount.gte(this.reserveOf(tokenIn))) {
+      throw new InsufficientReservesError();
+    }
+
     var inputReserve = this.virtualReserveOf(tokenIn);
     var outputReserve = this.virtualReserveOf(tokenOut);
     var inputWeight = this.weightOf(tokenIn);
@@ -2736,7 +2740,7 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
   ;
 
   _proto.calculateSwapGivenOut = function calculateSwapGivenOut(tokenIn, tokenOut, outAmount) {
-    if (this.reserve0.raw.eq(ZERO) || this.reserve1.raw.eq(ZERO) || outAmount.gte(this.reserveOf(tokenOut))) {
+    if (outAmount.gte(this.reserveOf(tokenOut))) {
       throw new InsufficientReservesError();
     }
 
@@ -2792,22 +2796,22 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
       return this.ampBPS;
     }
     /**
-     * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
+     * Returns the current mid price of the pair in terms of token0 in virtual reserves
      */
 
   }, {
     key: "token0Price",
     get: function get() {
-      return new Price(this.token0, this.token1, this.tokenBalances[0].mul(this.weights[1]), this.tokenBalances[1].mul(this.weights[0]));
+      return new Price(this.token0, this.token1, this.virtualReserves[0].mul(this.weights[1]), this.virtualReserves[1].mul(this.weights[0]));
     }
     /**
-     * Returns the current mid price of the pair in terms of token1, i.e. the ratio of reserve0 to reserve1
+     * Returns the current mid price of the pair in terms of token1 in virtual reserves
      */
 
   }, {
     key: "token1Price",
     get: function get() {
-      return new Price(this.token1, this.token0, this.tokenBalances[1].mul(this.weights[0]), this.tokenBalances[0].mul(this.weights[1]));
+      return new Price(this.token1, this.token0, this.virtualReserves[1].mul(this.weights[0]), this.virtualReserves[0].mul(this.weights[1]));
     }
   }, {
     key: "fee0",

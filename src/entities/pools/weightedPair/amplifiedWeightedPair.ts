@@ -155,26 +155,26 @@ export class AmplifiedWeightedPair extends Pool {
     }
 
     /**
-     * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
+     * Returns the current mid price of the pair in terms of token0 in virtual reserves
      */
     public get token0Price(): Price {
         return new Price(
             this.token0,
             this.token1,
-            this.tokenBalances[0].mul(this.weights[1]),
-            this.tokenBalances[1].mul(this.weights[0])
+            this.virtualReserves[0].mul(this.weights[1]),
+            this.virtualReserves[1].mul(this.weights[0])
         )
     }
 
     /**
-     * Returns the current mid price of the pair in terms of token1, i.e. the ratio of reserve0 to reserve1
+     * Returns the current mid price of the pair in terms of token1 in virtual reserves
      */
     public get token1Price(): Price {
         return new Price(
             this.token1,
             this.token0,
-            this.tokenBalances[1].mul(this.weights[0]),
-            this.tokenBalances[0].mul(this.weights[1])
+            this.virtualReserves[1].mul(this.weights[0]),
+            this.virtualReserves[0].mul(this.weights[1])
         )
     }
 
@@ -189,13 +189,13 @@ export class AmplifiedWeightedPair extends Pool {
     public poolPriceBases(tokenIn: Token, _: Token): { priceBaseIn: BigNumber; priceBaseOut: BigNumber; } {
         if (tokenIn.equals(this.token0)) {
             return {
-                priceBaseIn: this.tokenBalances[0].mul(this.weights[1]),
-                priceBaseOut: this.tokenBalances[1].mul(this.weights[0])
+                priceBaseIn: this.virtualReserves[0].mul(this.weights[1]),
+                priceBaseOut: this.virtualReserves[1].mul(this.weights[0])
             }
         } else {
             return {
-                priceBaseIn: this.tokenBalances[1].mul(this.weights[0]),
-                priceBaseOut: this.tokenBalances[0].mul(this.weights[1])
+                priceBaseIn: this.virtualReserves[1].mul(this.weights[0]),
+                priceBaseOut: this.virtualReserves[0].mul(this.weights[1])
             }
         }
     }
@@ -366,6 +366,11 @@ export class AmplifiedWeightedPair extends Pool {
         tokenIn: Token,
         tokenOut: Token,
         inAmount: BigNumber): BigNumber {
+        if (
+            inAmount.gte(this.reserveOf(tokenIn))
+        ) {
+            throw new InsufficientReservesError()
+        }
         const inputReserve = this.virtualReserveOf(tokenIn)
         const outputReserve = this.virtualReserveOf(tokenOut)
 
@@ -390,8 +395,6 @@ export class AmplifiedWeightedPair extends Pool {
         tokenOut: Token,
         outAmount: BigNumber): BigNumber {
         if (
-            this.reserve0.raw.eq(ZERO) ||
-            this.reserve1.raw.eq(ZERO) ||
             outAmount.gte(this.reserveOf(tokenOut))
         ) {
             throw new InsufficientReservesError()
