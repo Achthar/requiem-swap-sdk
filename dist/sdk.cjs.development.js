@@ -3870,14 +3870,6 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
     return _this;
   }
 
-  WeightedPool.getRouterAddress = function getRouterAddress(chainId) {
-    return STABLE_POOL_ADDRESS[chainId];
-  };
-
-  WeightedPool.getLpAddress = function getLpAddress(chainId) {
-    return STABLE_POOL_LP_ADDRESS[chainId];
-  };
-
   WeightedPool.mock = function mock() {
     return new WeightedPool('', [new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [ZERO$1], WeightedSwapStorage.mock(), ZERO$1);
   }

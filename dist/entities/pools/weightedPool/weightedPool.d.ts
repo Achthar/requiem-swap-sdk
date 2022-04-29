@@ -21,8 +21,6 @@ export declare class WeightedPool extends Pool {
     swapStorage: WeightedSwapStorage;
     _name: string;
     lpTotalSupply: BigNumber;
-    static getRouterAddress(chainId: number): string;
-    static getLpAddress(chainId: number): string;
     constructor(poolAddress: string, tokens: Token[], tokenBalances: BigNumber[], swapStorage: WeightedSwapStorage, lpTotalSupply: BigNumber, lpAddress?: string);
     static mock(): WeightedPool;
     /**
@@ -45,7 +43,8 @@ export declare class WeightedPool extends Pool {
     reserveOf(token: Token): BigNumber;
     calculateRemoveLiquidity(amountLp: BigNumber): BigNumber[];
     calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): {
-        [returnVal: string]: BigNumber;
+        amountOut: BigNumber;
+        swapFee: BigNumber;
     };
     getLiquidityAmount(amounts: BigNumber[], deposit: boolean): BigNumber;
     getLiquidityValue(outIndex: number, userBalances: BigNumber[]): TokenAmount;

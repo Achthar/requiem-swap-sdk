@@ -6,8 +6,6 @@ import { ethers } from 'ethers'
 import { WeightedSwapStorage } from '../../calculators/weightedSwapStorage'
 import {
   BigintIsh,
-  STABLE_POOL_ADDRESS,
-  STABLE_POOL_LP_ADDRESS
 } from '../../../constants'
 import weightedPoolABI from '../../../abis/WeightedPool.json'
 import { Token } from '../../token'
@@ -36,13 +34,6 @@ export class WeightedPool extends Pool {
   public _name: string
 
   public lpTotalSupply: BigNumber
-  public static getRouterAddress(chainId: number): string {
-    return STABLE_POOL_ADDRESS[chainId]
-  }
-
-  public static getLpAddress(chainId: number): string {
-    return STABLE_POOL_LP_ADDRESS[chainId]
-  }
 
   public constructor(
     poolAddress: string,
@@ -203,7 +194,7 @@ export class WeightedPool extends Pool {
     ).map((x, i) => x.div(this.swapStorage.tokenMultipliers[i]))
   }
 
-  public calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): { [returnVal: string]: BigNumber } {
+  public calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): { amountOut: BigNumber, swapFee: BigNumber } {
     return calculateRemoveLiquidityOneTokenExactIn(
       this.swapStorage,
       index,
