@@ -3969,7 +3969,14 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
   };
 
   _proto.calculateRemoveLiquidityOneToken = function calculateRemoveLiquidityOneToken(amount, index) {
-    return calculateRemoveLiquidityOneTokenExactIn(this.swapStorage, index, amount, this.lpTotalSupply, this.tokenBalances);
+    var _calculateRemoveLiqui = calculateRemoveLiquidityOneTokenExactIn(this.swapStorage, index, amount, this.lpTotalSupply, this.tokenBalances),
+        amountOut = _calculateRemoveLiqui.amountOut,
+        swapFee = _calculateRemoveLiqui.swapFee;
+
+    return {
+      amountOut: amountOut.div(this.swapStorage.tokenMultipliers[index]),
+      swapFee: swapFee
+    };
   };
 
   _proto.getLiquidityAmount = function getLiquidityAmount(amounts, deposit) {
@@ -3984,7 +3991,7 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
     }
 
     amount = amount.add(userBalances[outIndex]);
-    return new TokenAmount(this.tokens[outIndex], amount.toBigInt());
+    return new TokenAmount(this.tokens[outIndex], amount);
   };
 
   _proto.setSwapStorage = function setSwapStorage(swapStorage) {

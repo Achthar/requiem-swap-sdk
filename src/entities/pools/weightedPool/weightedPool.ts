@@ -195,13 +195,17 @@ export class WeightedPool extends Pool {
   }
 
   public calculateRemoveLiquidityOneToken(amount: BigNumber, index: number): { amountOut: BigNumber, swapFee: BigNumber } {
-    return calculateRemoveLiquidityOneTokenExactIn(
+    const { amountOut, swapFee } = calculateRemoveLiquidityOneTokenExactIn(
       this.swapStorage,
       index,
       amount,
       this.lpTotalSupply,
       this.tokenBalances
     )
+    return {
+      amountOut: amountOut.div(this.swapStorage.tokenMultipliers[index]),
+      swapFee
+    }
   }
 
   public getLiquidityAmount(amounts: BigNumber[], deposit: boolean) {
@@ -221,7 +225,7 @@ export class WeightedPool extends Pool {
         amount = amount.add(this.calculateSwapGivenIn(this.tokens[i], this.tokens[outIndex], userBalances[i]))
     }
     amount = amount.add(userBalances[outIndex])
-    return new TokenAmount(this.tokens[outIndex], amount.toBigInt())
+    return new TokenAmount(this.tokens[outIndex], amount)
   }
 
   public setSwapStorage(swapStorage: WeightedSwapStorage) {
