@@ -49,7 +49,8 @@ export class WeightedPool extends Pool {
     tokens: Token[],
     tokenBalances: BigNumber[],
     swapStorage: WeightedSwapStorage,
-    lpTotalSupply: BigNumber
+    lpTotalSupply: BigNumber,
+    lpAddress?: string
   ) {
     super()
     this.tokens = tokens
@@ -61,7 +62,7 @@ export class WeightedPool extends Pool {
     this.tokenBalances = tokenBalances
     this.liquidityToken = new Token(
       tokens[0].chainId,
-      STABLE_POOL_LP_ADDRESS[tokens[0].chainId] ?? '0x0000000000000000000000000000000000000001',
+      lpAddress ?? '0x0000000000000000000000000000000000000001',
       18,
       'Requiem-LP',
       'Requiem Swap LPs'
@@ -78,10 +79,6 @@ export class WeightedPool extends Pool {
 
   public static mock() {
     return new WeightedPool('', [new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [ZERO], WeightedSwapStorage.mock(), ZERO)
-  }
-
-  public getAddressForRouter(): string {
-    return STABLE_POOL_ADDRESS[this.tokens[0].chainId]
   }
 
   /**

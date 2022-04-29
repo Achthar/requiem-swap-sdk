@@ -47,7 +47,7 @@ describe('StablePool', () => {
 
       // end setup providers
 
-      const address = StablePool.getRouterAddress(chainId)
+      const address = '0x0Be60C571BdA7841D8F6eE68afDBa648EC710fD7'
       // console.log("address", address)
       const tokenAddresses = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).getTokens()
       // console.log("TokenAddresses", tokenAddresses)
@@ -101,7 +101,7 @@ describe('StablePool', () => {
       // console.log("Swap Storage Class", swapStorage)
       console.log("--- withdrawl fee-----")
       const currentWithdrawFee = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateCurrentWithdrawFee('0x10E38dFfFCfdBaaf590D5A9958B01C9cfcF6A63B')
-      const stablePool = new StablePool(Object.values(STABLES_INDEX_MAP[chainId]), tokenReserves, _A, swapStorage, blockNumber, lpTotalSupply, currentWithdrawFee,'')
+      const stablePool = new StablePool(Object.values(STABLES_INDEX_MAP[chainId]), tokenReserves, _A, swapStorage, blockNumber, lpTotalSupply, currentWithdrawFee, '')
       // console.log("Balances manual", stablePool.getBalances())
       // console.log("Balances manual numbers", stablePool.getBalances().map(val => val.toString()))
       // console.log("NBALS manual", swapStorage.tokenMultipliers.map((_, index) => stablePool.tokenBalances[index].mul(swapStorage.tokenMultipliers[index]).toString()))
@@ -109,7 +109,7 @@ describe('StablePool', () => {
       const inIndex = STABLES_INDEX_MAP[chainId][0]
       const outIndex = STABLES_INDEX_MAP[chainId][1]
       console.log("--- swap via png----")
-      const swapActual = await stablePool.calculateSwapViaPing(inIndex, outIndex, BigNumber.from('10000'), 43113, jsonProv)
+      const swapActual = await stablePool.calculateSwapViaPing(inIndex, outIndex, BigNumber.from('10000'), jsonProv)
 
       console.log("calculate swap", swapActual.toString())
       const inAmount = BigNumber.from('10000')
@@ -188,7 +188,7 @@ describe('StablePool', () => {
         BigNumber.from("1239123"))
       console.log("GIVEN OUT", y.toString(), bench5.toString())
 
-      const y1 = stablePool.calculateSwapGivenOut(outIndex,  STABLES_INDEX_MAP[chainId][3], BigNumber.from("1239123"))
+      const y1 = stablePool.calculateSwapGivenOut(outIndex, STABLES_INDEX_MAP[chainId][3], BigNumber.from("1239123"))
 
       console.log("IN", BigNumber.from("0xf4240").toString())
       const bench6 = await new ethers.Contract(address, new ethers.utils.Interface(StableSwap), jsonProv).calculateSwapGivenOut(

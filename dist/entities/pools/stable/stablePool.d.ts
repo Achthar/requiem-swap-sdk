@@ -23,9 +23,7 @@ export declare class StablePool extends Pool {
     lpTotalSupply: BigNumber;
     currentWithdrawFee: BigNumber;
     _name: string;
-    static getRouterAddress(chainId: number): string;
-    static getLpAddress(chainId: number): string;
-    constructor(tokens: Token[], tokenBalances: BigNumber[], _A: BigNumber, swapStorage: StableSwapStorage, blockTimestamp: number, lpTotalSupply: BigNumber, currentWithdrawFee: BigNumber, poolAddress: string);
+    constructor(tokens: Token[], tokenBalances: BigNumber[], _A: BigNumber, swapStorage: StableSwapStorage, blockTimestamp: number, lpTotalSupply: BigNumber, currentWithdrawFee: BigNumber, poolAddress: string, lpAddress?: string);
     static mock(): StablePool;
     getAddressForRouter(): string;
     /**
@@ -37,7 +35,7 @@ export declare class StablePool extends Pool {
     tokenFromIndex(index: number): Token;
     indexFromToken(token: Token): number;
     getBalances(): BigNumber[];
-    calculateSwapViaPing(inToken: Token, outToken: Token, inAmount: BigNumber | BigintIsh, chainId: number, provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh>;
+    calculateSwapViaPing(inToken: Token, outToken: Token, inAmount: BigNumber | BigintIsh, provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh>;
     calculateSwapGivenIn(tokenIn: Token, tokenOut: Token, inAmount: BigNumber): BigNumber;
     calculateSwapGivenOut(tokenIn: Token, tokenOut: Token, outAmount: BigNumber): BigNumber;
     getOutputAmount(inputAmount: TokenAmount, tokenOut: Token): TokenAmount;

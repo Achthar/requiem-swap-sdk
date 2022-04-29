@@ -3847,9 +3847,7 @@ var weightedPoolABI = [
 var WeightedPool = /*#__PURE__*/function (_Pool) {
   _inheritsLoose(WeightedPool, _Pool);
 
-  function WeightedPool(poolAddress, tokens, tokenBalances, swapStorage, lpTotalSupply) {
-    var _STABLE_POOL_LP_ADDRE;
-
+  function WeightedPool(poolAddress, tokens, tokenBalances, swapStorage, lpTotalSupply, lpAddress) {
     var _this;
 
     _this = _Pool.call(this) || this;
@@ -3860,7 +3858,7 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
     _this.swapStorage = swapStorage;
     _this.tokens = tokens;
     _this.tokenBalances = tokenBalances;
-    _this.liquidityToken = new Token(tokens[0].chainId, (_STABLE_POOL_LP_ADDRE = STABLE_POOL_LP_ADDRESS[tokens[0].chainId]) !== null && _STABLE_POOL_LP_ADDRE !== void 0 ? _STABLE_POOL_LP_ADDRE : '0x0000000000000000000000000000000000000001', 18, 'Requiem-LP', 'Requiem Swap LPs');
+    _this.liquidityToken = new Token(tokens[0].chainId, lpAddress !== null && lpAddress !== void 0 ? lpAddress : '0x0000000000000000000000000000000000000001', 18, 'Requiem-LP', 'Requiem Swap LPs');
 
     for (var i = 0; i < Object.values(_this.tokens).length; i++) {
       !(tokens[i].address != ethers.ethers.constants.AddressZero) ?  invariant(false, "invalidTokenAddress")  : void 0;
@@ -3882,18 +3880,14 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
 
   WeightedPool.mock = function mock() {
     return new WeightedPool('', [new Token(1, '0x0000000000000000000000000000000000000001', 6, 'Mock USDC', 'MUSDC')], [ZERO$1], WeightedSwapStorage.mock(), ZERO$1);
-  };
-
-  var _proto = WeightedPool.prototype;
-
-  _proto.getAddressForRouter = function getAddressForRouter() {
-    return STABLE_POOL_ADDRESS[this.tokens[0].chainId];
   }
   /**
    * Returns true if the token is either token0 or token1
    * @param token to check
    */
   ;
+
+  var _proto = WeightedPool.prototype;
 
   _proto.involvesToken = function involvesToken(token) {
     var res = false;
@@ -5765,9 +5759,7 @@ var StableSwap = [
 var StablePool = /*#__PURE__*/function (_Pool) {
   _inheritsLoose(StablePool, _Pool);
 
-  function StablePool(tokens, tokenBalances, _A, swapStorage, blockTimestamp, lpTotalSupply, currentWithdrawFee, poolAddress) {
-    var _STABLE_POOL_LP_ADDRE;
-
+  function StablePool(tokens, tokenBalances, _A, swapStorage, blockTimestamp, lpTotalSupply, currentWithdrawFee, poolAddress, lpAddress) {
     var _this;
 
     _this = _Pool.call(this) || this;
@@ -5778,7 +5770,7 @@ var StablePool = /*#__PURE__*/function (_Pool) {
     _this.blockTimestamp = ethers.BigNumber.from(blockTimestamp);
     _this.tokenBalances = tokenBalances;
     _this._A = _A;
-    _this.liquidityToken = new Token(tokens[0].chainId, (_STABLE_POOL_LP_ADDRE = STABLE_POOL_LP_ADDRESS[tokens[0].chainId]) !== null && _STABLE_POOL_LP_ADDRE !== void 0 ? _STABLE_POOL_LP_ADDRE : '0x0000000000000000000000000000000000000001', 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
+    _this.liquidityToken = new Token(tokens[0].chainId, lpAddress !== null && lpAddress !== void 0 ? lpAddress : STABLE_POOL_LP_ADDRESS[tokens[0].chainId], 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
     _this.address = ethers.ethers.utils.getAddress(poolAddress);
 
     for (var i = 0; i < Object.values(_this.tokens).length; i++) {
@@ -5790,14 +5782,6 @@ var StablePool = /*#__PURE__*/function (_Pool) {
     _this._name = 'Stable Pool';
     return _this;
   }
-
-  StablePool.getRouterAddress = function getRouterAddress(chainId) {
-    return STABLE_POOL_ADDRESS[chainId];
-  };
-
-  StablePool.getLpAddress = function getLpAddress(chainId) {
-    return STABLE_POOL_LP_ADDRESS[chainId];
-  };
 
   StablePool.mock = function mock() {
     var dummy = ethers.BigNumber.from(0);
@@ -5851,9 +5835,11 @@ var StablePool = /*#__PURE__*/function (_Pool) {
   // be inefficient
   ;
 
-  _proto.calculateSwapViaPing = function calculateSwapViaPing(inToken, outToken, inAmount, chainId, provider) {
+  _proto.calculateSwapViaPing = function calculateSwapViaPing(inToken, outToken, inAmount, provider) {
     try {
-      return Promise.resolve(new contracts.Contract(StablePool.getRouterAddress(chainId), new ethers.ethers.utils.Interface(StableSwap), provider).calculateSwap(inToken.address, outToken.address, inAmount));
+      var _this4 = this;
+
+      return Promise.resolve(new contracts.Contract(_this4.address, new ethers.ethers.utils.Interface(StableSwap), provider).calculateSwap(inToken.address, outToken.address, inAmount));
     } catch (e) {
       return Promise.reject(e);
     }

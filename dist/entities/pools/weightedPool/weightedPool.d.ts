@@ -23,9 +23,8 @@ export declare class WeightedPool extends Pool {
     lpTotalSupply: BigNumber;
     static getRouterAddress(chainId: number): string;
     static getLpAddress(chainId: number): string;
-    constructor(poolAddress: string, tokens: Token[], tokenBalances: BigNumber[], swapStorage: WeightedSwapStorage, lpTotalSupply: BigNumber);
+    constructor(poolAddress: string, tokens: Token[], tokenBalances: BigNumber[], swapStorage: WeightedSwapStorage, lpTotalSupply: BigNumber, lpAddress?: string);
     static mock(): WeightedPool;
-    getAddressForRouter(): string;
     /**
      * Returns true if the token is either token0 or token1
      * @param token to check

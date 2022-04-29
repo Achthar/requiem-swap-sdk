@@ -46,14 +46,6 @@ export class StablePool extends Pool {
   public currentWithdrawFee: BigNumber
   public _name: string
 
-  public static getRouterAddress(chainId: number): string {
-    return STABLE_POOL_ADDRESS[chainId]
-  }
-
-  public static getLpAddress(chainId: number): string {
-    return STABLE_POOL_LP_ADDRESS[chainId]
-  }
-
   public constructor(
     tokens: Token[],
     tokenBalances: BigNumber[],
@@ -62,7 +54,8 @@ export class StablePool extends Pool {
     blockTimestamp: number,
     lpTotalSupply: BigNumber,
     currentWithdrawFee: BigNumber,
-    poolAddress: string
+    poolAddress: string,
+    lpAddress?: string
   ) {
     super()
     this.tokens = tokens
@@ -74,7 +67,7 @@ export class StablePool extends Pool {
     this._A = _A
     this.liquidityToken = new Token(
       tokens[0].chainId,
-      STABLE_POOL_LP_ADDRESS[tokens[0].chainId] ?? '0x0000000000000000000000000000000000000001',
+      lpAddress ?? STABLE_POOL_LP_ADDRESS[tokens[0].chainId],
       18,
       'RequiemStable-LP',
       'Requiem StableSwap LPs'
@@ -141,10 +134,9 @@ export class StablePool extends Pool {
     inToken: Token,
     outToken: Token,
     inAmount: BigNumber | BigintIsh,
-    chainId: number,
     provider: ethers.Signer | ethers.providers.Provider): Promise<BigintIsh> {
 
-    const outAmount: BigintIsh = await new Contract(StablePool.getRouterAddress(chainId), new ethers.utils.Interface(StableSwap), provider).calculateSwap(inToken.address, outToken.address, inAmount)
+    const outAmount: BigintIsh = await new Contract(this.address, new ethers.utils.Interface(StableSwap), provider).calculateSwap(inToken.address, outToken.address, inAmount)
 
     return outAmount
   }
