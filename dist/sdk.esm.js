@@ -1711,7 +1711,7 @@ function _calcDueTokenProtocolSwapFeeAmount(balance, normalizedWeight, previousI
 }
 
 // SPDX-License-Identifier: MIT
-var FEE_DENOMINATOR = /*#__PURE__*/BigNumber$1.from(10000000000);
+var FEE_DENOMINATOR = ONE_18;
 function calculateRemoveLiquidityOneTokenExactIn(self, outIndex, lpAmount, lpSupply, tokenBalances) {
   return _calcTokenOutGivenExactLpIn(tokenBalances[outIndex].mul(self.tokenMultipliers[outIndex]), self.normalizedWeights[outIndex], lpAmount, lpSupply, self.fee);
 }

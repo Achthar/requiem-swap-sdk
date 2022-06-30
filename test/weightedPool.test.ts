@@ -46,9 +46,9 @@ describe('WeightedPool', () => {
       console.log("SSComp", manualSS)
 
       const poolTokens = [
+        new Token(43113, '0x70dC2c5F81BC18e115759398aF197e99f228f713', 18, "WETH"),
         new Token(43113, '0x31AbD3aA54cb7bdda3f52e304A5Ed9c1a783D289', 8, "WBTC"),
         new Token(43113, '0xffb3ed4960cac85372e6838fbc9ce47bcf2d073e', 6, "USDT"),
-        new Token(43113, '0x70dC2c5F81BC18e115759398aF197e99f228f713', 18, "WETH")
       ]
 
       const multipliers = poolTokens.map((token) => BigNumber.from(10).pow(18 - token.decimals))
@@ -64,7 +64,7 @@ describe('WeightedPool', () => {
       console.log("--- withdrawl fee-----")
 
       const weightedPool = new WeightedPool(
-        '0xCc62754F15f7F35E4c58Ce6aD5608fA575C5583E',
+        '0x33eae5C8D1c634387de8BDB7db1251Ae1B2497A9',
         poolTokens,
         tokenReserves,
         swapStorage,

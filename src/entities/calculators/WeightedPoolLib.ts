@@ -4,9 +4,9 @@ import { WeightedSwapStorage } from "./weightedSwapStorage";
 
 import { BigNumber } from '@ethersproject/bignumber'
 import { _calcAllTokensInGivenExactLpOut, _calcInGivenOut, _calcLpInGivenExactTokensOut, _calcLpOutGivenExactTokensIn, _calcOutGivenIn, _calcTokenOutGivenExactLpIn } from "./WeightedMath";
-import { ZERO } from "./LogExpMath";
+import { ONE_18, ZERO } from "./LogExpMath";
 
-const FEE_DENOMINATOR = BigNumber.from(10000000000)
+const FEE_DENOMINATOR = ONE_18
 
 export function calculateRemoveLiquidityOneTokenExactIn(
     self: WeightedSwapStorage,
