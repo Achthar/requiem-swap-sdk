@@ -1729,12 +1729,12 @@ function calculateTokenAmount(self, amounts, lpSupply, deposit, tokenBalances) {
   var lpTokenAmount = ZERO$1;
 
   if (deposit) {
-    var _calcLpOutGivenExactT = _calcLpOutGivenExactTokensIn(_xp(tokenBalances, self.tokenMultipliers), self.normalizedWeights, _xp(amounts, self.tokenMultipliers), lpSupply, self.fee.mul(1e8)),
+    var _calcLpOutGivenExactT = _calcLpOutGivenExactTokensIn(_xp(tokenBalances, self.tokenMultipliers), self.normalizedWeights, _xp(amounts, self.tokenMultipliers), lpSupply, self.fee),
         lpOut = _calcLpOutGivenExactT.lpOut;
 
     lpTokenAmount = lpOut;
   } else {
-    var _calcLpInGivenExactTo = _calcLpInGivenExactTokensOut(_xp(tokenBalances, self.tokenMultipliers), self.normalizedWeights, _xp(amounts, self.tokenMultipliers), lpSupply, self.fee.mul(1e8)),
+    var _calcLpInGivenExactTo = _calcLpInGivenExactTokensOut(_xp(tokenBalances, self.tokenMultipliers), self.normalizedWeights, _xp(amounts, self.tokenMultipliers), lpSupply, self.fee),
         lpIn = _calcLpInGivenExactTo.lpIn;
 
     lpTokenAmount = lpIn;

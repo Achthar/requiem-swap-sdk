@@ -55,7 +55,7 @@ export function calculateTokenAmount(
             self.normalizedWeights,
             _xp(amounts, self.tokenMultipliers),
             lpSupply,
-            self.fee.mul(1e8)
+            self.fee
         );
         lpTokenAmount = lpOut
     } else {
@@ -64,7 +64,7 @@ export function calculateTokenAmount(
             self.normalizedWeights,
             _xp(amounts, self.tokenMultipliers),
             lpSupply,
-            self.fee.mul(1e8)
+            self.fee
         );
         lpTokenAmount = lpIn
     }
