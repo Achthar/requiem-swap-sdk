@@ -4072,8 +4072,8 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
 }(Pool);
 
 var MAX_ITERATION = 256;
-var A_PRECISION = /*#__PURE__*/ethers.BigNumber.from(100);
-var FEE_DENOMINATOR$1 = /*#__PURE__*/ethers.BigNumber.from(1e10);
+var A_PRECISION = /*#__PURE__*/ethers.BigNumber.from(1000);
+var FEE_DENOMINATOR$1 = ONE_18;
 var ONE$3 = /*#__PURE__*/ethers.BigNumber.from(1);
 function _xp$1(balances, rates) {
   var result = [];

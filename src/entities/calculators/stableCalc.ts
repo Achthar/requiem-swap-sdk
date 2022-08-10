@@ -1,10 +1,11 @@
 import { BigNumber } from 'ethers'
 import invariant from 'tiny-invariant'
+import { ONE_18 } from './LogExpMath'
 import { StableSwapStorage } from './stableSwapStorage'
 
 const MAX_ITERATION = 256
-export const A_PRECISION = BigNumber.from(100)
-const FEE_DENOMINATOR = BigNumber.from(1e10)
+export const A_PRECISION = BigNumber.from(1000)
+const FEE_DENOMINATOR = ONE_18
 const ONE = BigNumber.from(1)
 
 export function _xp(balances: BigNumber[], rates: BigNumber[]): BigNumber[] {
