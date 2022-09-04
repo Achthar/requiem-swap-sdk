@@ -62,7 +62,6 @@ export declare class AmplifiedWeightedPair extends Pool {
     weightOf(token: Token): BigNumber;
     getLiquidityMinted(totalSupply: TokenAmount, tokenAmountA: TokenAmount, tokenAmountB: TokenAmount): TokenAmount;
     getLiquidityValue(token: Token, totalSupply: TokenAmount, liquidity: TokenAmount, feeOn?: boolean, kLast?: BigintIsh): TokenAmount;
-    clone(): AmplifiedWeightedPair;
     /**
    * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
    */
@@ -81,4 +80,5 @@ export declare class AmplifiedWeightedPair extends Pool {
     getOutputAmount(inputAmount: TokenAmount): [TokenAmount, Pool];
     getInputAmount(outputAmount: TokenAmount): [TokenAmount, Pool];
     adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount): void;
+    clone(): AmplifiedWeightedPair;
 }

@@ -307,7 +307,7 @@ describe('SwapRoute', () => {
             expect(swaps[1].route.swapData).toHaveLength(6) // 0 -> 1 -> 2 at 12:12:10
             expect(swaps[1].route.path).toEqual([token0, token1, stable1, stable2, token1, token0, token2])
             expect(swaps[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
-            expect(swaps[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(160)))
+            expect(swaps[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(181)))
         })
 
 

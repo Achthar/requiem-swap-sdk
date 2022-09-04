@@ -10,10 +10,10 @@ import { Price } from './fractions/price'
 import { TokenAmount, InputOutput } from './fractions/tokenAmount'
 import { currencyEquals, WRAPPED_NETWORK_TOKENS } from './token'
 import {
-  Pool
-  , PoolDictionary
+  PoolDictionary
 } from './pools/pool'
 import { SwapRoute } from './swapRoute'
+import * as _ from "lodash";
 // import { SwapRoute } from './swapRoute'
 // import { SwapData } from './pools/swapData'
 
@@ -109,7 +109,6 @@ function wrappedAmount(currencyAmount: CurrencyAmount, chainId: ChainId): TokenA
   invariant(false, 'CURRENCY')
 }
 
-
 /**
  * Represents a trade executed against a list of pairs.
  * Does not account for slippage, i.e. trades that front run this trade and move the price.
@@ -152,7 +151,7 @@ export class Swap {
    * @param route route of the exact in trade
    * @param amountIn the amount being passed in
    */
-  public static exactIn(route: SwapRoute, amountIn: TokenAmount, poolDict: { [id: string]: Pool }): Swap {
+  public static exactIn(route: SwapRoute, amountIn: TokenAmount, poolDict: PoolDictionary): Swap {
     return new Swap(route, amountIn, SwapType.EXACT_INPUT, poolDict)
   }
 
@@ -161,35 +160,45 @@ export class Swap {
    * @param route route of the exact out trade
    * @param amountOut the amount returned by the trade
    */
-  public static exactOut(route: SwapRoute, amountOut: TokenAmount, poolDict: { [id: string]: Pool }): Swap {
+  public static exactOut(route: SwapRoute, amountOut: TokenAmount, poolDict: PoolDictionary): Swap {
     return new Swap(route, amountOut, SwapType.EXACT_OUTPUT, poolDict)
   }
 
-  public constructor(route: SwapRoute, amount: TokenAmount, tradeType: SwapType, poolDict: { [id: string]: Pool }) {
+  public constructor(route: SwapRoute, amount: TokenAmount, tradeType: SwapType, poolDict: PoolDictionary) {
     const amounts: TokenAmount[] = new Array(route.path.length)
     let _isValid = true
     if (tradeType === SwapType.EXACT_INPUT) {
       invariant(currencyEquals(amount.currency, route.input), 'INPUT')
       amounts[0] = wrappedAmount(amount, route.chainId)
-      // let poolDictCopy = { ...poolDict };
+      let poolDictCopy: PoolDictionary = _.cloneDeep(poolDict);
       for (let i = 0; i < route.path.length - 1; i++) {
         const pair = route.swapData[i]
         try {
-          const outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDict);
+          const outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDictCopy);
+          // clone pool and adjust it for the swapped amount
+          const pool = _.cloneDeep(poolDictCopy[pair.poolRef]);
+          pool.adjustForSwap(amounts[i], outputAmount)
+          // assign to cloned pool
+          poolDictCopy[pair.poolRef] = pool;
           amounts[i + 1] = outputAmount;
         } catch {
           _isValid = false
           break;
         }
-
       }
     } else {
       invariant(currencyEquals(amount.currency, route.output), 'OUTPUT')
       amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId)
+      let poolDictCopy: PoolDictionary = _.cloneDeep(poolDict);
       for (let i = route.path.length - 1; i > 0; i--) {
         const pair = route.swapData[i - 1]
         try {
-          const inputAmount = pair.calculateSwapGivenOut(amounts[i], poolDict)
+          const inputAmount = pair.calculateSwapGivenOut(amounts[i], poolDictCopy)
+          // clone pool and adjust it for the swapped amount
+          const pool = _.cloneDeep(poolDictCopy[pair.poolRef]);
+          pool.adjustForSwap(inputAmount, amounts[i])
+          // assign to cloned pool
+          poolDictCopy[pair.poolRef] = pool;
           amounts[i - 1] = inputAmount
         } catch {
           _isValid = false

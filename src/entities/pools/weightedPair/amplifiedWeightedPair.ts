@@ -332,10 +332,6 @@ export class AmplifiedWeightedPair extends Pool {
         )
     }
 
-    public clone(): AmplifiedWeightedPair {
-        return new AmplifiedWeightedPair(this.tokens, this.tokenBalances, this.virtualReserves, this.weight0, this.fee, this.ampBPS)
-    }
-
     // these are only supposed to be used for liquidity calculations
     /**
    * Returns the current mid price of the pair in terms of token0, i.e. the ratio of reserve1 to reserve0
@@ -508,6 +504,9 @@ export class AmplifiedWeightedPair extends Pool {
         this.virtualReserves[this.indexFromToken(amountOut.token)] = this.virtualReserves[this.indexFromToken(amountOut.token)].sub(amountOut.raw.mul(this.amp).div(TENK))
     };
 
+    public clone(): AmplifiedWeightedPair {
+        return new AmplifiedWeightedPair(this.tokens, this.tokenBalances, this.virtualReserves, this.weight0, this.fee0, this.amp, this.address)
+    }
 }
 
 

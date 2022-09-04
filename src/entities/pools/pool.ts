@@ -125,6 +125,9 @@ export abstract class Pool {
     // function that adjusts pool for swap  amounts if routed through more than once
     public abstract adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount): void;
 
+    // function that adjusts pool for swap  amounts if routed through more than once
+    public abstract clone(): Pool;
+
 }
 
 

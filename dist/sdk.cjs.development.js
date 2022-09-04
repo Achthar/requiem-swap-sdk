@@ -14,6 +14,7 @@ var toFormat = _interopDefault(require('toformat'));
 var bignumber = require('@ethersproject/bignumber');
 var solidity = require('@ethersproject/solidity');
 var contracts = require('@ethersproject/contracts');
+var _ = require('lodash');
 
 var _SOLIDITY_TYPE_MAXIMA;
 
@@ -87,11 +88,14 @@ function _defineProperties(target, props) {
 function _createClass(Constructor, protoProps, staticProps) {
   if (protoProps) _defineProperties(Constructor.prototype, protoProps);
   if (staticProps) _defineProperties(Constructor, staticProps);
+  Object.defineProperty(Constructor, "prototype", {
+    writable: false
+  });
   return Constructor;
 }
 
 function _extends() {
-  _extends = Object.assign || function (target) {
+  _extends = Object.assign ? Object.assign.bind() : function (target) {
     for (var i = 1; i < arguments.length; i++) {
       var source = arguments[i];
 
@@ -104,7 +108,6 @@ function _extends() {
 
     return target;
   };
-
   return _extends.apply(this, arguments);
 }
 
@@ -116,18 +119,17 @@ function _inheritsLoose(subClass, superClass) {
 }
 
 function _getPrototypeOf(o) {
-  _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function _getPrototypeOf(o) {
     return o.__proto__ || Object.getPrototypeOf(o);
   };
   return _getPrototypeOf(o);
 }
 
 function _setPrototypeOf(o, p) {
-  _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function _setPrototypeOf(o, p) {
     o.__proto__ = p;
     return o;
   };
-
   return _setPrototypeOf(o, p);
 }
 
@@ -146,7 +148,7 @@ function _isNativeReflectConstruct() {
 
 function _construct(Parent, args, Class) {
   if (_isNativeReflectConstruct()) {
-    _construct = Reflect.construct;
+    _construct = Reflect.construct.bind();
   } else {
     _construct = function _construct(Parent, args, Class) {
       var a = [null];
@@ -2706,10 +2708,6 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
     }
 
     return new TokenAmount(token, liquidity.raw.mul(this.reserveOf(token)).div(totalSupplyAdjusted.raw));
-  };
-
-  _proto.clone = function clone() {
-    return new AmplifiedWeightedPair(this.tokens, this.tokenBalances, this.virtualReserves, this.weight0, this.fee, this.ampBPS);
   } // these are only supposed to be used for liquidity calculations
 
   /**
@@ -2796,6 +2794,10 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
   _proto.adjustForSwap = function adjustForSwap(amountIn, amountOut) {
     this.virtualReserves[this.indexFromToken(amountIn.token)] = this.virtualReserves[this.indexFromToken(amountIn.token)].add(amountIn.raw.mul(this.amp).div(TENK));
     this.virtualReserves[this.indexFromToken(amountOut.token)] = this.virtualReserves[this.indexFromToken(amountOut.token)].sub(amountOut.raw.mul(this.amp).div(TENK));
+  };
+
+  _proto.clone = function clone() {
+    return new AmplifiedWeightedPair(this.tokens, this.tokenBalances, this.virtualReserves, this.weight0, this.fee0, this.amp, this.address);
   };
 
   _createClass(AmplifiedWeightedPair, [{
@@ -6533,13 +6535,21 @@ var Swap = /*#__PURE__*/function () {
 
     if (tradeType === exports.SwapType.EXACT_INPUT) {
       !currencyEquals(amount.currency, route.input) ?  invariant(false, 'INPUT')  : void 0;
-      amounts[0] = wrappedAmount(amount, route.chainId); // let poolDictCopy = { ...poolDict };
+      amounts[0] = wrappedAmount(amount, route.chainId);
+
+      var poolDictCopy = _.cloneDeep(poolDict);
 
       for (var i = 0; i < route.path.length - 1; i++) {
         var pair = route.swapData[i];
 
         try {
-          var outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDict);
+          var outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDictCopy); // clone pool and adjust it for the swapped amount
+
+          var pool = _.cloneDeep(poolDictCopy[pair.poolRef]);
+
+          pool.adjustForSwap(amounts[i], outputAmount); // assign to cloned pool
+
+          poolDictCopy[pair.poolRef] = pool;
           amounts[i + 1] = outputAmount;
         } catch (_unused) {
           _isValid = false;
@@ -6550,12 +6560,21 @@ var Swap = /*#__PURE__*/function () {
       !currencyEquals(amount.currency, route.output) ?  invariant(false, 'OUTPUT')  : void 0;
       amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId);
 
+      var _poolDictCopy = _.cloneDeep(poolDict);
+
       for (var _i = route.path.length - 1; _i > 0; _i--) {
         var _pair = route.swapData[_i - 1];
 
         try {
-          var inputAmount = _pair.calculateSwapGivenOut(amounts[_i], poolDict);
+          var inputAmount = _pair.calculateSwapGivenOut(amounts[_i], _poolDictCopy); // clone pool and adjust it for the swapped amount
 
+
+          var _pool = _.cloneDeep(_poolDictCopy[_pair.poolRef]);
+
+          _pool.adjustForSwap(inputAmount, amounts[_i]); // assign to cloned pool
+
+
+          _poolDictCopy[_pair.poolRef] = _pool;
           amounts[_i - 1] = inputAmount;
         } catch (_unused2) {
           _isValid = false;
