@@ -339,19 +339,19 @@ describe('SwapRoute', () => {
 
             console.log(swaps.map(res => res.route.swapData.map(pd => [pd.tokenIn.symbol + '-' + pd.tokenOut.symbol])))
 
-            expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(8865)))
+            expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(1502)))
 
             // const in0 = pair_1_2.getInputAmount(amount)
             // const in1 = weightedPool.getInputAmount(in0, stable2)
 
-            expect(swaps).toHaveLength(4)
-            expect(swaps[0].route.swapData).toHaveLength(1) // 0 -> 2 at 10:11
-            expect(swaps[0].route.path).toEqual([token0, token2])
-            expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(8865)))
+            expect(swaps).toHaveLength(2)
+            expect(swaps[0].route.swapData).toHaveLength(2) // 0 -> 2 at 10:11
+            expect(swaps[0].route.path).toEqual([token0, token1, token2])
+            expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(1502)))
             expect(swaps[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(1000)))
-            expect(swaps[1].route.swapData).toHaveLength(2) // 0 -> 1 -> 2 at 12:12:10
-            expect(swaps[1].route.path).toEqual([token0, token1, token2])
-            expect(swaps[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(1502)))
+            expect(swaps[1].route.swapData).toHaveLength(1) // 0 -> 1 -> 2 at 12:12:10
+            expect(swaps[1].route.path).toEqual([token0, token2])
+            expect(swaps[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(8865)))
             expect(swaps[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(1000)))
         })
 

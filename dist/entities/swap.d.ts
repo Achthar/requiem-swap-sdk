@@ -83,4 +83,11 @@ export declare class Swap {
      * @returns trades in an array
      */
     static PriceRoutes(swapRoutes: SwapRoute[], amount: TokenAmount, swapType: SwapType, poolDict: PoolDictionary): Swap[];
+    /**
+     * @notice the solidity router cannot calculate exact out swaps whewn routing twice through the same pool
+     * -> this function returns false if the route is of that kind
+     * @param route
+     * @returns
+     */
+    static validateRouteForExactOut(route: SwapRoute): boolean;
 }
