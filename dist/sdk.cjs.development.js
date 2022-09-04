@@ -6562,28 +6562,24 @@ var Swap = /*#__PURE__*/function () {
 
       var _poolDictCopy = _.cloneDeep(poolDict);
 
-      if (Swap.validateRouteForExactOut(route)) {
-        for (var _i = route.path.length - 1; _i > 0; _i--) {
-          var _pair = route.swapData[_i - 1];
+      for (var _i = route.path.length - 1; _i > 0; _i--) {
+        var _pair = route.swapData[_i - 1];
 
-          try {
-            var inputAmount = _pair.calculateSwapGivenOut(amounts[_i], _poolDictCopy); // clone pool and adjust it for the swapped amount
-
-
-            var _pool = _.cloneDeep(_poolDictCopy[_pair.poolRef]);
-
-            _pool.adjustForSwap(inputAmount, amounts[_i]); // assign to cloned pool
+        try {
+          var inputAmount = _pair.calculateSwapGivenOut(amounts[_i], _poolDictCopy); // clone pool and adjust it for the swapped amount
 
 
-            _poolDictCopy[_pair.poolRef] = _pool;
-            amounts[_i - 1] = inputAmount;
-          } catch (_unused2) {
-            _isValid = false;
-            break;
-          }
+          var _pool = _.cloneDeep(_poolDictCopy[_pair.poolRef]);
+
+          _pool.adjustForSwap(inputAmount, amounts[_i]); // assign to cloned pool
+
+
+          _poolDictCopy[_pair.poolRef] = _pool;
+          amounts[_i - 1] = inputAmount;
+        } catch (_unused2) {
+          _isValid = false;
+          break;
         }
-      } else {
-        _isValid = false;
       }
     }
 
@@ -6681,7 +6677,9 @@ var Swap = /*#__PURE__*/function () {
 
     if (swapType === exports.SwapType.EXACT_INPUT) return swaps.sort(function (a, b) {
       return a.outputAmount.raw.lt(b.outputAmount.raw) ? 1 : -1;
-    });else return swaps.sort(function (a, b) {
+    });else return swaps.filter(function (s) {
+      return Swap.validateRouteForExactOut(s.route);
+    }).sort(function (a, b) {
       return a.inputAmount.raw.gt(b.inputAmount.raw) ? 1 : -1;
     });
   }

@@ -190,23 +190,21 @@ export class Swap {
       invariant(currencyEquals(amount.currency, route.output), 'OUTPUT')
       amounts[amounts.length - 1] = wrappedAmount(amount, route.chainId)
       let poolDictCopy: PoolDictionary = _.cloneDeep(poolDict);
-      if (Swap.validateRouteForExactOut(route)) {
-        for (let i = route.path.length - 1; i > 0; i--) {
-          const pair = route.swapData[i - 1]
-          try {
-            const inputAmount = pair.calculateSwapGivenOut(amounts[i], poolDictCopy)
-            // clone pool and adjust it for the swapped amount
-            const pool = _.cloneDeep(poolDictCopy[pair.poolRef]);
-            pool.adjustForSwap(inputAmount, amounts[i])
-            // assign to cloned pool
-            poolDictCopy[pair.poolRef] = pool;
-            amounts[i - 1] = inputAmount
-          } catch {
-            _isValid = false
-            break;
-          }
+      for (let i = route.path.length - 1; i > 0; i--) {
+        const pair = route.swapData[i - 1]
+        try {
+          const inputAmount = pair.calculateSwapGivenOut(amounts[i], poolDictCopy)
+          // clone pool and adjust it for the swapped amount
+          const pool = _.cloneDeep(poolDictCopy[pair.poolRef]);
+          pool.adjustForSwap(inputAmount, amounts[i])
+          // assign to cloned pool
+          poolDictCopy[pair.poolRef] = pool;
+          amounts[i - 1] = inputAmount
+        } catch {
+          _isValid = false
+          break;
         }
-      } else { _isValid = false; }
+      }
     }
     this.isValid = _isValid
     this.route = route
@@ -276,7 +274,7 @@ export class Swap {
     if (swapType === SwapType.EXACT_INPUT)
       return swaps.sort((a, b) => (a.outputAmount.raw.lt(b.outputAmount.raw) ? 1 : -1))
     else
-      return swaps.sort((a, b) => (a.inputAmount.raw.gt(b.inputAmount.raw)) ? 1 : -1)
+      return swaps.filter(s => Swap.validateRouteForExactOut(s.route)).sort((a, b) => (a.inputAmount.raw.gt(b.inputAmount.raw)) ? 1 : -1)
   }
 
   /**
