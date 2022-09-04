@@ -14,6 +14,7 @@ import {
     // FEES_NUMERATOR,
     // FEES_DENOMINATOR,
     FACTORY_ADDRESS,
+    TENK,
 } from '../../../constants'
 import { sqrt, parseBigintIsh } from '../../../helperUtils'
 import {
@@ -501,6 +502,11 @@ export class AmplifiedWeightedPair extends Pool {
             )
         ]
     }
+
+    public adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount) {
+        this.virtualReserves[this.indexFromToken(amountIn.token)] = this.virtualReserves[this.indexFromToken(amountIn.token)].add(amountIn.raw.mul(this.amp).div(TENK))
+        this.virtualReserves[this.indexFromToken(amountOut.token)] = this.virtualReserves[this.indexFromToken(amountOut.token)].sub(amountOut.raw.mul(this.amp).div(TENK))
+    };
 
 }
 

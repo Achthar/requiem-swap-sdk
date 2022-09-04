@@ -45,7 +45,7 @@ describe('SwapRoute', () => {
     // )
 
     const pair_0_1 = AmplifiedWeightedPair.fromBigIntish([token0, token1], [1000, 1000], [1200, 1200], 40, 12, 12000)
-    console.log("REF", pair_0_1.virtualReserve0.raw)
+    const pair_0_1_c = AmplifiedWeightedPair.fromBigIntish([token0, token1], [1000, 1000], [1200, 1200], 20, 12, 12000)
     const pair_0_2 = AmplifiedWeightedPair.fromBigIntish([token0, token2], [1000, 1100], [1200, 1320], 40, 12, 12000)
     const pair_0_3 = AmplifiedWeightedPair.fromBigIntish([token0, token3], [1000, 900], [1200, 1080], 60, 12, 12000)
     const pair_1_2 = AmplifiedWeightedPair.fromBigIntish([token1, token2], [1200, 1000], [1440, 1200], 40, 12, 12000)
@@ -68,8 +68,8 @@ describe('SwapRoute', () => {
         "lpToken": '0xDf65aC8079A71f5174A35dE3D29e5458d03D5787',
         "fee": BigNumber.from('0x0f4240'),
         "adminFee": BigNumber.from('0x012a05f200'),
-        "initialA": BigNumber.from('0xea60'),
-        "futureA": BigNumber.from('0xea60'),
+        "initialA": BigNumber.from('6000'),
+        "futureA": BigNumber.from('6000'),
         "initialATime": BigNumber.from('0x00'),
         "futureATime": BigNumber.from('0x00'),
         "defaultWithdrawFee": BigNumber.from('0x02faf080'),
@@ -92,7 +92,7 @@ describe('SwapRoute', () => {
     const stablePool = new StablePool(
         stables,
         balances,
-        BigNumber.from('0xea60'),
+        BigNumber.from('6000'),
         swapStorage,
         98999999999,
         BigNumber.from('4000000000000000000000'),
@@ -303,25 +303,25 @@ describe('SwapRoute', () => {
             expect(swaps[0].route.swapData).toHaveLength(5) // 0 -> 2 at 10:11
             expect(swaps[0].route.path).toEqual([token0, token1, stable1, stable2, token1, token2])
             expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
-            expect(swaps[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(425)))
+            expect(swaps[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(421)))
             expect(swaps[1].route.swapData).toHaveLength(6) // 0 -> 1 -> 2 at 12:12:10
             expect(swaps[1].route.path).toEqual([token0, token1, stable1, stable2, token1, token0, token2])
             expect(swaps[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
-            expect(swaps[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(161)))
+            expect(swaps[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(160)))
         })
 
 
 
         it('provides best route exact out', () => {
 
-            const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, weightedPool, stablePool])
+            const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, weightedPool, stablePool, pair_1_s2])
 
             console.log("PDCHECK", pairData.map(pd => [pd.token0.symbol, pd.token1.symbol]))
             const result = RouteProvider.getRoutes(
                 pairData,
                 token0,
                 token2,
-                6
+                9
             )
             console.log('==================== EXACT OUT')
             console.log('preClean swaps', result.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol])))
@@ -335,21 +335,79 @@ describe('SwapRoute', () => {
 
             console.log(swaps.map(res => res.route.path.map(pd => pd.symbol).join('-')))
 
+            console.log("INPUTS", swaps.map(res => res.inputAmount.raw.toString()))
+
+            console.log(swaps.map(res => res.route.swapData.map(pd => [pd.tokenIn.symbol + '-' + pd.tokenOut.symbol])))
+
+            expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(8865)))
+
+            // const in0 = pair_1_2.getInputAmount(amount)
+            // const in1 = weightedPool.getInputAmount(in0, stable2)
+
+            expect(swaps).toHaveLength(4)
+            expect(swaps[0].route.swapData).toHaveLength(1) // 0 -> 2 at 10:11
+            expect(swaps[0].route.path).toEqual([token0, token2])
+            expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(8865)))
+            expect(swaps[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(1000)))
+            expect(swaps[1].route.swapData).toHaveLength(2) // 0 -> 1 -> 2 at 12:12:10
+            expect(swaps[1].route.path).toEqual([token0, token1, token2])
+            expect(swaps[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(1502)))
+            expect(swaps[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(1000)))
+        })
+
+
+        it('provides best route dual pair', () => {
+
+            const pairData = PairData.dataFromPools([pair_0_1, pair_0_1_c, pair_0_2])
+
+            console.log("PDCHECK", pairData.map(pd => [pd.token0.symbol, pd.token1.symbol]))
+            const result = RouteProvider.getRoutes(
+                pairData,
+                token0,
+                token2,
+                6
+            )
+            console.log('============= dual test')
+
+            console.log('preClean swaps', result.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol])))
+            console.log('preClean paths', result.map(r => r.path.map(p => p.symbol)))
+
+            const agg = SwapRoute.cleanRoutes(result)
+            console.log('postClean swaps', agg.map(r => r.swapData.map(d => [d.tokenIn.symbol + '-' + d.tokenOut.symbol, d.poolRef])))
+            console.log('postClean route', agg.map(r => r.path.map(p => p.symbol).join('-')))
+            const amount = new TokenAmount(token0, '100')
+            const swaps = Swap.PriceRoutes(agg, amount, SwapType.EXACT_INPUT, poolDict)
+
+            console.log(swaps.map(res => res.route.path.map(pd => pd.symbol).join('-')))
+
             console.log(swaps.map(res => res.outputAmount.toSignificant(18)))
 
             console.log(swaps.map(res => res.route.swapData.map(pd => [pd.tokenIn.symbol + '-' + pd.tokenOut.symbol])))
 
-            expect(swaps).toHaveLength(9)
-            expect(swaps[0].route.swapData).toHaveLength(5) // 0 -> 2 at 10:11
-            expect(swaps[0].route.path).toEqual([token0, token1, stable1, stable2, token1, token2])
-            expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
-            expect(swaps[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(425)))
-            expect(swaps[1].route.swapData).toHaveLength(6) // 0 -> 1 -> 2 at 12:12:10
-            expect(swaps[1].route.path).toEqual([token0, token1, stable1, stable2, token1, token0, token2])
-            expect(swaps[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
-            expect(swaps[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(161)))
-        })
+            // const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, pair_1_s2, stablePool, weightedPool])
+            // const result = Trade.bestTradeExactIn(
+            //     pairData,
+            //     new TokenAmount(token0, BigNumber.from(100)),
+            //     token2,
+            //     poolDict,
+            //     { maxHops: 6 }
+            // )
+            // console.log(result.map(res => res.route.path.map(pd => pd.symbol)))
 
+            // console.log(result.map(res => res.route.pairData.map(pd => [pd.token0.symbol, pd.token1.symbol])))
+
+            // console.log(result.map(res => { return { price: res.route.midPrice.toSignificant(18), out: res.outputAmount.toSignificant(18) } }))
+
+            // expect(swaps).toHaveLength(9)
+            // expect(swaps[0].route.swapData).toHaveLength(5) // 0 -> 2 at 10:11
+            // expect(swaps[0].route.path).toEqual([token0, token1, stable1, stable2, token1, token2])
+            // expect(swaps[0].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            // expect(swaps[0].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(421)))
+            // expect(swaps[1].route.swapData).toHaveLength(6) // 0 -> 1 -> 2 at 12:12:10
+            // expect(swaps[1].route.path).toEqual([token0, token1, stable1, stable2, token1, token0, token2])
+            // expect(swaps[1].inputAmount).toEqual(new TokenAmount(token0, BigNumber.from(100)))
+            // expect(swaps[1].outputAmount).toEqual(new TokenAmount(token2, BigNumber.from(160)))
+        })
 
         // it('provides best route StablePool and WeightedPool', () => {
         //     const pairData = PairData.dataFromPools([pair_0_1, pair_0_2, pair_1_2, pair_1_s2, stablePool, weightedPool])

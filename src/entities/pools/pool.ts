@@ -120,8 +120,10 @@ export abstract class Pool {
     public abstract poolPriceBases(tokenIn: Token, tokenOut: Token): {
         priceBaseIn: BigNumber
         priceBaseOut: BigNumber
-
     };
+
+    // function that adjusts pool for swap  amounts if routed through more than once
+    public abstract adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount): void;
 
 }
 

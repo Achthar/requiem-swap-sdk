@@ -297,4 +297,9 @@ export class WeightedPool extends Pool {
       priceBaseOut: this.swapStorage.normalizedWeights[inIndex].mul(this.tokenBalances[outIndex])
     }
   }
+
+  public adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount) {
+    this.tokenBalances[this.indexFromToken(amountIn.token)] = this.tokenBalances[this.indexFromToken(amountIn.token)].add(amountIn.raw)
+    this.tokenBalances[this.indexFromToken(amountOut.token)] = this.tokenBalances[this.indexFromToken(amountOut.token)].sub(amountOut.raw)
+  };
 }

@@ -40,6 +40,7 @@ export declare abstract class Pool {
         priceBaseIn: BigNumber;
         priceBaseOut: BigNumber;
     };
+    abstract adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount): void;
 }
 export declare enum PoolType {
     Pair = "Pair",

@@ -171,11 +171,12 @@ export class Swap {
     if (tradeType === SwapType.EXACT_INPUT) {
       invariant(currencyEquals(amount.currency, route.input), 'INPUT')
       amounts[0] = wrappedAmount(amount, route.chainId)
+      // let poolDictCopy = { ...poolDict };
       for (let i = 0; i < route.path.length - 1; i++) {
         const pair = route.swapData[i]
         try {
-          const outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDict)
-          amounts[i + 1] = outputAmount
+          const outputAmount = pair.calculateSwapGivenIn(amounts[i], poolDict);
+          amounts[i + 1] = outputAmount;
         } catch {
           _isValid = false
           break;
@@ -264,7 +265,7 @@ export class Swap {
     if (swapType === SwapType.EXACT_INPUT)
       return swaps.sort((a, b) => (a.outputAmount.raw.lt(b.outputAmount.raw) ? 1 : -1))
     else
-      return swaps.sort((a, b) => (a.outputAmount.raw.gt(b.outputAmount.raw)) ? 1 : -1)
+      return swaps.sort((a, b) => (a.inputAmount.raw.lt(b.inputAmount.raw)) ? 1 : -1)
   }
 
 }

@@ -18,7 +18,7 @@ export class SwapRoute {
 
     const path: Token[] = [swapData[0].tokenIn]
 
-    // it can happen that the pool is traded through consecutively, we wnat to remove this case 
+    // it can happen that the pool is traded through consecutively, we want to remove this case 
     const swapDataAggregated = []
     for (let i = 0; i < swapData.length; i++) {
       let currentSwap = swapData[i]
@@ -44,7 +44,7 @@ export class SwapRoute {
 
     this.swapData = swapDataAggregated
 
-    this.identifier = swapDataAggregated.map(x => x.poolRef).join('-') + path.map(p => p.address.charAt(5)).join('-')
+    this.identifier = swapDataAggregated.map(x => x.poolRef).join('') + path.map(p => p.address).join('')
     this.path = path
     // this.midPrice = Price.fromRoute(this, poolDict)
     this.input = path[0]

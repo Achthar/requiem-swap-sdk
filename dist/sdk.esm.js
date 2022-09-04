@@ -58,6 +58,7 @@ var TWO = /*#__PURE__*/BigNumber.from(2);
 var THREE = /*#__PURE__*/BigNumber.from(3);
 var FIVE = /*#__PURE__*/BigNumber.from(5);
 var TEN = /*#__PURE__*/BigNumber.from(10);
+var TENK = /*#__PURE__*/BigNumber.from(10000);
 var _100 = /*#__PURE__*/BigNumber.from(100);
 var SolidityType;
 
@@ -1768,7 +1769,7 @@ function _xp(balances, rates) {
 var ZERO$2 = /*#__PURE__*/BigNumber$1.from(0);
 var ONE$2 = /*#__PURE__*/BigNumber$1.from(1);
 var TWO$1 = /*#__PURE__*/BigNumber$1.from(2);
-var TENK = /*#__PURE__*/BigNumber$1.from(10000);
+var TENK$1 = /*#__PURE__*/BigNumber$1.from(10000);
 
 var _256 = /*#__PURE__*/BigNumber$1.from('256');
 
@@ -2315,17 +2316,17 @@ function getAmountOut(amountIn, reserveIn, reserveOut, tokenWeightIn, tokenWeigh
   //     return ZERO
 
   !(reserveIn.gt(ZERO$2) && reserveOut.gt(ZERO$2)) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY") : invariant(false) : void 0;
-  var amountInWithFee = amountIn.mul(TENK.sub(swapFee)); // special case for equal weights
+  var amountInWithFee = amountIn.mul(TENK$1.sub(swapFee)); // special case for equal weights
 
   if (tokenWeightIn.eq(tokenWeightOut)) {
-    return reserveOut.mul(amountInWithFee).div(reserveIn.mul(TENK).add(amountInWithFee));
+    return reserveOut.mul(amountInWithFee).div(reserveIn.mul(TENK$1).add(amountInWithFee));
   } // let result;
   // let precision: number;
 
 
-  var baseN = reserveIn.mul(TENK).add(amountInWithFee);
+  var baseN = reserveIn.mul(TENK$1).add(amountInWithFee);
 
-  var _power = power(baseN, reserveIn.mul(TENK), tokenWeightIn, tokenWeightOut),
+  var _power = power(baseN, reserveIn.mul(TENK$1), tokenWeightIn, tokenWeightOut),
       result = _power[0],
       precision = _power[1];
 
@@ -2357,8 +2358,8 @@ function getAmountIn(amountOut, reserveIn, reserveOut, tokenWeightIn, tokenWeigh
   !(reserveIn.gt(ZERO$2) && reserveOut.gt(ZERO$2)) ? process.env.NODE_ENV !== "production" ? invariant(false, "RequiemFormula: INSUFFICIENT_LIQUIDITY") : invariant(false) : void 0; // special case for equal weights
 
   if (tokenWeightIn.eq(tokenWeightOut)) {
-    var numerator = reserveIn.mul(amountOut).mul(TENK);
-    var denominator = reserveOut.sub(amountOut).mul(TENK.sub(swapFee));
+    var numerator = reserveIn.mul(amountOut).mul(TENK$1);
+    var denominator = reserveOut.sub(amountOut).mul(TENK$1.sub(swapFee));
     return numerator.div(denominator).add(1);
   }
 
@@ -2368,10 +2369,10 @@ function getAmountIn(amountOut, reserveIn, reserveOut, tokenWeightIn, tokenWeigh
       result = _power2[0],
       precision = _power2[1];
 
-  var baseReserveIn = reserveIn.mul(TENK);
+  var baseReserveIn = reserveIn.mul(TENK$1);
   var temp1 = baseReserveIn.mul(result);
   var temp2 = leftShift(baseReserveIn, BigNumber$1.from(precision));
-  return signedRightShift(temp1.sub(temp2), BigNumber$1.from(precision)).div(TENK.sub(swapFee)).add(1);
+  return signedRightShift(temp1.sub(temp2), BigNumber$1.from(precision)).div(TENK$1.sub(swapFee)).add(1);
 }
 
 var WeightedSwapStorage = /*#__PURE__*/function () {
@@ -2788,6 +2789,11 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
     var inputWeight = this.weightOf(outputAmount.token.equals(this.token0) ? this.token1 : this.token0);
     var inputAmount = new TokenAmount(outputAmount.token.equals(this.token0) ? this.token1 : this.token0, getAmountIn(outputAmount.toBigNumber(), inputReserve, outputReserve, inputWeight, outputWeight, this.fee));
     return [inputAmount, new AmplifiedWeightedPair([inputAmount.token, outputAmount.token], [this.reserveOf(inputAmount.token).add(inputAmount.raw), this.reserveOf(outputAmount.token).sub(outputAmount.raw)], [inputReserve.add(inputAmount.raw), outputReserve.sub(outputAmount.raw)], inputWeight, this.ampBPS, this.fee)];
+  };
+
+  _proto.adjustForSwap = function adjustForSwap(amountIn, amountOut) {
+    this.virtualReserves[this.indexFromToken(amountIn.token)] = this.virtualReserves[this.indexFromToken(amountIn.token)].add(amountIn.raw.mul(this.amp).div(TENK));
+    this.virtualReserves[this.indexFromToken(amountOut.token)] = this.virtualReserves[this.indexFromToken(amountOut.token)].sub(amountOut.raw.mul(this.amp).div(TENK));
   };
 
   _createClass(AmplifiedWeightedPair, [{
@@ -4057,6 +4063,11 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
       priceBaseIn: this.swapStorage.normalizedWeights[outIndex].mul(this.tokenBalances[inIndex]),
       priceBaseOut: this.swapStorage.normalizedWeights[inIndex].mul(this.tokenBalances[outIndex])
     };
+  };
+
+  _proto.adjustForSwap = function adjustForSwap(amountIn, amountOut) {
+    this.tokenBalances[this.indexFromToken(amountIn.token)] = this.tokenBalances[this.indexFromToken(amountIn.token)].add(amountIn.raw);
+    this.tokenBalances[this.indexFromToken(amountOut.token)] = this.tokenBalances[this.indexFromToken(amountOut.token)].sub(amountOut.raw);
   };
 
   _createClass(WeightedPool, [{
@@ -5767,7 +5778,7 @@ var StablePool = /*#__PURE__*/function (_Pool) {
     _this.blockTimestamp = BigNumber.from(blockTimestamp);
     _this.tokenBalances = tokenBalances;
     _this._A = _A;
-    _this.liquidityToken = new Token(tokens[0].chainId, lpAddress !== null && lpAddress !== void 0 ? lpAddress : STABLE_POOL_LP_ADDRESS[tokens[0].chainId], 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
+    _this.liquidityToken = new Token(tokens[0].chainId, lpAddress !== null && lpAddress !== void 0 ? lpAddress : '0x0000000000000000000000000000000000000001', 18, 'RequiemStable-LP', 'Requiem StableSwap LPs');
     _this.address = ethers.utils.getAddress(poolAddress);
 
     for (var i = 0; i < Object.values(_this.tokens).length; i++) {
@@ -5980,6 +5991,11 @@ var StablePool = /*#__PURE__*/function (_Pool) {
     };
   };
 
+  _proto.adjustForSwap = function adjustForSwap(amountIn, amountOut) {
+    this.tokenBalances[this.indexFromToken(amountIn.token)] = this.tokenBalances[this.indexFromToken(amountIn.token)].add(amountIn.raw);
+    this.tokenBalances[this.indexFromToken(amountOut.token)] = this.tokenBalances[this.indexFromToken(amountOut.token)].sub(amountOut.raw);
+  };
+
   _createClass(StablePool, [{
     key: "setCurrentWithdrawFee",
     set: function set(feeToSet) {
@@ -6004,6 +6020,7 @@ var SwapData = /*#__PURE__*/function () {
     this.tokenIn = tokenIn;
     this.tokenOut = tokenOut;
     this.poolRef = poolRef;
+    this.pool = null;
   }
 
   var _proto = SwapData.prototype;
@@ -6014,6 +6031,23 @@ var SwapData = /*#__PURE__*/function () {
 
   _proto.calculateSwapGivenIn = function calculateSwapGivenIn(tokenInAmount, poolDict) {
     return new TokenAmount(this.tokenOut, poolDict[this.poolRef].calculateSwapGivenIn(tokenInAmount.token, this.tokenOut, tokenInAmount.raw));
+  };
+
+  _proto.calculateSwapGivenOutAmendingPool = function calculateSwapGivenOutAmendingPool(tokenOutAmount, poolDict) {
+    // const poolDictCopy = { ...poolDict }
+    var refPool = Object.assign({}, poolDict[this.poolRef]);
+    var amount = new TokenAmount(this.tokenIn, refPool.calculateSwapGivenOut(this.tokenIn, tokenOutAmount.token, tokenOutAmount.raw));
+    poolDict[this.poolRef] = refPool;
+    return amount;
+  };
+
+  _proto.calculateSwapGivenInAmendingPool = function calculateSwapGivenInAmendingPool(tokenInAmount, poolDict) {
+    // const poolDictCopy = { ...poolDict }
+    var refPool = Object.assign({}, poolDict[this.poolRef]);
+    var amount = new TokenAmount(this.tokenOut, refPool.calculateSwapGivenIn(tokenInAmount.token, this.tokenOut, tokenInAmount.raw));
+    refPool.adjustForSwap(tokenInAmount, amount);
+    poolDict[this.poolRef] = refPool;
+    return amount;
   };
 
   _proto.involvesToken = function involvesToken(token) {
@@ -6039,7 +6073,9 @@ var SwapData = /*#__PURE__*/function () {
 
   SwapData.singleDataFromPool = function singleDataFromPool(tokenIn, tokenOut, pool) {
     !(pool.tokens.includes(tokenIn) && pool.tokens.includes(tokenOut)) ? process.env.NODE_ENV !== "production" ? invariant(false) : invariant(false) : void 0;
-    return new SwapData(tokenIn, tokenOut, pool.address);
+    var data = new SwapData(tokenIn, tokenOut, pool.address);
+    data.pool = pool;
+    return data;
   };
 
   _proto.fetchPoolPrice = function fetchPoolPrice(poolDict) {
@@ -6049,6 +6085,10 @@ var SwapData = /*#__PURE__*/function () {
 
     this.priceBaseIn = priceBaseIn;
     this.priceBaseOut = priceBaseOut;
+  };
+
+  _proto.setPool = function setPool(pool) {
+    this.pool = pool;
   };
 
   _createClass(SwapData, [{
@@ -6495,7 +6535,7 @@ var Swap = /*#__PURE__*/function () {
 
     if (tradeType === SwapType.EXACT_INPUT) {
       !currencyEquals(amount.currency, route.input) ? process.env.NODE_ENV !== "production" ? invariant(false, 'INPUT') : invariant(false) : void 0;
-      amounts[0] = wrappedAmount(amount, route.chainId);
+      amounts[0] = wrappedAmount(amount, route.chainId); // let poolDictCopy = { ...poolDict };
 
       for (var i = 0; i < route.path.length - 1; i++) {
         var pair = route.swapData[i];
@@ -6621,7 +6661,7 @@ var Swap = /*#__PURE__*/function () {
     if (swapType === SwapType.EXACT_INPUT) return swaps.sort(function (a, b) {
       return a.outputAmount.raw.lt(b.outputAmount.raw) ? 1 : -1;
     });else return swaps.sort(function (a, b) {
-      return a.outputAmount.raw.gt(b.outputAmount.raw) ? 1 : -1;
+      return a.inputAmount.raw.lt(b.inputAmount.raw) ? 1 : -1;
     });
   };
 
@@ -6633,7 +6673,7 @@ var Swap = /*#__PURE__*/function () {
 var SwapRoute = /*#__PURE__*/function () {
   // public readonly midPrice: Price
   function SwapRoute(swapData) {
-    var path = [swapData[0].tokenIn]; // it can happen that the pool is traded through consecutively, we wnat to remove this case 
+    var path = [swapData[0].tokenIn]; // it can happen that the pool is traded through consecutively, we want to remove this case 
 
     var swapDataAggregated = [];
 
@@ -6663,9 +6703,9 @@ var SwapRoute = /*#__PURE__*/function () {
     this.swapData = swapDataAggregated;
     this.identifier = swapDataAggregated.map(function (x) {
       return x.poolRef;
-    }).join('-') + path.map(function (p) {
-      return p.address.charAt(5);
-    }).join('-');
+    }).join('') + path.map(function (p) {
+      return p.address;
+    }).join('');
     this.path = path; // this.midPrice = Price.fromRoute(this, poolDict)
 
     this.input = path[0];

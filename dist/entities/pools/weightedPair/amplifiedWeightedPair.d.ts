@@ -80,4 +80,5 @@ export declare class AmplifiedWeightedPair extends Pool {
     calculateSwapGivenOut(tokenIn: Token, tokenOut: Token, outAmount: BigNumber): BigNumber;
     getOutputAmount(inputAmount: TokenAmount): [TokenAmount, Pool];
     getInputAmount(outputAmount: TokenAmount): [TokenAmount, Pool];
+    adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount): void;
 }

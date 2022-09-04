@@ -61,4 +61,5 @@ export declare class WeightedPool extends Pool {
         priceBaseIn: BigNumber;
         priceBaseOut: BigNumber;
     };
+    adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount): void;
 }

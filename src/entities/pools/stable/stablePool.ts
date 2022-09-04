@@ -13,8 +13,7 @@ import { ethers } from 'ethers'
 import { StableSwapStorage } from '../../calculators/stableSwapStorage'
 import {
   BigintIsh,
-  STABLE_POOL_ADDRESS,
-  STABLE_POOL_LP_ADDRESS
+  STABLE_POOL_ADDRESS
 } from '../../../constants'
 import StableSwap from '../../../abis/RequiemStableSwap.json'
 import { Token } from '../../token'
@@ -67,7 +66,7 @@ export class StablePool extends Pool {
     this._A = _A
     this.liquidityToken = new Token(
       tokens[0].chainId,
-      lpAddress ?? STABLE_POOL_LP_ADDRESS[tokens[0].chainId],
+      lpAddress ?? '0x0000000000000000000000000000000000000001',
       18,
       'RequiemStable-LP',
       'Requiem StableSwap LPs'
@@ -320,4 +319,9 @@ export class StablePool extends Pool {
       priceBaseOut: this.calculateSwapGivenIn(tokenIn, tokenOut, virtualIn)
     }
   }
+
+  public adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount) {
+    this.tokenBalances[this.indexFromToken(amountIn.token)] = this.tokenBalances[this.indexFromToken(amountIn.token)].add(amountIn.raw)
+    this.tokenBalances[this.indexFromToken(amountOut.token)] = this.tokenBalances[this.indexFromToken(amountOut.token)].sub(amountOut.raw)
+  };
 } 
