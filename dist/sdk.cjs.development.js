@@ -2805,7 +2805,7 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
 
     return this.tokens.map(function (t, i) {
       return String(_this2.weights[i]) + '-' + t.symbol;
-    }).join('-');
+    }).join('/');
   };
 
   _createClass(AmplifiedWeightedPair, [{

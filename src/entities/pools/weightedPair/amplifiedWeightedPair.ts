@@ -509,7 +509,7 @@ export class AmplifiedWeightedPair extends Pool {
     }
 
     public getName(): string {
-        return this.tokens.map((t, i) => String(this.weights[i]) + '-' + t.symbol).join('-');
+        return this.tokens.map((t, i) => String(this.weights[i]) + '-' + t.symbol).join('/');
     }
 }
 
