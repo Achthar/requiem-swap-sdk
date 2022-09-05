@@ -81,4 +81,5 @@ export declare class AmplifiedWeightedPair extends Pool {
     getInputAmount(outputAmount: TokenAmount): [TokenAmount, Pool];
     adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount): void;
     clone(): AmplifiedWeightedPair;
+    getName(): string;
 }

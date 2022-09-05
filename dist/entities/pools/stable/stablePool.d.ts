@@ -67,4 +67,5 @@ export declare class StablePool extends Pool {
         priceBaseOut: BigNumber;
     };
     adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount): void;
+    getName(): string;
 }

@@ -128,6 +128,7 @@ export abstract class Pool {
     // function that adjusts pool for swap  amounts if routed through more than once
     public abstract clone(): Pool;
 
+    public abstract getName(): string;
 }
 
 

@@ -2798,6 +2798,14 @@ var AmplifiedWeightedPair = /*#__PURE__*/function (_Pool) {
     return new AmplifiedWeightedPair(this.tokens, this.tokenBalances, this.virtualReserves, this.weight0, this.fee0, this.amp, this.address);
   };
 
+  _proto.getName = function getName() {
+    var _this2 = this;
+
+    return this.tokens.map(function (t, i) {
+      return String(_this2.weights[i]) + '-' + t.symbol;
+    }).join('-');
+  };
+
   _createClass(AmplifiedWeightedPair, [{
     key: "amp",
     get: function get() {
@@ -4070,6 +4078,10 @@ var WeightedPool = /*#__PURE__*/function (_Pool) {
   _proto.adjustForSwap = function adjustForSwap(amountIn, amountOut) {
     this.tokenBalances[this.indexFromToken(amountIn.token)] = this.tokenBalances[this.indexFromToken(amountIn.token)].add(amountIn.raw);
     this.tokenBalances[this.indexFromToken(amountOut.token)] = this.tokenBalances[this.indexFromToken(amountOut.token)].sub(amountOut.raw);
+  };
+
+  _proto.getName = function getName() {
+    return this._name;
   };
 
   _createClass(WeightedPool, [{
@@ -5996,6 +6008,10 @@ var StablePool = /*#__PURE__*/function (_Pool) {
   _proto.adjustForSwap = function adjustForSwap(amountIn, amountOut) {
     this.tokenBalances[this.indexFromToken(amountIn.token)] = this.tokenBalances[this.indexFromToken(amountIn.token)].add(amountIn.raw);
     this.tokenBalances[this.indexFromToken(amountOut.token)] = this.tokenBalances[this.indexFromToken(amountOut.token)].sub(amountOut.raw);
+  };
+
+  _proto.getName = function getName() {
+    return this._name;
   };
 
   _createClass(StablePool, [{

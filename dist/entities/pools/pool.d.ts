@@ -42,6 +42,7 @@ export declare abstract class Pool {
     };
     abstract adjustForSwap(amountIn: TokenAmount, amountOut: TokenAmount): void;
     abstract clone(): Pool;
+    abstract getName(): string;
 }
 export declare enum PoolType {
     Pair = "Pair",

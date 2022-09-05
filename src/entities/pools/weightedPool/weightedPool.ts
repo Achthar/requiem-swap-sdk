@@ -302,5 +302,9 @@ export class WeightedPool extends Pool {
     this.tokenBalances[this.indexFromToken(amountIn.token)] = this.tokenBalances[this.indexFromToken(amountIn.token)].add(amountIn.raw)
     this.tokenBalances[this.indexFromToken(amountOut.token)] = this.tokenBalances[this.indexFromToken(amountOut.token)].sub(amountOut.raw)
   };
-  
+
+  public getName(): string {
+    return this._name;
+  }
+
 }

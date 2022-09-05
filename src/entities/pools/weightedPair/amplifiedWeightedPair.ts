@@ -507,6 +507,10 @@ export class AmplifiedWeightedPair extends Pool {
     public clone(): AmplifiedWeightedPair {
         return new AmplifiedWeightedPair(this.tokens, this.tokenBalances, this.virtualReserves, this.weight0, this.fee0, this.amp, this.address)
     }
+
+    public getName(): string {
+        return this.tokens.map((t, i) => String(this.weights[i]) + '-' + t.symbol).join('-');
+    }
 }
 
 
