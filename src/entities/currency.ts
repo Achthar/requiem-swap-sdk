@@ -25,6 +25,8 @@ export class Currency {
 
 
 export enum ChainId {
+  TT_MAINNET = 108,
+  TT_TESTNET = 18,
   BSC_MAINNET = 56,
   BSC_TESTNET = 97,
   AVAX_MAINNET = 43114,
@@ -39,6 +41,8 @@ export enum ChainId {
 }
 
 export const NETWORK_CCY: { [chainId: number]: Currency } = {
+  [ChainId.TT_MAINNET]: new Currency(ChainId.TT_MAINNET, 18, 'TT', 'TT'),
+  [ChainId.TT_TESTNET]: new Currency(ChainId.TT_TESTNET, 18, 'TT', 'TT'),
   [ChainId.BSC_MAINNET]: new Currency(ChainId.BSC_MAINNET, 18, 'BNB', 'BNB'),
   [ChainId.BSC_TESTNET]: new Currency(ChainId.BSC_TESTNET, 18, 'BNB', 'BNB'),
   [ChainId.ARBITRUM_MAINNET]: new Currency(ChainId.ARBITRUM_MAINNET, 18, 'ETH', 'ETH'),

@@ -17,6 +17,8 @@ export declare class Currency {
     constructor(chainId: number, decimals: number, symbol?: string, name?: string);
 }
 export declare enum ChainId {
+    TT_MAINNET = 108,
+    TT_TESTNET = 18,
     BSC_MAINNET = 56,
     BSC_TESTNET = 97,
     AVAX_MAINNET = 43114,

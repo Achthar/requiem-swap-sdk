@@ -221,7 +221,22 @@ export const WRAPPED_NETWORK_TOKENS:{[chainId:number]:Token} = {
     'Wrapped QKC',
     'https://docs.oasis.dev/'
   ),
-
+  [ChainId.TT_TESTNET]:
+  new Token( ChainId.TT_TESTNET,
+    '0x0ed2776E65984933f1066f4904FC34D4c083952B',
+    18,
+    'wTT',
+    'Wrapped Thunder',
+    'https://docs.oasis.dev/'
+  ),
+  [ChainId.TT_MAINNET]:
+  new Token( ChainId.TT_MAINNET,
+    '0x0ed2776E65984933f1066f4904FC34D4c083952B',
+    18,
+    'wTT',
+    'Wrapped Thunder',
+    'https://docs.oasis.dev/'
+  ),
 }
 
 
